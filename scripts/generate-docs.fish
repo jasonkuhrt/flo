@@ -23,9 +23,6 @@ function help_to_markdown --description "Convert help output to markdown format"
     # Check if we have actual help content
     if test -z "$help_output"
         echo "No help available for this command."
-        echo ""
-        echo "---"
-        echo "*Generated from \`flo --help\` output*"
         return
     end
     
@@ -35,9 +32,6 @@ function help_to_markdown --description "Convert help output to markdown format"
         echo $line
     end
     echo '```'
-    echo ""
-    echo "---"
-    echo "*Generated from \`flo --help\` output*"
 end
 
 # Generate main help documentation
@@ -174,15 +168,24 @@ printf '%s\n' \
     '' \
     '## Command Overview' \
     '' \
-    '```fish' \
-    'flo <command> [arguments]' \
-    'flo <issue-number> [--zed] [--claude]' \
+    '```' \
+    'flo - Git workflow automation tool' \
+    '' \
+    'Commands:' \
+    '  issue <number|title>    Start work on a GitHub issue' \
+    '  issue-create <title>    Create a new issue and start working on it' \
+    '  pr [create|push|checks|merge]  Manage pull requests' \
+    '  worktree <create|delete|list|switch>  Manage git worktrees' \
+    '  list <issues|prs|worktrees>  List various items' \
+    '  status                  Show current worktree and PR status' \
+    '  projects                List GitHub projects' \
+    '  claude                  Add current branch context to Claude' \
+    '  claude-clean            Remove old Claude context files' \
+    '  help                    Show this help message' \
     '```' \
     '' \
     'For detailed command documentation, see the [Command Reference](reference/).' \
     '' \
-    '---' \
-    '*For the latest updates and issues, visit the [GitHub repository](https://github.com/jasonkuhrt/flo)*' \
     > "$docs_dir/README.md"
 
 echo ""

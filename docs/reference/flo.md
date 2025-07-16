@@ -15,6 +15,3 @@ Commands:
   claude-clean            Remove old Claude context files
   help                    Show this help message
 ```
-
----
-*Generated from \`flo --help\` output*

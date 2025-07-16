@@ -3,6 +3,3 @@
 ```
 Worktree '--help' does not exist at: /Users/jasonkuhrt/.git-worktrees/main/flo/--help
 ```
-
----
-*Generated from \`flo --help\` output*

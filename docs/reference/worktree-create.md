@@ -515,6 +515,3 @@ NNOOTTEESS
 
 Git 2.46.0                        2024-07-29                     GIT-BRANCH(1)
 ```
-
----
-*Generated from \`flo --help\` output*

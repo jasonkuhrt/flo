@@ -15,6 +15,3 @@ Examples:
   flo issue "Fix bug in parser"
   flo issue 123 --zed --claude
 ```
-
----
-*Generated from \`flo --help\` output*

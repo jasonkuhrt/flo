@@ -15,6 +15,3 @@ Examples:
   flo claude --all          # Generate context for all worktrees
   flo claude --clean        # Clean old context files
 ```
-
----
-*Generated from \`flo --help\` output*

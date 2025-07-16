@@ -132,9 +132,6 @@ printf '%s\n' \
     '- [list issues](list-issues.md) - List GitHub issues' \
     '- [list prs](list-prs.md) - List pull requests' \
     '- [list worktrees](list-worktrees.md) - List worktrees' \
-    '' \
-    '---' \
-    '*Documentation generated from `flo --help` output*' \
     > "$reference_dir/README.md"
 
 # Generate main docs index

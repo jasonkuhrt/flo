@@ -38,6 +38,3 @@ This directory contains auto-generated documentation from flo's internal `--help
 - [list issues](list-issues.md) - List GitHub issues
 - [list prs](list-prs.md) - List pull requests
 - [list worktrees](list-worktrees.md) - List worktrees
-
----
-*Documentation generated from `flo --help` output*

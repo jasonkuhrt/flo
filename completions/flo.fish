@@ -119,8 +119,9 @@ complete -c flo -n "__fish_seen_subcommand_from rm remove r" -xa "(__flo_worktre
 complete -c flo -n "__fish_seen_subcommand_from cd" -xa "(__flo_worktree_names)" -d "Worktree in current project"
 complete -c flo -n "__fish_seen_subcommand_from cd" -xa "(__flo_project_worktree_names)" -d "Worktree in other project"
 
-# Command: claude
+# Command: claude (optional argument - can be run without args in a worktree)
 complete -c flo -n "__fish_seen_subcommand_from claude" -xa "(__flo_worktree_names)" -d "Worktree"
+complete -c flo -n "__fish_seen_subcommand_from claude" -xa "(__flo_project_worktree_names)" -d "Worktree in other project"
 
 # Command: status
 complete -c flo -n "__fish_seen_subcommand_from status s" -xa "(__flo_worktree_names)" -d "Worktree"

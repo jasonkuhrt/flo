@@ -204,7 +204,7 @@ end
 function __flo_help_claude
     echo "flo claude - Start Claude Code with worktree context"
     echo ""
-    echo "Usage: flo claude <worktree-name>"
+    echo "Usage: flo claude [<worktree-name>]"
     echo "       flo claude <project>/<worktree-name>"
     echo ""
     echo "Description:"
@@ -212,8 +212,10 @@ function __flo_help_claude
     echo "  issue, PR status, and project information. For issue worktrees, it includes"
     echo "  the issue details and generates an optimized prompt."
     echo ""
+    echo "  When run without arguments inside a flo worktree, it uses the current worktree."
+    echo ""
     echo "Arguments:"
-    echo "  <worktree-name>          Name of the worktree in current project"
+    echo "  <worktree-name>          Name of the worktree in current project (optional)"
     echo "  <project>/<name>         Worktree in a specific project"
     echo ""
     echo "Context Files:"
@@ -222,6 +224,7 @@ function __flo_help_claude
     echo "  .flo/cache/comments.json Issue comments (for issue worktrees)"
     echo ""
     echo "Examples:"
+    echo "  flo claude               Start Claude in current worktree"
     echo "  flo claude issue/123     Start Claude for issue #123"
     echo "  flo claude feature-x     Start Claude for feature worktree"
     echo "  flo claude proj/feat     Start Claude for worktree in another project"
@@ -865,11 +868,87 @@ function __flo_claude --argument-names base_root in_git_repo project_name branch
         return 0
     end
     
+    # If no arguments, check if we're in a worktree
+    if test (count $argv) -eq 0
+        set -l current_path (pwd)
+        # Check if we're in a flo worktree
+        if string match -q "$base_root/*/*" $current_path
+            # Extract project and worktree name from current path
+            set -l path_parts (string split / $current_path)
+            set -l base_parts (string split / $base_root)
+            set -l idx (math (count $base_parts) + 1)
+            if test (count $path_parts) -gt $idx
+                set project_name $path_parts[$idx]
+                set -l name $path_parts[(math $idx + 1)]
+                set -l worktree_path "$base_root/$project_name/$name"
+                # Jump to the worktree workflow section
+                cd "$worktree_path"
+                
+                # Check if this is an issue worktree
+                if string match -qr '^issue/(\d+)$' $name
+                    set -l issue_number (string replace -r '^issue/(\d+)$' '$1' $name)
+                    
+                    # Update context if needed
+                    set -l issue_data (gh issue view $issue_number --json number,title,state,body,labels,assignees 2>/dev/null)
+                    if test -n "$issue_data"
+                        __flo_update_issue_context $worktree_path $issue_number $issue_data
+                    end
+                    
+                    # Create context-aware prompt
+                    set -l issue_title (echo $issue_data | jq -r '.title')
+                    set -l prompt "I'm working on issue #$issue_number: '$issue_title' in repository $project_name on branch '$name'. "
+                    
+                    set -l pr_info (gh pr list --head $name --json number,state --jq '.[0]' 2>/dev/null)
+                    if test -n "$pr_info" -a "$pr_info" != "null"
+                        set -l pr_number (echo $pr_info | jq -r '.number')
+                        set -l pr_state (echo $pr_info | jq -r '.state')
+                        set prompt "$prompt There is PR #$pr_number ($pr_state) for this issue. "
+                    else
+                        set prompt "$prompt No PR exists yet. "
+                    end
+                    set prompt "$prompt The issue details are in CLAUDE.local.md and full data in .flo/cache/. How can I help with this issue?"
+                    
+                    # Allow custom prompt override
+                    if test -n "$FLO_CLAUDE_PROMPT"
+                        set prompt (echo $FLO_CLAUDE_PROMPT | sed "s/{{issue_number}}/$issue_number/g" | sed "s/{{issue_title}}/$issue_title/g")
+                    end
+                    
+                    claude "$prompt"
+                else
+                    # For non-issue worktrees, create a simple context file
+                    if not test -f "$worktree_path/CLAUDE.local.md"
+                        echo "# Worktree: $name" > "$worktree_path/CLAUDE.local.md"
+                        echo "" >> "$worktree_path/CLAUDE.local.md"
+                        echo "## Project: $project_name" >> "$worktree_path/CLAUDE.local.md"
+                        echo "" >> "$worktree_path/CLAUDE.local.md"
+                        echo "## Branch: $name" >> "$worktree_path/CLAUDE.local.md"
+                        echo "" >> "$worktree_path/CLAUDE.local.md"
+                        echo "Created by flo for worktree development" >> "$worktree_path/CLAUDE.local.md"
+                        
+                        __flo_ensure_gitignore $worktree_path
+                    end
+                    
+                    # Start claude with basic context
+                    set -l prompt "I'm working in worktree '$name' for project $project_name. How can I help?"
+                    claude "$prompt"
+                end
+                return
+            end
+        end
+        # Not in a worktree
+        set_color red
+        echo "Error: Not in a flo worktree. Provide a worktree name or navigate to one."
+        set_color normal
+        echo "Usage: flo claude [<name>]"
+        echo "Run 'flo claude --help' for more information"
+        return 1
+    end
+    
     if test (count $argv) -ne 1
         set_color red
         echo "Error: Provide exactly one worktree name"
         set_color normal
-        echo "Usage: flo claude <name>"
+        echo "Usage: flo claude [<name>]"
         echo "Run 'flo claude --help' for more information"
         return 1
     end

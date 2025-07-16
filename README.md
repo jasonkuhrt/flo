@@ -145,6 +145,21 @@ flo pr create
 flo claude
 ```
 
+## Documentation
+
+Complete command documentation is available and can be generated from the built-in help system:
+
+```fish
+# Generate documentation
+./scripts/generate-docs.fish
+```
+
+This creates:
+- `docs/README.md` - Main documentation index
+- `docs/reference/` - Complete command reference generated from `--help` output
+
+The documentation is automatically generated from flo's internal help system, ensuring it's always up-to-date with the actual commands and options.
+
 ## License
 
 MIT

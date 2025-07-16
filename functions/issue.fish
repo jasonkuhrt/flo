@@ -1,6 +1,25 @@
 # GitHub issue workflow functions
 
 function flo-issue --description "Start work on a GitHub issue"
+    argparse --name="flo issue" 'h/help' 'z/zed' 'c/claude' -- $argv; or return
+    
+    if set -q _flag_help
+        echo "Usage: flo issue <issue-number|issue-title>"
+        echo ""
+        echo "Start work on a GitHub issue by creating a worktree and branch."
+        echo ""
+        echo "Options:"
+        echo "  -h, --help    Show this help message"
+        echo "  -z, --zed     Open worktree in Zed editor"
+        echo "  -c, --claude  Generate Claude context after creation"
+        echo ""
+        echo "Examples:"
+        echo "  flo issue 123"
+        echo "  flo issue \"Fix bug in parser\""
+        echo "  flo issue 123 --zed --claude"
+        return 0
+    end
+    
     set -l issue_ref $argv[1]
     
     if test -z "$issue_ref"

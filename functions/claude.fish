@@ -1,12 +1,32 @@
 # Claude AI integration
 
 function flo-claude --description "Add current branch context to Claude"
+    argparse --name="flo claude" 'h/help' 'a/all' 'c/clean' -- $argv; or return
+    
+    if set -q _flag_help
+        echo "Usage: flo claude [options]"
+        echo ""
+        echo "Generate Claude context files for current or all worktrees."
+        echo ""
+        echo "Options:"
+        echo "  -h, --help    Show this help message"
+        echo "  -a, --all     Generate context for all worktrees"
+        echo "  -c, --clean   Clean up old context files"
+        echo ""
+        echo "Examples:"
+        echo "  flo claude                # Generate context for current worktree"
+        echo "  flo claude --all          # Generate context for all worktrees"
+        echo "  flo claude --clean        # Clean old context files"
+        return 0
+    end
+    
     set -l claude_dir ~/Library/CloudStorage/Dropbox/Documents-Dropbox/Contextual/claude
     set -l target_dir "$claude_dir/prompts"
     
     # Ensure directory exists
     if not test -d $target_dir
         echo "Claude prompts directory not found: $target_dir"
+        echo "Please create the directory or configure FLO_CLAUDE_DIR environment variable"
         return 1
     end
     

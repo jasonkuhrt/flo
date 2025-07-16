@@ -1,0 +1,14 @@
+# Generated documentation
+docs/
+
+# Cache files
+.cache/
+*/.cache/
+
+# Fish cache
+~/.cache/flo/
+
+# Temporary files
+*.tmp
+*.temp
+.DS_Store

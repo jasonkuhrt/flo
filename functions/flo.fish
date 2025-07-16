@@ -3,8 +3,8 @@ function flo --description "GitHub issue flow tool"
     set -l cmd $argv[1]
     set -e argv[1]
     
-    # Check for --help flag
-    if contains -- --help $argv; or test -z "$cmd"
+    # Check for --help flag only if it's the first argument or no command
+    if test -z "$cmd"; or test "$cmd" = --help
         __flo_help
         return 0
     end
@@ -197,6 +197,141 @@ function __flo_help
     echo "  flo list                     List worktrees (current project or all)"
     echo "  flo status --project all     Show status across all projects"
     echo "  flo pr create                Create PR for current worktree"
+    echo ""
+    echo "For help on specific commands, use: flo <command> --help"
+end
+
+function __flo_help_claude
+    echo "flo claude - Start Claude Code with worktree context"
+    echo ""
+    echo "Usage: flo claude <worktree-name>"
+    echo "       flo claude <project>/<worktree-name>"
+    echo ""
+    echo "Description:"
+    echo "  Opens Claude Code in the specified worktree with context about the current"
+    echo "  issue, PR status, and project information. For issue worktrees, it includes"
+    echo "  the issue details and generates an optimized prompt."
+    echo ""
+    echo "Arguments:"
+    echo "  <worktree-name>          Name of the worktree in current project"
+    echo "  <project>/<name>         Worktree in a specific project"
+    echo ""
+    echo "Context Files:"
+    echo "  CLAUDE.local.md          Human-readable context for Claude"
+    echo "  .flo/cache/issue.json    Full issue data (for issue worktrees)"
+    echo "  .flo/cache/comments.json Issue comments (for issue worktrees)"
+    echo ""
+    echo "Examples:"
+    echo "  flo claude issue/123     Start Claude for issue #123"
+    echo "  flo claude feature-x     Start Claude for feature worktree"
+    echo "  flo claude proj/feat     Start Claude for worktree in another project"
+    echo ""
+    echo "Environment:"
+    echo "  FLO_CLAUDE_PROMPT        Custom prompt template with {{issue_number}} and {{issue_title}}"
+end
+
+function __flo_help_create
+    echo "flo create - Create a new worktree"
+    echo ""
+    echo "Usage: flo create <name> [<source-branch>]"
+    echo ""
+    echo "Description:"
+    echo "  Creates a new Git worktree with smart branch detection. If a branch exists"
+    echo "  locally or remotely, it will be used. Otherwise, a new branch is created."
+    echo ""
+    echo "Arguments:"
+    echo "  <name>              Worktree name (also used as branch name with prefix)"
+    echo "  <source-branch>     Optional: Create new branch from this source"
+    echo ""
+    echo "Branch Naming:"
+    echo "  - Regular worktrees: \$FLO_BRANCH_PREFIX<name> (default: claude/<name>)"
+    echo "  - Issue worktrees: issue/<number> (when name matches issue pattern)"
+    echo ""
+    echo "Examples:"
+    echo "  flo create feature-x        Use existing branch or create from HEAD"
+    echo "  flo create feature-x main   Create new branch from main"
+    echo "  flo create issue/123        Create issue worktree (special naming)"
+end
+
+function __flo_help_list
+    echo "flo list - List worktrees"
+    echo ""
+    echo "Usage: flo list [--all]"
+    echo ""
+    echo "Description:"
+    echo "  Lists worktrees with contextual defaults:"
+    echo "  - In a git repo: Shows current project only"
+    echo "  - Outside git repo: Shows all projects"
+    echo ""
+    echo "Options:"
+    echo "  --all    Show worktrees across all projects"
+    echo ""
+    echo "Output:"
+    echo "  → marker indicates current worktree"
+    echo "  Shows branch name for each worktree"
+    echo "  Groups by project when showing all"
+end
+
+function __flo_help_status
+    echo "flo status - Show detailed status information"
+    echo ""
+    echo "Usage: flo status [--project <name>]"
+    echo ""
+    echo "Description:"
+    echo "  Shows contextual status information:"
+    echo "  - In a worktree: Detailed worktree status"
+    echo "  - In main repo: All project worktrees"
+    echo "  - Outside git: Must specify --project"
+    echo ""
+    echo "Options:"
+    echo "  --project <name>    Show status for specific project"
+    echo "  --project all       Show status across all projects"
+    echo ""
+    echo "Worktree Status Includes:"
+    echo "  - Branch information and sync status"
+    echo "  - Issue details (for issue worktrees)"
+    echo "  - PR status and review state"
+    echo "  - Git status summary"
+end
+
+function __flo_help_pr
+    echo "flo pr - Manage pull requests"
+    echo ""
+    echo "Usage: flo pr [subcommand]"
+    echo ""
+    echo "Subcommands:"
+    echo "  create, c    Create a new pull request"
+    echo "  open, o      Open PR in browser (creates if needed)"
+    echo "  status, s    Show PR status for current branch"
+    echo "  list, l      List all open PRs in repository"
+    echo ""
+    echo "Default: Shows status if no subcommand given"
+    echo ""
+    echo "Examples:"
+    echo "  flo pr              Show current branch PR status"
+    echo "  flo pr create       Create PR with smart defaults"
+    echo "  flo pr open         Open PR in browser"
+end
+
+function __flo_help_remove
+    echo "flo remove - Remove a worktree"
+    echo ""
+    echo "Usage: flo rm <name>"
+    echo "       flo remove <name>"
+    echo ""
+    echo "Description:"
+    echo "  Removes a Git worktree with PR awareness. If the worktree has an open PR,"
+    echo "  you'll be prompted to close it (configurable via FLO_AUTO_CLOSE_PR)."
+    echo ""
+    echo "Arguments:"
+    echo "  <name>              Worktree name in current project"
+    echo "  <project>/<name>    Worktree in specific project"
+    echo ""
+    echo "Options:"
+    echo "  Multiple worktrees can be specified"
+    echo ""
+    echo "Environment:"
+    echo "  FLO_AUTO_CLOSE_PR   Prompt to close associated PRs (default: true)"
 end
 
 function __flo_issue --argument-names issue_number
@@ -441,6 +576,12 @@ end
 function __flo_create --argument-names base_dir branch_prefix issue_prefix
     set -e argv[1..3]
     
+    # Check for help flag
+    if contains -- --help $argv
+        __flo_help_create
+        return 0
+    end
+    
     # Ensure base directory exists
     if not test -d "$base_dir"
         mkdir -p "$base_dir"; or begin
@@ -456,6 +597,7 @@ function __flo_create --argument-names base_dir branch_prefix issue_prefix
         echo "Error: No worktree name provided"
         set_color normal
         echo "Usage: flo create <name> [<source-branch>]"
+        echo "Run 'flo create --help' for more information"
         return 1
     end
     
@@ -556,11 +698,18 @@ end
 function __flo_remove --argument-names base_root in_git_repo project_name
     set -e argv[1..3]
     
+    # Check for help flag
+    if contains -- --help $argv
+        __flo_help_remove
+        return 0
+    end
+    
     if test (count $argv) -eq 0
         set_color red
         echo "Error: No worktree name provided"
         set_color normal
         echo "Usage: flo rm <name>"
+        echo "Run 'flo remove --help' for more information"
         return 1
     end
     
@@ -710,11 +859,18 @@ end
 function __flo_claude --argument-names base_root in_git_repo project_name branch_prefix issue_prefix
     set -e argv[1..5]
     
+    # Check for help flag
+    if contains -- --help $argv
+        __flo_help_claude
+        return 0
+    end
+    
     if test (count $argv) -ne 1
         set_color red
         echo "Error: Provide exactly one worktree name"
         set_color normal
         echo "Usage: flo claude <name>"
+        echo "Run 'flo claude --help' for more information"
         return 1
     end
     
@@ -811,6 +967,12 @@ end
 
 function __flo_list --argument-names base_root in_git_repo project_name
     set -e argv[1..3]
+    
+    # Check for help flag
+    if contains -- --help $argv
+        __flo_help_list
+        return 0
+    end
     
     # Determine default behavior
     set -l show_all false
@@ -932,6 +1094,12 @@ end
 
 function __flo_status --argument-names base_root in_git_repo project_name
     set -e argv[1..3]
+    
+    # Check for help flag
+    if contains -- --help $argv
+        __flo_help_status
+        return 0
+    end
     
     # Parse --project flag
     set -l target_project ""
@@ -1351,6 +1519,14 @@ end
 function __flo_pr
     set -e argv[1]
     
+    # Check for help flag
+    if contains -- --help $argv; or test -z "$argv[1]"
+        if test -z "$argv[1]"; or test "$argv[1]" = --help
+            __flo_help_pr
+            return 0
+        end
+    end
+    
     # Default to status if no subcommand
     set -l subcmd $argv[1]
     if test -z "$subcmd"
@@ -1367,11 +1543,15 @@ function __flo_pr
             __flo_pr_status $argv
         case list l
             __flo_pr_list $argv
+        case help --help
+            __flo_help_pr
+            return 0
         case '*'
             set_color red
             echo "Unknown pr subcommand: $subcmd"
             set_color normal
             echo "Usage: flo pr [create|open|status|list]"
+            echo "Run 'flo pr --help' for more information"
             return 1
     end
 end

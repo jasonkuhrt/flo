@@ -13,23 +13,46 @@ echo "Installing Flo for development (symlinks)..."
 mkdir -p "$functions_dir"
 mkdir -p "$completions_dir"
 
-# Remove existing files if they exist
-if test -e "$functions_dir/flo.fish"
-    echo "Removing existing flo function..."
-    rm -f "$functions_dir/flo.fish"
+# Clean out all existing flo-related files
+echo "Cleaning out existing flo files..."
+rm -f "$functions_dir"/flo*.fish
+rm -f "$functions_dir"/*flo*.fish
+rm -f "$functions_dir"/__flo*.fish
+rm -f "$functions_dir"/browse.fish
+rm -f "$functions_dir"/claude.fish
+rm -f "$functions_dir"/completions.fish
+rm -f "$functions_dir"/errors.fish
+rm -f "$functions_dir"/help.fish
+rm -f "$functions_dir"/helpers.fish
+rm -f "$functions_dir"/issue.fish
+rm -f "$functions_dir"/loader.fish
+rm -f "$functions_dir"/main.fish
+rm -f "$functions_dir"/next.fish
+rm -f "$functions_dir"/pr.fish
+rm -f "$functions_dir"/worktree.fish
+rm -f "$completions_dir/flo.fish"
+
+# Create symlinks for all function files
+echo "Creating symlinks for all flo function files..."
+for file in "$script_dir/functions"/*.fish
+    set -l basename (basename "$file")
+    set -l abs_file (realpath "$file")
+    echo "  Linking $basename..."
+    ln -sf "$abs_file" "$functions_dir/$basename"
 end
 
-if test -e "$completions_dir/flo.fish"
-    echo "Removing existing flo completions..."
-    rm -f "$completions_dir/flo.fish"
+# Create symlinks for all helper files
+echo "Creating symlinks for all helper files..."
+for file in "$script_dir/functions/helpers"/*.fish
+    set -l basename (basename "$file")
+    set -l abs_file (realpath "$file")
+    echo "  Linking $basename..."
+    ln -sf "$abs_file" "$functions_dir/$basename"
 end
-
-# Create symlinks
-echo "Creating symlink for flo function..."
-ln -sf "$script_dir/functions/flo.fish" "$functions_dir/flo.fish"
 
 echo "Creating symlink for flo completions..."
-ln -sf "$script_dir/completions/flo.fish" "$completions_dir/flo.fish"
+set -l abs_completions (realpath "$script_dir/completions/flo.fish")
+ln -sf "$abs_completions" "$completions_dir/flo.fish"
 
 # Verify symlinks
 if test -L "$functions_dir/flo.fish" -a -L "$completions_dir/flo.fish"

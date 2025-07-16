@@ -13,9 +13,9 @@ echo "Installing Flo..."
 mkdir -p "$functions_dir"
 mkdir -p "$completions_dir"
 
-# Copy function file
-echo "Installing flo function..."
-cp "$script_dir/functions/flo.fish" "$functions_dir/"
+# Copy all function files
+echo "Installing flo functions..."
+cp "$script_dir/functions/"*.fish "$functions_dir/"
 
 # Copy completions file
 echo "Installing flo completions..."

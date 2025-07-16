@@ -1,4 +1,7 @@
-# Completions for flo (Git Worktree Manager)
+# Completions for flo (GitHub Issue Flow Tool)
+
+# Disable file completions by default
+complete -c flo -f
 
 # Helper function to get current project name
 function __flo_current_project
@@ -56,82 +59,121 @@ end
 
 # Helper function to get branch names
 function __flo_branch_names
-    git branch -a 2>/dev/null | string replace -r '^\s*\*?\s*' '' | string replace -r '^remotes/origin/' ''
+    git branch -a 2>/dev/null | string replace -r '^\s*\*?\s*' '' | string replace -r '^remotes/origin/' '' | sort -u
 end
 
-# Main commands
-set -l commands create c rm remove r cd claude list ls l status s projects p issues i pr sync zed z help h
-set -l commands_regex (string join '|' $commands)
+# Helper to check if we have no subcommand yet
+function __flo_no_subcommand
+    set -l cmd (commandline -opc)
+    if test (count $cmd) -eq 1
+        return 0
+    end
+    # Check if second arg is a number (issue workflow)
+    if test (count $cmd) -ge 2; and string match -qr '^[0-9]+$' -- $cmd[2]
+        return 1
+    end
+    # Check if we have a known subcommand
+    set -l subcommands create c rm remove r cd claude list ls l status s projects p issues i pr sync zed z help h
+    if contains -- $cmd[2] $subcommands
+        return 1
+    end
+    return 0
+end
 
-# No arguments = show commands
-complete -c flo -f -n "not __fish_seen_subcommand_from $commands" -a "create" -d "Create a new worktree"
-complete -c flo -f -n "not __fish_seen_subcommand_from $commands" -a "c" -d "Create a new worktree (alias)"
-complete -c flo -f -n "not __fish_seen_subcommand_from $commands" -a "rm" -d "Remove a worktree"
-complete -c flo -f -n "not __fish_seen_subcommand_from $commands" -a "remove" -d "Remove a worktree (alias)"
-complete -c flo -f -n "not __fish_seen_subcommand_from $commands" -a "r" -d "Remove a worktree (alias)"
-complete -c flo -f -n "not __fish_seen_subcommand_from $commands" -a "cd" -d "Change to worktree directory"
-complete -c flo -f -n "not __fish_seen_subcommand_from $commands" -a "claude" -d "Start Claude in worktree with context"
-complete -c flo -f -n "not __fish_seen_subcommand_from $commands" -a "list" -d "List worktrees"
-complete -c flo -f -n "not __fish_seen_subcommand_from $commands" -a "ls" -d "List worktrees (alias)"
-complete -c flo -f -n "not __fish_seen_subcommand_from $commands" -a "l" -d "List worktrees (alias)"
-complete -c flo -f -n "not __fish_seen_subcommand_from $commands" -a "status" -d "Show detailed status"
-complete -c flo -f -n "not __fish_seen_subcommand_from $commands" -a "s" -d "Show detailed status (alias)"
-complete -c flo -f -n "not __fish_seen_subcommand_from $commands" -a "projects" -d "List all projects"
-complete -c flo -f -n "not __fish_seen_subcommand_from $commands" -a "p" -d "List all projects (alias)"
-complete -c flo -f -n "not __fish_seen_subcommand_from $commands" -a "issues" -d "List repository issues"
-complete -c flo -f -n "not __fish_seen_subcommand_from $commands" -a "i" -d "List repository issues (alias)"
-complete -c flo -f -n "not __fish_seen_subcommand_from $commands" -a "pr" -d "Manage pull requests"
-complete -c flo -f -n "not __fish_seen_subcommand_from $commands" -a "sync" -d "Update caches and clean merged PRs"
-complete -c flo -f -n "not __fish_seen_subcommand_from $commands" -a "zed" -d "Open worktree in Zed"
-complete -c flo -f -n "not __fish_seen_subcommand_from $commands" -a "z" -d "Open worktree in Zed (alias)"
-complete -c flo -f -n "not __fish_seen_subcommand_from $commands" -a "help" -d "Show help"
-complete -c flo -f -n "not __fish_seen_subcommand_from $commands" -a "h" -d "Show help (alias)"
+# Helper to check if using issue workflow
+function __flo_is_issue_workflow
+    set -l cmd (commandline -opc)
+    if test (count $cmd) -ge 2; and string match -qr '^[0-9]+$' -- $cmd[2]
+        return 0
+    end
+    return 1
+end
 
-# Global --help flag (available for all commands)
-complete -c flo -f -n "__fish_seen_subcommand_from $commands" -l help -d "Show help for this command"
+# Main command completions (when no subcommand)
+complete -c flo -n __flo_no_subcommand -a "create c" -d "Create a new worktree"
+complete -c flo -n __flo_no_subcommand -a "rm remove r" -d "Remove a worktree"
+complete -c flo -n __flo_no_subcommand -a cd -d "Change to worktree directory"
+complete -c flo -n __flo_no_subcommand -a claude -d "Start Claude in worktree with context"
+complete -c flo -n __flo_no_subcommand -a "list ls l" -d "List worktrees"
+complete -c flo -n __flo_no_subcommand -a "status s" -d "Show detailed status"
+complete -c flo -n __flo_no_subcommand -a "projects p" -d "List all projects with worktrees"
+complete -c flo -n __flo_no_subcommand -a "issues i" -d "List repository issues"
+complete -c flo -n __flo_no_subcommand -a pr -d "Manage pull requests"
+complete -c flo -n __flo_no_subcommand -a sync -d "Update caches and clean merged PRs"
+complete -c flo -n __flo_no_subcommand -a "zed z" -d "Open worktree in Zed editor"
+complete -c flo -n __flo_no_subcommand -a "help h" -d "Show help"
 
-# Issue numbers (when no subcommand)
-complete -c flo -f -n "not __fish_seen_subcommand_from $commands" -a "(gh issue list --json number,title --jq '.[] | \"\(.number)\t\(.title)\"' 2>/dev/null)" -d "Issue"
+# Issue numbers (dynamic completion with --keep-order)
+complete -c flo -n __flo_no_subcommand -k -a "(gh issue list --state open --json number,title --jq '.[] | \"\(.number)\t\(.title)\"' 2>/dev/null)"
 
-# Create command - second argument can be branch name
-complete -c flo -f -n "__fish_seen_subcommand_from create c; and test (count (commandline -opc)) -eq 3" -a "(__flo_branch_names)" -d "Source branch"
+# Global flags
+complete -c flo -s h -l help -d "Show help" -x
 
-# Remove command - complete with existing worktree names in current project
-complete -c flo -f -n "__fish_seen_subcommand_from rm remove r" -a "(__flo_worktree_names)" -d "Worktree"
+# Command: create
+complete -c flo -n "__fish_seen_subcommand_from create c" -xa "(__flo_branch_names)" -d "Branch name"
 
-# CD command - complete with both current project worktrees and project/worktree combinations
-complete -c flo -f -n "__fish_seen_subcommand_from cd" -a "(__flo_worktree_names)" -d "Worktree in current project"
-complete -c flo -f -n "__fish_seen_subcommand_from cd" -a "(__flo_project_worktree_names)" -d "Worktree in other project"
+# Command: remove (multiple worktrees allowed)
+complete -c flo -n "__fish_seen_subcommand_from rm remove r" -xa "(__flo_worktree_names)" -d "Worktree"
 
-# Claude command - complete with existing worktree names in current project
-complete -c flo -f -n "__fish_seen_subcommand_from claude" -a "(__flo_worktree_names)" -d "Worktree"
+# Command: cd
+complete -c flo -n "__fish_seen_subcommand_from cd" -xa "(__flo_worktree_names)" -d "Worktree in current project"
+complete -c flo -n "__fish_seen_subcommand_from cd" -xa "(__flo_project_worktree_names)" -d "Worktree in other project"
 
-# Status command - complete with existing worktree names in current project
-complete -c flo -f -n "__fish_seen_subcommand_from status s" -a "(__flo_worktree_names)" -d "Worktree"
+# Command: claude
+complete -c flo -n "__fish_seen_subcommand_from claude" -xa "(__flo_worktree_names)" -d "Worktree"
 
-# Command-specific flags
-# List command
-complete -c flo -f -n "__fish_seen_subcommand_from list ls l; and not contains -- --all (commandline -opc)" -l all -d "Show all worktrees across all projects"
+# Command: status
+complete -c flo -n "__fish_seen_subcommand_from status s" -xa "(__flo_worktree_names)" -d "Worktree"
+complete -c flo -n "__fish_seen_subcommand_from status s" -l project -r -xa "all (__flo_project_names)" -d "Filter by project"
 
-# Status command  
-complete -c flo -f -n "__fish_seen_subcommand_from status s; and not contains -- --project (commandline -opc)" -l project -d "Filter by project"
-complete -c flo -f -n "__fish_seen_subcommand_from status s; and contains -- --project (commandline -opc); and not contains -- all (commandline -opc)" -a "all" -d "Show all projects"
-complete -c flo -f -n "__fish_seen_subcommand_from status s; and contains -- --project (commandline -opc)" -a "(__flo_project_names)" -d "Project"
+# Command: list
+complete -c flo -n "__fish_seen_subcommand_from list ls l" -l all -d "Show all worktrees across all projects"
 
-# Issue workflow flags (for numeric commands)
-complete -c flo -f -n "string match -qr '^[0-9]+' (commandline -opc)[-1]; and not contains -- --zed (commandline -opc)" -l zed -d "Open in Zed editor"
-complete -c flo -f -n "string match -qr '^[0-9]+' (commandline -opc)[-1]; and not contains -- --claude (commandline -opc)" -l claude -d "Start Claude with context"
+# Command: zed
+complete -c flo -n "__fish_seen_subcommand_from zed z" -xa "(__flo_worktree_names)" -d "Worktree in current project"
+complete -c flo -n "__fish_seen_subcommand_from zed z" -xa "(__flo_project_worktree_names)" -d "Worktree in other project"
+
+# Issue workflow flags
+complete -c flo -n __flo_is_issue_workflow -l zed -d "Open in Zed editor"
+complete -c flo -n __flo_is_issue_workflow -l claude -d "Start Claude with context"
 
 # PR subcommands
-complete -c flo -f -n "__fish_seen_subcommand_from pr; and not __fish_seen_subcommand_from create c open o status s list l" -a "create" -d "Create a new pull request"
-complete -c flo -f -n "__fish_seen_subcommand_from pr; and not __fish_seen_subcommand_from create c open o status s list l" -a "c" -d "Create a new pull request (alias)"
-complete -c flo -f -n "__fish_seen_subcommand_from pr; and not __fish_seen_subcommand_from create c open o status s list l" -a "open" -d "Open PR in browser"
-complete -c flo -f -n "__fish_seen_subcommand_from pr; and not __fish_seen_subcommand_from create c open o status s list l" -a "o" -d "Open PR in browser (alias)"
-complete -c flo -f -n "__fish_seen_subcommand_from pr; and not __fish_seen_subcommand_from create c open o status s list l" -a "status" -d "Show PR status"
-complete -c flo -f -n "__fish_seen_subcommand_from pr; and not __fish_seen_subcommand_from create c open o status s list l" -a "s" -d "Show PR status (alias)"
-complete -c flo -f -n "__fish_seen_subcommand_from pr; and not __fish_seen_subcommand_from create c open o status s list l" -a "list" -d "List all open PRs"
-complete -c flo -f -n "__fish_seen_subcommand_from pr; and not __fish_seen_subcommand_from create c open o status s list l" -a "l" -d "List all open PRs (alias)"
+complete -c flo -n "__fish_seen_subcommand_from pr; and not __fish_seen_subcommand_from create c open o status s list l" -xa "create c" -d "Create a new pull request"
+complete -c flo -n "__fish_seen_subcommand_from pr; and not __fish_seen_subcommand_from create c open o status s list l" -xa "open o" -d "Open PR in browser"
+complete -c flo -n "__fish_seen_subcommand_from pr; and not __fish_seen_subcommand_from create c open o status s list l" -xa "status s" -d "Show PR status for current branch"
+complete -c flo -n "__fish_seen_subcommand_from pr; and not __fish_seen_subcommand_from create c open o status s list l" -xa "list l" -d "List all open PRs"
 
-# Zed command - complete with worktree names
-complete -c flo -f -n "__fish_seen_subcommand_from zed z" -a "(__flo_worktree_names)" -d "Worktree in current project"
-complete -c flo -f -n "__fish_seen_subcommand_from zed z" -a "(__flo_project_worktree_names)" -d "Worktree in other project"
+# Prevent file completion for commands that don't need it
+complete -c flo -n "__fish_seen_subcommand_from projects p issues i sync help h" -f
+complete -c flo -n "__fish_seen_subcommand_from pr; and __fish_seen_subcommand_from create c open o status s list l" -f
+
+# Add dynamic issue completions that refresh
+function __flo_issues_with_status
+    set -l worktree_issues
+    set -l base_root (test -n "$FLO_BASE_DIR"; and echo "$FLO_BASE_DIR"; or echo "$HOME/worktrees")
+    set -l project (__flo_current_project)
+    
+    if test -n "$project" -a -d "$base_root/$project"
+        for worktree in "$base_root/$project"/*
+            if test -d "$worktree"
+                set -l name (basename $worktree)
+                if string match -qr '^issue/([0-9]+)$' -- $name
+                    set -a worktree_issues (string replace -r '^issue/([0-9]+)$' '$1' -- $name)
+                end
+            end
+        end
+    end
+    
+    gh issue list --state open --json number,title --jq '.[]' 2>/dev/null | while read -l issue
+        set -l num (echo $issue | jq -r '.number')
+        set -l title (echo $issue | jq -r '.title' | string sub -l 50)
+        if contains -- $num $worktree_issues
+            echo "$num\t✓ $title"
+        else
+            echo "$num\t$title"
+        end
+    end
+end
+
+# Override issue completion with enhanced version
+complete -c flo -n __flo_no_subcommand -k -xa "(__flo_issues_with_status)"

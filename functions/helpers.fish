@@ -1,13 +1,27 @@
 # Shared utility functions for flo
 
 function __flo_get_repo_root --description "Get the root directory of the git repository"
-    git rev-parse --show-toplevel 2>/dev/null
+    # Get the main repository root, not the worktree root
+    set -l git_dir (git rev-parse --git-dir 2>/dev/null)
+    if test -n "$git_dir"
+        # If in a worktree, git-dir points to .git/worktrees/<name>
+        if string match -q "*/worktrees/*" $git_dir
+            # Extract main repo path from worktree git-dir
+            set -l main_git_dir (string replace -r '/worktrees/[^/]+$' '' $git_dir)
+            dirname $main_git_dir
+        else
+            # In main repo
+            git rev-parse --show-toplevel 2>/dev/null
+        end
+    end
 end
 
 function __flo_extract_branch_name --description "Extract a clean branch name from issue title"
     set -l input $argv[1]
     # Remove leading numbers and hyphens, convert to lowercase kebab-case
-    string replace -r '^[0-9]+-' '' $input | string replace -a ' ' '-' | string replace -a "'" '' | string lower
+    # Use echo to prevent input being interpreted as flags
+    # Remove invalid characters for git branch names
+    echo $input | string replace -r '^[0-9]+-' '' | string replace -a ' ' '-' | string replace -a "'" '' | string replace -a '?' '' | string replace -a '!' '' | string replace -a '(' '' | string replace -a ')' '' | string replace -a '[' '' | string replace -a ']' '' | string replace -a '{' '' | string replace -a '}' '' | string replace -a '/' '' | string replace -a '\\' '' | string replace -a ':' '' | string replace -a '*' '' | string replace -a '^' '' | string replace -a '~' '' | string replace -a '@' '' | string replace -a '#' '' | string replace -a '$' '' | string replace -a '%' '' | string replace -a '&' '' | string replace -a '+' '' | string replace -a '=' '' | string replace -a '|' '' | string replace -a '<' '' | string replace -a '>' '' | string replace -a '"' '' | string replace -a '`' '' | string replace -r -- '\\.+$' '' | string replace -r -- '^-+' '' | string replace -r -- '-+$' '' | string lower
 end
 
 function __flo_worktree_exists --description "Check if a worktree exists"
@@ -91,4 +105,123 @@ function __flo_spinner --description "Display a spinner animation"
     end
     
     printf "\r%s\n" (string repeat -n (string length "$spinners[1] $message") " ")
+end
+
+# Helper functions for flo next command
+
+function __flo_select_issue --description "Let user select from open issues"
+    if not __flo_check_gh_auth
+        return 1
+    end
+    
+    set -l issues (gh issue list --json number,title --limit 20 2>/dev/null)
+    
+    if test -z "$issues" -o "$issues" = "[]"
+        echo "No open issues found"
+        return 1
+    end
+    
+    echo "Open issues:"
+    echo $issues | jq -r '.[] | "#\(.number) - \(.title)"' | nl -v 1
+    
+    read -P "Select issue (1-N): " selection
+    
+    if test -z "$selection"
+        echo "No selection made"
+        return 1
+    end
+    
+    # Validate selection is a number
+    if not string match -qr '^[0-9]+$' -- $selection
+        echo "Invalid selection: $selection"
+        return 1
+    end
+    
+    # Get the issue number (array is 0-indexed, display is 1-indexed)
+    set -l index (math $selection - 1)
+    set -l issue_number (echo $issues | jq -r ".[$index].number" 2>/dev/null)
+    
+    if test -z "$issue_number" -o "$issue_number" = "null"
+        echo "Invalid selection: $selection"
+        return 1
+    end
+    
+    echo $issue_number
+end
+
+function __flo_prompt_claude_session --description "Prompt user for Claude session ID"
+    echo ""
+    echo "To resume your Claude session:"
+    echo "1. Run '/status' in Claude"
+    echo "2. Copy the Session ID from output like:"
+    echo "   Session ID: bbf041be-3b3c-4913-9b13-211921ef0048"
+    echo ""
+    
+    read -P "Session ID (or Enter to skip): " session_id
+    
+    if test -n "$session_id"
+        # Basic validation - should be UUID format
+        if string match -qr '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' $session_id
+            echo $session_id
+        else
+            echo "Invalid session ID format (should be UUID like: bbf041be-3b3c-4913-9b13-211921ef0048)" >&2
+            return 1
+        end
+    end
+end
+
+function __flo_get_current_worktree_name --description "Get current worktree name if in flo worktree"
+    set -l current_path (pwd)
+    
+    # Check if we're in a git worktree (not the main repo)
+    set -l worktree_root (git rev-parse --show-toplevel 2>/dev/null)
+    set -l git_dir (git rev-parse --git-dir 2>/dev/null)
+    
+    if test -n "$worktree_root" -a -n "$git_dir"
+        # Check if this is a worktree (git-dir contains worktrees/)
+        if string match -q "*/worktrees/*" $git_dir
+            basename $worktree_root
+        end
+    end
+end
+
+function __flo_remove_current_worktree --description "Remove current worktree safely"
+    set -l current_worktree (__flo_get_current_worktree_name)
+    if test -n "$current_worktree"
+        # Navigate to main repo before removing
+        cd (__flo_get_repo_root)
+        flo worktree delete $current_worktree
+    end
+end
+
+function __flo_sync_main_branch --description "Sync main branch with upstream"
+    set -l main_repo (__flo_get_repo_root)
+    if test -n "$main_repo"
+        set -l current_dir (pwd)
+        cd $main_repo
+        
+        # Fetch latest changes
+        git fetch origin
+        
+        # Switch to main branch (try main first, then master)
+        set -l main_branch "main"
+        if not git show-ref --verify --quiet refs/heads/main
+            if git show-ref --verify --quiet refs/heads/master
+                set main_branch "master"
+            else
+                echo "Neither 'main' nor 'master' branch found" >&2
+                cd $current_dir
+                return 1
+            end
+        end
+        
+        git checkout $main_branch
+        git pull origin $main_branch
+        
+        # Return to original directory
+        cd $current_dir
+    else
+        echo "Could not find repository root" >&2
+        return 1
+    end
 end

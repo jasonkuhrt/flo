@@ -11,6 +11,7 @@ source $flo_dir/issue.fish
 source $flo_dir/pr.fish
 source $flo_dir/browse.fish
 source $flo_dir/claude.fish
+source $flo_dir/next.fish
 source $flo_dir/completions.fish
 
 # Main flo command dispatcher
@@ -37,12 +38,15 @@ function flo --description "Git workflow automation tool"
             flo-claude $argv
         case claude-clean
             flo-claude-clean $argv
+        case next
+            flo-next $argv
         case help ''
             echo "flo - Git workflow automation tool"
             echo ""
             echo "Commands:"
             echo "  issue <number|title>    Start work on a GitHub issue"
             echo "  issue-create <title>    Create a new issue and start working on it"
+            echo "  next [number]           Transition to next issue (context-aware)"
             echo "  pr [create|push|checks|merge]  Manage pull requests"
             echo "  worktree <create|delete|list|switch>  Manage git worktrees"
             echo "  list <issues|prs|worktrees>  List various items"

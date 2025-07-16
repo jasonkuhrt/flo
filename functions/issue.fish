@@ -38,6 +38,7 @@ function flo-issue --description "Start work on a GitHub issue"
     
     # Parse issue number if provided
     set -l issue_number (__flo_parse_issue_number $issue_ref)
+    set -l title ""
     
     if test -n "$issue_number"
         # Fetch issue by number
@@ -47,7 +48,7 @@ function flo-issue --description "Start work on a GitHub issue"
             return 1
         end
         
-        set -l title (echo $issue_data | jq -r '.title')
+        set title (echo $issue_data | jq -r '.title')
     else
         # Search for issue by title
         echo "Searching for issues matching: $issue_ref"

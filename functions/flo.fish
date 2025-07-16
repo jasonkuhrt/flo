@@ -73,6 +73,10 @@ function flo --description "GitHub issue flow tool"
             # May require git if creating new worktree
             __flo_claude $base_root $in_git_repo $project_name $branch_prefix $issue_prefix $argv
             
+        case next n
+            # Context-aware next issue workflow
+            flo-next $argv
+            
         case list ls l
             # Doesn't require git
             __flo_list $base_root $in_git_repo $project_name $argv

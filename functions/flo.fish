@@ -927,16 +927,18 @@ function __flo_status --argument-names base_root in_git_repo project_name
     set -l target_project ""
     set -l remaining_args
     
+    set -l skip_next false
     for i in (seq (count $argv))
+        if test $skip_next = true
+            set skip_next false
+            continue
+        end
+        
         if test "$argv[$i]" = --project
             if test (math $i + 1) -le (count $argv)
                 set target_project $argv[(math $i + 1)]
-                # Skip the flag and its value
-                continue
+                set skip_next true
             end
-        else if test (math $i - 1) -ge 1 -a "$argv[(math $i - 1)]" = --project
-            # Skip the value after --project
-            continue
         else
             set remaining_args $remaining_args $argv[$i]
         end

@@ -136,7 +136,7 @@ function __flo_get_project_name
     set -l remote_url (git remote get-url origin 2>/dev/null)
     if test -n "$remote_url"
         # Extract repo name from URL (works with both HTTPS and SSH URLs)
-        set -l repo_name (echo "$remote_url" | sed -E 's|.*/([^/]+)(\.git)?$|\1|' | sed 's/\.git$//')
+        set -l repo_name (string replace -r '.*/([^/]+)(\.git)?$' '$1' $remote_url)
         if test -n "$repo_name"
             echo "$repo_name"
             return 0
@@ -449,7 +449,7 @@ function __flo_issue --argument-names issue_number
         
         # Allow custom prompt override
         if test -n "$FLO_CLAUDE_PROMPT"
-            set prompt (echo $FLO_CLAUDE_PROMPT | sed "s/{{issue_number}}/$issue_number/g" | sed "s/{{issue_title}}/$issue_title/g")
+            set prompt (string replace -a "{{issue_number}}" "$issue_number" $FLO_CLAUDE_PROMPT | string replace -a "{{issue_title}}" "$issue_title")
         end
         
         claude "$prompt"
@@ -553,10 +553,10 @@ function __flo_ensure_gitignore --argument-names worktree_path
     
     # Check if entries exist
     if test -f "$gitignore_path"
-        if not grep -q '^CLAUDE\.local\.md$' "$gitignore_path" 2>/dev/null
+        if not string match -q '*CLAUDE.local.md*' < "$gitignore_path"
             set needs_update true
         end
-        if not grep -q '^\.flo/$' "$gitignore_path" 2>/dev/null
+        if not string match -q '*.flo/*' < "$gitignore_path"
             set needs_update true
         end
     else
@@ -566,10 +566,10 @@ function __flo_ensure_gitignore --argument-names worktree_path
     if test $needs_update = true
         echo "" >> "$gitignore_path"
         echo "# flo context files" >> "$gitignore_path"
-        if not grep -q '^CLAUDE\.local\.md$' "$gitignore_path" 2>/dev/null
+        if not string match -q '*CLAUDE.local.md*' < "$gitignore_path"
             echo "CLAUDE.local.md" >> "$gitignore_path"
         end
-        if not grep -q '^\.flo/$' "$gitignore_path" 2>/dev/null
+        if not string match -q '*.flo/*' < "$gitignore_path"
             echo ".flo/" >> "$gitignore_path"
         end
         echo "Updated .gitignore with flo entries"
@@ -910,7 +910,7 @@ function __flo_claude --argument-names base_root in_git_repo project_name branch
                     
                     # Allow custom prompt override
                     if test -n "$FLO_CLAUDE_PROMPT"
-                        set prompt (echo $FLO_CLAUDE_PROMPT | sed "s/{{issue_number}}/$issue_number/g" | sed "s/{{issue_title}}/$issue_title/g")
+                        set prompt (string replace -a "{{issue_number}}" "$issue_number" $FLO_CLAUDE_PROMPT | string replace -a "{{issue_title}}" "$issue_title")
                     end
                     
                     claude "$prompt"
@@ -1020,7 +1020,7 @@ function __flo_claude --argument-names base_root in_git_repo project_name branch
         
         # Allow custom prompt override
         if test -n "$FLO_CLAUDE_PROMPT"
-            set prompt (echo $FLO_CLAUDE_PROMPT | sed "s/{{issue_number}}/$issue_number/g" | sed "s/{{issue_title}}/$issue_title/g")
+            set prompt (string replace -a "{{issue_number}}" "$issue_number" $FLO_CLAUDE_PROMPT | string replace -a "{{issue_title}}" "$issue_title")
         end
         
         claude "$prompt"

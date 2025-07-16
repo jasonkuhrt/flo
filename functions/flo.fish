@@ -822,8 +822,13 @@ function __flo_list --argument-names base_root in_git_repo project_name
     end
     
     if not test -d "$base_root"
+        # Create base directory if it doesn't exist
+        mkdir -p "$base_root"
         set_color yellow
-        echo "No worktrees found (base directory doesn't exist: $base_root)"
+        echo "No worktrees found"
+        echo ""
+        echo "Flo manages worktrees in: $base_root/<project>/<worktree-name>"
+        echo "Use 'flo create <name>' to create your first worktree"
         set_color normal
         return 0
     end
@@ -912,10 +917,15 @@ function __flo_list --argument-names base_root in_git_repo project_name
     if not test $found_any = true
         set_color yellow
         if test $show_all = true
-            echo "  No worktrees found"
+            echo "No worktrees found"
+            echo ""
+            echo "Flo manages worktrees in: $base_root/<project>/<worktree-name>"
         else
-            echo "  No worktrees found for project: $project_name"
+            echo "No worktrees found for project: $project_name"
+            echo ""
+            echo "Worktrees would be in: $base_root/$project_name/"
         end
+        echo "Use 'flo create <name>' to create a worktree"
         set_color normal
     end
 end
@@ -1136,8 +1146,13 @@ function __flo_status_all_projects --argument-names base_root
     echo ""
     
     if not test -d "$base_root"
+        # Create base directory if it doesn't exist
+        mkdir -p "$base_root"
         set_color yellow
         echo "No projects found"
+        echo ""
+        echo "Flo manages worktrees in: $base_root/<project>/<worktree-name>"
+        echo "Use 'flo create <name>' to create your first worktree"
         set_color normal
         return
     end
@@ -1208,8 +1223,13 @@ end
 
 function __flo_projects --argument-names base_root
     if not test -d "$base_root"
+        # Create base directory if it doesn't exist
+        mkdir -p "$base_root"
         set_color yellow
-        echo "No projects found (base directory doesn't exist: $base_root)"
+        echo "No projects found"
+        echo ""
+        echo "Flo manages worktrees in: $base_root/<project>/<worktree-name>"
+        echo "Use 'flo create <name>' to create your first worktree"
         set_color normal
         return 0
     end
@@ -1567,8 +1587,13 @@ function __flo_sync --argument-names base_root
     echo ""
     
     if not test -d "$base_root"
+        # Create base directory if it doesn't exist
+        mkdir -p "$base_root"
         set_color yellow
         echo "No worktrees to sync"
+        echo ""
+        echo "Flo manages worktrees in: $base_root/<project>/<worktree-name>"
+        echo "Use 'flo create <name>' to create your first worktree"
         set_color normal
         return 0
     end

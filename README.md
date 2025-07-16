@@ -49,6 +49,26 @@ To remove flo from your system:
 ~/projects/jasonkuhrt/flo/uninstall.fish
 ```
 
+## How Flo Works
+
+### Worktree Management
+
+Flo organizes all worktrees in a consistent structure:
+```
+~/worktrees/
+  └── <project-name>/
+      ├── issue/123
+      ├── feature-xyz
+      └── bugfix-abc
+```
+
+**Important**: Flo only manages worktrees within its designated structure (`~/worktrees/` by default). It does not detect or manage worktrees created manually in other locations. This design keeps your worktrees organized and prevents conflicts.
+
+If you have existing worktrees in other locations, you can:
+- Continue using them alongside flo
+- Manually recreate them within flo's structure using `flo create`
+- Keep project repositories and flo worktrees separate
+
 ## Usage
 
 ### Basic Commands

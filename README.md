@@ -71,32 +71,29 @@ If you have existing worktrees in other locations, you can:
 
 ## Usage
 
-### Basic Commands
+Get started with flo's issue-driven workflow:
 
-- `flo <issue-number>` - Create/switch to worktree for GitHub issue
-- `flo list` - List all worktrees (current project only if in git repo)
-- `flo status` - Show current worktree/issue/PR status
-- `flo create <name>` - Create new worktree
-- `flo remove <name>` - Remove worktree
-- `flo cd <name>` - Navigate to worktree
+```fish
+# Work on issue #123
+flo 123
 
-### Project Management
+# List worktrees for current project
+flo list
 
-- `flo projects` - List all projects with worktrees
-- `flo list --all` - List worktrees across all projects
-- `flo status --project` - Show status for all worktrees in project
+# Create a feature branch worktree
+flo create feature-xyz
 
-### GitHub Integration
+# Check status of current worktree
+flo status
 
-- `flo issues` - List repository issues
-- `flo pr create` - Create PR from current worktree
-- `flo pr view` - View PR for current worktree
-- `flo sync` - Sync worktree with upstream
+# Create PR from current worktree
+flo pr create
 
-### Claude Integration
+# Generate Claude context
+flo claude
+```
 
-- `flo claude` - Generate Claude context for current worktree
-- `flo claude --all` - Generate context for all worktrees
+For complete command documentation, see the [generated documentation](docs/) or run `flo --help` for any command.
 
 ## Configuration
 
@@ -123,42 +120,17 @@ set -gx FLO_EDITOR code
 - GitHub CLI (`gh`)
 - Zed editor (optional, configurable)
 
-## Examples
-
-```fish
-# Work on issue #123
-flo 123
-
-# List worktrees for current project
-flo list
-
-# Create a feature branch worktree
-flo create feature-xyz
-
-# Check status of current worktree
-flo status
-
-# Create PR from current worktree
-flo pr create
-
-# Generate Claude context
-flo claude
-```
-
 ## Documentation
 
-Complete command documentation is available and can be generated from the built-in help system:
+Complete command documentation is available in the [docs/](docs/) directory, automatically generated from flo's internal help system.
 
+- **[Main Documentation](docs/README.md)** - Architecture and overview
+- **[Command Reference](docs/reference/)** - Complete command documentation
+
+To regenerate documentation:
 ```fish
-# Generate documentation
-./scripts/generate-docs.fish
+make docs
 ```
-
-This creates:
-- `docs/README.md` - Main documentation index
-- `docs/reference/` - Complete command reference generated from `--help` output
-
-The documentation is automatically generated from flo's internal help system, ensuring it's always up-to-date with the actual commands and options.
 
 ## License
 

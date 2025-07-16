@@ -14,6 +14,8 @@ A GitHub issue-driven development workflow tool for Fish shell that integrates w
 
 ## Installation
 
+### Standard Installation
+
 1. Clone this repository:
    ```fish
    git clone https://github.com/jasonkuhrt/flo.git ~/projects/jasonkuhrt/flo
@@ -28,6 +30,24 @@ A GitHub issue-driven development workflow tool for Fish shell that integrates w
    ```fish
    source ~/.config/fish/config.fish
    ```
+
+### Development Installation
+
+For development, use symlinks so changes in the repo are immediately reflected:
+
+```fish
+~/projects/jasonkuhrt/flo/install-dev.fish
+```
+
+This creates symlinks instead of copying files, allowing you to work on the main branch and test changes immediately.
+
+### Uninstallation
+
+To remove flo from your system:
+
+```fish
+~/projects/jasonkuhrt/flo/uninstall.fish
+```
 
 ## Usage
 

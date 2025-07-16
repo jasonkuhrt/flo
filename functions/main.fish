@@ -55,14 +55,14 @@ function flo --description "GitHub issue flow tool for managing worktrees"
     
     # Get project context if in git repo
     if test $in_git_repo = true
-        set project_name (__flo_get_project_name)
+        set -l project_name (__flo_get_project_name)
         if not set -q project_name[1]
             set_color red
             echo "Error: Could not determine project name"
             set_color normal
             return 1
         end
-        set base_dir "$base_root/$project_name"
+        set -l base_dir "$base_root/$project_name"
     end
     
     # Configuration

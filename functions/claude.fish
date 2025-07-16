@@ -28,12 +28,12 @@ function flo-claude --description "Add current branch context to Claude"
         if test -n "$issue_number"
             set -l issue_data (gh issue view $issue_number --json title,body,url 2>/dev/null)
             if test $status -eq 0
-                set pr_info (echo $issue_data | jq -r '"## Issue #\(.number)\n\(.title)\n\n\(.body)\n\nURL: \(.url)"')
+                set -l pr_info (echo $issue_data | jq -r '"## Issue #\(.number)\n\(.title)\n\n\(.body)\n\nURL: \(.url)"')
             end
         else
             set -l pr_data (gh pr view --json number,title,body,url 2>/dev/null)
             if test $status -eq 0
-                set pr_info (echo $pr_data | jq -r '"## PR #\(.number)\n\(.title)\n\n\(.body)\n\nURL: \(.url)"')
+                set -l pr_info (echo $pr_data | jq -r '"## PR #\(.number)\n\(.title)\n\n\(.body)\n\nURL: \(.url)"')
             end
         end
     end

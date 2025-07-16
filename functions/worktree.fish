@@ -19,7 +19,7 @@ function flo-worktree --description "Manage git worktrees"
     end
 end
 
-function __flo_worktree_create
+function __flo_worktree_create --description "Create a new git worktree"
     set -l branch_name $argv[1]
     
     if test -z "$branch_name"
@@ -44,7 +44,7 @@ function __flo_worktree_create
     end
 end
 
-function __flo_worktree_delete
+function __flo_worktree_delete --description "Delete a git worktree"
     set -l branch_name $argv[1]
     
     if test -z "$branch_name"
@@ -66,7 +66,7 @@ function __flo_worktree_delete
     echo "Deleted worktree and branch: $branch_name"
 end
 
-function __flo_worktree_list
+function __flo_worktree_list --description "List all git worktrees"
     git worktree list --porcelain | awk '
         /^worktree/ { worktree = $2 }
         /^HEAD/ { head = $2 }
@@ -80,7 +80,7 @@ function __flo_worktree_list
     '
 end
 
-function __flo_worktree_switch
+function __flo_worktree_switch --description "Switch to a git worktree"
     set -l branch_name $argv[1]
     
     if test -z "$branch_name"

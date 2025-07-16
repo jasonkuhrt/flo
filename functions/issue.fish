@@ -15,10 +15,7 @@ function flo-issue --description "Start work on a GitHub issue"
         return 1
     end
     
-    set -l org_repo (__flo_get_org_repo)
-    if test $status -ne 0
-        return 1
-    end
+    set -l org_repo (__flo_get_org_repo); or return 1
     
     # Parse issue number if provided
     set -l issue_number (__flo_parse_issue_number $issue_ref)
@@ -26,9 +23,7 @@ function flo-issue --description "Start work on a GitHub issue"
     if test -n "$issue_number"
         # Fetch issue by number
         echo "Fetching issue #$issue_number..."
-        set -l issue_data (gh issue view $issue_number --json number,title 2>/dev/null)
-        
-        if test $status -ne 0
+        set -l issue_data (gh issue view $issue_number --json number,title 2>/dev/null); or begin
             echo "Issue #$issue_number not found"
             return 1
         end

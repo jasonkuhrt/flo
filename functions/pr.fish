@@ -19,7 +19,7 @@ function flo-pr --description "Create or manage pull requests"
     end
 end
 
-function __flo_pr_create
+function __flo_pr_create --description "Create a new pull request"
     if not __flo_check_gh_auth
         return 1
     end
@@ -70,7 +70,7 @@ function __flo_pr_create
     end
 end
 
-function __flo_pr_push
+function __flo_pr_push --description "Push current branch to origin"
     set -l current_branch (git branch --show-current)
     
     if test -z "$current_branch"
@@ -82,7 +82,7 @@ function __flo_pr_push
     git push origin $current_branch
 end
 
-function __flo_pr_checks
+function __flo_pr_checks --description "Check the status of PR checks"
     if not __flo_check_gh_auth
         return 1
     end
@@ -99,7 +99,7 @@ function __flo_pr_checks
     gh pr checks $pr_number
 end
 
-function __flo_pr_merge
+function __flo_pr_merge --description "Merge the current pull request"
     if not __flo_check_gh_auth
         return 1
     end

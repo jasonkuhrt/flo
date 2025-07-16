@@ -16,31 +16,32 @@ function flo-list --description "List issues, PRs, or worktrees"
     end
 end
 
-function __flo_list_issues
+function __flo_list_issues --description "List GitHub issues with optional filtering"
     if not __flo_check_gh_auth
         return 1
     end
     
+    # Parse arguments with argparse
+    argparse --name="flo list issues" 'all' 'closed' 'limit=' -- $argv; or return
+    
     set -l limit 20
     set -l state "open"
     
-    # Parse arguments
-    for arg in $argv
-        switch $arg
-            case --all
-                set state "all"
-            case --closed
-                set state "closed"
-            case --limit=\*
-                set limit (string split -m 1 = $arg)[2]
-        end
+    if set -q _flag_all
+        set -l state "all"
+    end
+    if set -q _flag_closed  
+        set -l state "closed"
+    end
+    if set -q _flag_limit
+        set -l limit $_flag_limit
     end
     
     echo "Fetching $state issues..."
     gh issue list --state $state --limit $limit
 end
 
-function __flo_list_prs
+function __flo_list_prs --description "List GitHub pull requests with optional filtering"
     if not __flo_check_gh_auth
         return 1
     end
@@ -52,11 +53,11 @@ function __flo_list_prs
     for arg in $argv
         switch $arg
             case --all
-                set state "all"
+                set -l state "all"
             case --closed --merged
-                set state "closed"
+                set -l state "closed"
             case --limit=\*
-                set limit (string split -m 1 = $arg)[2]
+                set -l limit (string split -m 1 = $arg)[2]
         end
     end
     

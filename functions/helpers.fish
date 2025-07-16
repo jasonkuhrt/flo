@@ -35,6 +35,7 @@ function __flo_open_editor --description "Open the configured editor"
 end
 
 function __flo_parse_issue_number --description "Parse issue number from various formats"
+    __flo_validate_args 1 (count $argv) "__flo_parse_issue_number"; or return 1
     set -l input $argv[1]
     
     # Try to extract from various formats

@@ -58,11 +58,11 @@ function next --description "Start next issue (context-aware)"
         echo "✓ Deleted worktree: $current_worktree"
 
         # Sync main branch
-        __flo_sync_main_branch; or begin
+        gum spin --spinner dots --title "Syncing main branch..." -- __flo_sync_main_branch; or begin
             echo "Failed to sync main branch" >&2
             return 1
         end
-        echo "✓ Synced main branch"
+        gum style --foreground 2 "✓ Synced main branch"
 
         # Create new issue worktree
         flo-issue $issue_number; or begin

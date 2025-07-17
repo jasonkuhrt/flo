@@ -46,15 +46,11 @@ function claude --description "Add current branch context to Claude"
 
     if __flo_check_gh_auth
         if test -n "$issue_number"
-            set -l issue_data (gh issue view $issue_number --json title,body,url 2>/dev/null)
-            if test $status -eq 0
-                set -l pr_info (echo $issue_data | jq -r '"## Issue #\(.number)\n\(.title)\n\n\(.body)\n\nURL: \(.url)"')
-            end
+            # Use gh template for formatting
+            set -l pr_info (gh issue view $issue_number --template '## Issue #{{.number}}{{"\n"}}{{.title}}{{"\n\n"}}{{.body}}{{"\n\n"}}URL: {{.url}}' 2>/dev/null)
         else
-            set -l pr_data (gh pr view --json number,title,body,url 2>/dev/null)
-            if test $status -eq 0
-                set -l pr_info (echo $pr_data | jq -r '"## PR #\(.number)\n\(.title)\n\n\(.body)\n\nURL: \(.url)"')
-            end
+            # Use gh template for PR formatting
+            set -l pr_info (gh pr view --template '## PR #{{.number}}{{"\n"}}{{.title}}{{"\n\n"}}{{.body}}{{"\n\n"}}URL: {{.url}}' 2>/dev/null)
         end
     end
 

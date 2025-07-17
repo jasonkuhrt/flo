@@ -80,8 +80,8 @@ function issue --description "Start work on a GitHub issue"
     set -l branch_name "$issue_number-"(__flo_extract_branch_name $title)
     echo "Creating branch: $branch_name"
 
-    # Create worktree for the issue
-    flo create $branch_name
+    # Create worktree for the issue with progress indicator
+    gum spin --spinner dots --title "Creating worktree for issue #$issue_number..." -- flo worktree create $branch_name
 end
 
 function issue-create --description "Create a new GitHub issue and start working on it"
@@ -113,10 +113,8 @@ function issue-create --description "Create a new GitHub issue and start working
         return 1
     end
 
-    echo "Creating issue: $title"
-
-    # Create the issue
-    set -l issue_url (gh issue create --title "$title" --body "$body" 2>&1)
+    # Create the issue with progress indicator
+    set -l issue_url (gum spin --spinner dots --title "Creating issue: $title" -- gh issue create --title "$title" --body "$body" 2>&1)
 
     if test $status -ne 0
         echo "Failed to create issue"

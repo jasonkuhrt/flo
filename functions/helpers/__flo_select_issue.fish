@@ -3,15 +3,16 @@ function __flo_select_issue --description "Let user select from open issues"
         return 1
     end
 
-    set -l issues (gh issue list --json number,title --limit 20 2>/dev/null)
+    # Use gh's Go template instead of jq for better performance
+    set -l formatted_issues (gh issue list --limit 20 --template '{{range .}}#{{.number}} - {{.title}}{{"\n"}}{{end}}' 2>/dev/null)
 
-    if test -z "$issues" -o "$issues" = "[]"
+    if test -z "$formatted_issues"
         echo "No open issues found" >&2
         return 1
     end
 
     # Use gum to select an issue with help shown
-    set -l selected (echo $issues | jq -r '.[] | "#\(.number) - \(.title)"' | gum choose --header "Select an issue:" --show-help)
+    set -l selected (echo -n $formatted_issues | gum choose --header "Select an issue:" --show-help)
 
     if test -z "$selected"
         echo "No issue selected" >&2

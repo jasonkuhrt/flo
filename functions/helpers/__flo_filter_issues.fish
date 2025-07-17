@@ -3,15 +3,16 @@ function __flo_filter_issues --description "Let user fuzzy search and select fro
         return 1
     end
 
-    set -l issues (gh issue list --json number,title --limit 50 2>/dev/null)
+    # Use gh's Go template for better performance
+    set -l formatted_issues (gh issue list --limit 50 --template '{{range .}}#{{.number}} - {{.title}}{{"\n"}}{{end}}' 2>/dev/null)
 
-    if test -z "$issues" -o "$issues" = "[]"
+    if test -z "$formatted_issues"
         echo "No open issues found" >&2
         return 1
     end
 
     # Use gum filter for fuzzy search
-    set -l selected (echo $issues | jq -r '.[] | "#\(.number) - \(.title)"' | gum filter --placeholder "Type to filter issues..." --header "Search issues:")
+    set -l selected (echo -n $formatted_issues | gum filter --placeholder "Type to filter issues..." --header "Search issues:")
 
     if test -z "$selected"
         echo "No issue selected" >&2

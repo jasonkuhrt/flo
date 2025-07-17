@@ -23,8 +23,20 @@ function __flo_select_worktree --description "Let user select from available wor
         return 1
     end
 
-    # Use gum to select worktree with help shown
-    set -l selected (echo $worktrees | tr ' ' '\n' | gum choose --header "Select worktree:" --show-help)
+    # Count worktrees to decide between choose and filter
+    set -l worktree_count (count $worktrees)
+
+    # Use filter for more than 8 worktrees, choose for smaller lists
+    if test $worktree_count -gt 8
+        # Use gum filter for fuzzy search
+        set -l selected (echo $worktrees | tr ' ' '\n' | gum filter \
+            --placeholder "Type to filter $worktree_count worktrees..." \
+            --header "Search worktrees:" \
+            --height 12)
+    else
+        # Use gum choose for small lists
+        set -l selected (echo $worktrees | tr ' ' '\n' | gum choose --header "Select worktree:" --show-help)
+    end
 
     if test -z "$selected"
         return 1

@@ -50,30 +50,31 @@ function issue --description "Start work on a GitHub issue"
     else
         # Search for issue by title
         echo "Searching for issues matching: $issue_ref"
-        set -l search_results (gh issue list --search "$issue_ref" --json number,title --limit 10)
+        set -l search_results (gh issue list --search "$issue_ref" --json number,title --limit 30)
 
         if test (echo $search_results | jq '. | length') -eq 0
             echo "No issues found matching: $issue_ref"
             return 1
         end
 
-        # If multiple results, let user choose
-        if test (echo $search_results | jq '. | length') -gt 1
-            echo "Multiple issues found:"
-            set -l selected (echo $search_results | jq -r '.[] | "#\(.number) - \(.title)"' | gum choose --header "Select an issue:" --show-help)
+        set -l result_count (echo $search_results | jq '. | length')
 
-            if test -z "$selected"
-                echo "No issue selected"
-                return 1
-            end
+        # Always use filter for text search results
+        echo "Found $result_count issues:"
+        set -l formatted_results (echo $search_results | jq -r '.[] | "#\(.number) - \(.title)"')
+        set -l selected (echo $formatted_results | gum filter \
+            --placeholder "Type to refine search..." \
+            --header "Filter $result_count results for: $issue_ref" \
+            --height 15)
 
-            # Extract issue number from selection
-            set issue_number (echo $selected | sed 's/^#\([0-9]*\).*/\1/')
-            set title (echo $search_results | jq -r ".[] | select(.number == $issue_number) | .title")
-        else
-            set issue_number (echo $search_results | jq -r '.[0].number')
-            set title (echo $search_results | jq -r '.[0].title')
+        if test -z "$selected"
+            echo "No issue selected"
+            return 1
         end
+
+        # Extract issue number from selection
+        set issue_number (echo $selected | sed 's/^#\([0-9]*\).*/\1/')
+        set title (echo $search_results | jq -r ".[] | select(.number == $issue_number) | .title")
     end
 
     # Generate branch name

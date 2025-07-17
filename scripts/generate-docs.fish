@@ -40,7 +40,7 @@ set -l main_help (flo help 2>/dev/null)
 help_to_markdown flo $main_help >"$reference_dir/flo.md"
 
 # Generate command-specific help documentation
-set -l commands issue issue-create pr worktree list status projects claude claude-clean
+set -l commands issue issue-create pr worktree list status projects claude next
 
 for cmd in $commands
     echo "📝 Generating help for: $cmd"

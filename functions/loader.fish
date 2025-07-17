@@ -7,7 +7,7 @@ set -l flo_dir (dirname (status -f))
 source $flo_dir/errors.fish
 source $flo_dir/helpers.fish
 source $flo_dir/worktree.fish
-source $flo_dir/issue.fish
+source $flo_dir/flo-issue.fish
 source $flo_dir/pr.fish
 source $flo_dir/browse.fish
 source $flo_dir/claude.fish

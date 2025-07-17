@@ -78,3 +78,41 @@ function flo-issue --description "Start work on a GitHub issue"
     # Create worktree for the issue
     flo create $branch_name
 end
+
+function flo-issue-create --description "Create a new GitHub issue and start working on it"
+    set -l title $argv[1]
+    set -l body $argv[2]
+    
+    if test -z "$title"
+        echo "Usage: flo issue-create <title> [body]"
+        return 1
+    end
+    
+    if not __flo_check_gh_auth
+        return 1
+    end
+    
+    echo "Creating issue: $title"
+    
+    # Create the issue
+    set -l issue_url (gh issue create --title "$title" --body "$body" 2>&1)
+    
+    if test $status -ne 0
+        echo "Failed to create issue"
+        echo $issue_url
+        return 1
+    end
+    
+    # Extract issue number from URL
+    set -l issue_number (string replace -r '.*([0-9]+)$' '$1' $issue_url)
+    
+    if test -z "$issue_number"
+        echo "Created issue but couldn't extract issue number from: $issue_url"
+        return 1
+    end
+    
+    echo "Created issue #$issue_number"
+    
+    # Start working on it
+    flo issue $issue_number
+end

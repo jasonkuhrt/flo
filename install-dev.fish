@@ -28,6 +28,7 @@ rm -f "$functions_dir"/issue.fish
 rm -f "$functions_dir"/loader.fish
 rm -f "$functions_dir"/main.fish
 rm -f "$functions_dir"/next.fish
+rm -f "$functions_dir"/flo-issue.fish
 rm -f "$functions_dir"/pr.fish
 rm -f "$functions_dir"/worktree.fish
 rm -f "$completions_dir/flo.fish"

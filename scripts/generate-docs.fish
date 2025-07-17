@@ -4,6 +4,12 @@
 set -l docs_dir docs
 set -l reference_dir "$docs_dir/reference"
 
+# Clean out old docs first
+if test -d $reference_dir
+    echo "🧹 Cleaning old documentation..."
+    rm -rf $reference_dir/*
+end
+
 # Create docs directories
 mkdir -p $reference_dir
 

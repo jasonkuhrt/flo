@@ -1,6 +1,6 @@
 # Makefile for flo project
 
-.PHONY: docs docs-clean install install-dev uninstall format check-format help
+.PHONY: docs docs-clean install install-dev uninstall format check-format pre-commit help
 
 # Generate documentation from help output
 docs:
@@ -37,6 +37,11 @@ check-format:
 	@echo "🔍 Checking Fish formatting..."
 	@./scripts/check-format.fish
 
+# Install pre-commit hooks
+pre-commit:
+	@echo "🔗 Installing pre-commit hooks..."
+	@pre-commit install
+
 # Show help
 help:
 	@echo "flo project tasks:"
@@ -48,6 +53,7 @@ help:
 	@echo "  uninstall    Remove flo from system"
 	@echo "  format       Format all Fish files with fish_indent"
 	@echo "  check-format Check if Fish files are properly formatted"
+	@echo "  pre-commit   Install pre-commit hooks for formatting"
 	@echo "  help         Show this help message"
 	@echo ""
 	@echo "Generated documentation will be in docs/"

@@ -2,8 +2,9 @@
 
 ```
 Creating issue: --help
-Created issue #6
-Fetching issue #6...
-Creating branch: 
-Usage: flo worktree create <branch-name>
+Created issue #7
+Fetching issue #7...
+Creating branch: 7-help
+Unknown command: create
+Run 'flo help' for usage information
 ```

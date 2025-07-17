@@ -23,8 +23,8 @@ function __flo_select_worktree --description "Let user select from available wor
         return 1
     end
 
-    # Use fzf to select worktree
-    set -l selected (echo $worktrees | tr ' ' '\n' | fzf --prompt="Select worktree: " --header="Available Worktrees" --height=40% --reverse)
+    # Use gum to select worktree
+    set -l selected (echo $worktrees | tr ' ' '\n' | gum choose --header "Select worktree:")
 
     if test -z "$selected"
         return 1

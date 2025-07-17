@@ -15,22 +15,15 @@ mkdir -p "$completions_dir"
 
 # Clean out all existing flo-related files
 echo "Cleaning out existing flo files..."
-rm -f "$functions_dir"/flo*.fish
-rm -f "$functions_dir"/*flo*.fish
-rm -f "$functions_dir"/__flo*.fish
-rm -f "$functions_dir"/browse.fish
-rm -f "$functions_dir"/claude.fish
-rm -f "$functions_dir"/completions.fish
-rm -f "$functions_dir"/errors.fish
-rm -f "$functions_dir"/help.fish
-rm -f "$functions_dir"/helpers.fish
-rm -f "$functions_dir"/issue.fish
-rm -f "$functions_dir"/loader.fish
-rm -f "$functions_dir"/main.fish
-rm -f "$functions_dir"/next.fish
-rm -f "$functions_dir"/flo-issue.fish
-rm -f "$functions_dir"/pr.fish
-rm -f "$functions_dir"/worktree.fish
+# Remove all flo-related files with a simple pattern
+rm -f "$functions_dir"/__flo_*.fish
+rm -f "$functions_dir"/flo.fish
+rm -f "$functions_dir"/flo-*.fish
+# Remove our known module files
+set -l flo_modules browse claude completions errors help helpers issue loader main next pr worktree
+for module in $flo_modules
+    rm -f "$functions_dir/$module.fish"
+end
 rm -f "$completions_dir/flo.fish"
 
 # Create symlinks for all function files

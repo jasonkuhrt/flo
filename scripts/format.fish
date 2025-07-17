@@ -7,6 +7,7 @@ set -l project_root (dirname $script_dir)
 echo "🎨 Formatting Fish files..."
 
 set -l files_formatted 0
+# Test comment
 set -l files_total 0
 
 for file in $project_root/**/*.fish

@@ -27,5 +27,4 @@ The main flo help documentation is above.
 - [next](next.md) - Transition to next issue (context-aware)
 - [rm](rm.md) - Remove issue, PR, and/or worktree
 - [claude](claude/) - Add current branch context to Claude
-- [claude-clean](claude-clean.md) - 
 - [reload](reload.md) - 

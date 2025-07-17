@@ -64,9 +64,13 @@ end
 function __flo_worktree_delete --description "Delete a git worktree"
     set -l branch_name $argv[1]
 
+    # If no branch name provided, use fzf to select
     if test -z "$branch_name"
-        echo "Usage: flo worktree delete <branch-name>"
-        return 1
+        set branch_name (__flo_select_worktree)
+        if test $status -ne 0
+            echo "No worktree selected" >&2
+            return 1
+        end
     end
 
     if not __flo_worktree_exists $branch_name
@@ -110,9 +114,13 @@ end
 function __flo_worktree_switch --description "Switch to a git worktree"
     set -l branch_name $argv[1]
 
+    # If no branch name provided, use fzf to select
     if test -z "$branch_name"
-        echo "Usage: flo worktree switch <branch-name>"
-        return 1
+        set branch_name (__flo_select_worktree exclude-current)
+        if test $status -ne 0
+            echo "No worktree selected" >&2
+            return 1
+        end
     end
 
     set -l location (__flo_get_worktree_location)

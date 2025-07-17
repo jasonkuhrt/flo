@@ -115,7 +115,7 @@ function rm --description "Remove issue, PR, and/or worktree"
     end
 
     # Add to selected if not explicitly disabled
-    if test $worktree_found -eq 1 -a ! set -q _flag_no_delete_worktree
+    if test $worktree_found -eq 1; and not set -q _flag_no_delete_worktree
         set selected_actions $selected_actions "Delete worktree '$target_worktree'"
     end
 
@@ -172,7 +172,7 @@ function rm --description "Remove issue, PR, and/or worktree"
     # Execute the cleanup
 
     # If we're in the worktree to be deleted, move out first
-    if test $in_worktree -eq 1 -a $do_delete_worktree -eq 1
+    if test $in_worktree -eq 1; and test $do_delete_worktree -eq 1
         echo "Moving to main repository before deletion..."
         cd (__flo_get_repo_root)
     end
@@ -191,7 +191,7 @@ function rm --description "Remove issue, PR, and/or worktree"
     end
 
     # Close PR if requested
-    if test $do_close_pr -eq 1 -a __flo_check_gh_auth
+    if test $do_close_pr -eq 1; and __flo_check_gh_auth
         set -l pr_number (gh pr list --state open --search "head:issue/$issue_number" --json number -q '.[0].number' 2>/dev/null)
         if test -n "$pr_number"
             echo "Closing PR #$pr_number..."
@@ -205,7 +205,7 @@ function rm --description "Remove issue, PR, and/or worktree"
     end
 
     # Close issue if requested
-    if test $do_close_issue -eq 1 -a __flo_check_gh_auth
+    if test $do_close_issue -eq 1; and __flo_check_gh_auth
         set -l issue_state (gh issue view $issue_number --json state -q .state 2>/dev/null)
         if test "$issue_state" = OPEN
             echo "Closing issue #$issue_number..."

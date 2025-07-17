@@ -65,7 +65,7 @@ function next --description "Start next issue (context-aware)"
         gum style --foreground 2 "✓ Synced main branch"
 
         # Create new issue worktree
-        flo-issue $issue_number; or begin
+        flo issue $issue_number; or begin
             echo "Failed to create new worktree" >&2
             return 1
         end
@@ -76,7 +76,7 @@ function next --description "Start next issue (context-aware)"
         echo "No current worktree to transition from, starting issue #$issue_number..."
 
         # Create new issue worktree
-        flo-issue $issue_number; or begin
+        flo issue $issue_number; or begin
             echo "Failed to create new worktree" >&2
             return 1
         end

@@ -1,11 +1,13 @@
 function __flo_prompt_claude_session --description "Prompt user for Claude session ID"
     # Use gum to get session ID with nice UI
+    # Note: --help flag not supported by gum input, show instructions separately
+    echo "To resume: Run '/status' in Claude and copy the Session ID" >&2
+    echo "" >&2
     set -l session_id (gum input \
         --header "Resume Claude session?" \
         --placeholder "Enter session ID or press Enter to skip" \
         --prompt "> " \
-        --width 50 \
-        --help "Run '/status' in Claude to get your session ID")
+        --width 50)
 
     # If user pressed Ctrl+C, gum returns status 130
     if test $status -eq 130

@@ -41,7 +41,7 @@ end
 function extract_commands_from_dispatcher
     set -l commands_found
     set -l in_switch 0
-    
+
     # Read the flo.fish file and extract case statements
     while read -l line
         # Look for the switch statement
@@ -49,22 +49,22 @@ function extract_commands_from_dispatcher
             set in_switch 1
             continue
         end
-        
+
         # Exit when we hit the end of the switch
         if test $in_switch -eq 1 && string match -q "*end*" "$line"
             break
         end
-        
+
         # Extract case statements
         if test $in_switch -eq 1 && string match -q "*case*" "$line"
             # Extract the command name after "case"
             set -l cmd_name (string match -r 'case\s+([a-zA-Z0-9_-]+)' "$line" | tail -1)
-            if test -n "$cmd_name" && test "$cmd_name" != "help" && test "$cmd_name" != "'*'"
+            if test -n "$cmd_name" && test "$cmd_name" != help && test "$cmd_name" != "'*'"
                 set commands_found $commands_found $cmd_name
             end
         end
-    end < functions/flo.fish
-    
+    end <functions/flo.fish
+
     # Output each command on a separate line to preserve array structure
     for cmd in $commands_found
         echo $cmd
@@ -75,7 +75,7 @@ end
 function discover_subcommands
     set -l parent_cmd $argv[1]
     set -l subcommands
-    
+
     # Check if there's a directory for this command
     if test -d "functions/$parent_cmd"
         # Look for subcommand files in the directory
@@ -89,12 +89,12 @@ function discover_subcommands
             end
         end
     end
-    
+
     # Special handling for claude command - it has a --clean flag that we treat as a subcommand
-    if test "$parent_cmd" = "claude"
-        set subcommands $subcommands "clean"
+    if test "$parent_cmd" = claude
+        set subcommands $subcommands clean
     end
-    
+
     # Output each subcommand on a separate line
     for subcmd in $subcommands
         echo $subcmd
@@ -105,18 +105,18 @@ end
 function generate_command_help
     set -l cmd_path $argv[1]
     set -l output_file $argv[2]
-    
+
     # Try to get help for the command
     set -l help_output
-    
+
     if string match -q "*/*" "$cmd_path"
         # It's a subcommand
         set -l parts (string split "/" "$cmd_path")
         set -l main_cmd $parts[1]
         set -l subcmd $parts[2]
-        
+
         # Try different ways to get subcommand help
-        if test "$main_cmd" = "claude" && test "$subcmd" = "clean"
+        if test "$main_cmd" = claude && test "$subcmd" = clean
             # For claude-clean, create custom help since it's a flag not a subcommand
             set help_output "Usage: flo claude --clean"
             set help_output $help_output ""
@@ -128,11 +128,11 @@ function generate_command_help
             # Try as a regular subcommand
             set help_output (flo $main_cmd $subcmd --help 2>/dev/null)
         end
-        
+
         if test -z "$help_output"
             set help_output (flo $main_cmd $subcmd 2>&1 | head -20)
         end
-        
+
         set flo_cmd "flo $main_cmd $subcmd"
     else
         # It's a top-level command
@@ -140,10 +140,10 @@ function generate_command_help
         if test -z "$help_output"
             set help_output (flo $cmd_path 2>&1 | head -20)
         end
-        
+
         set flo_cmd "flo $cmd_path"
     end
-    
+
     if test -n "$help_output"
         help_to_markdown "$flo_cmd" $help_output >$output_file
         return 0
@@ -167,10 +167,10 @@ set -l discovered_commands (extract_commands_from_dispatcher)
 set -l all_command_paths
 for cmd in $discovered_commands
     # Skip claude-clean as it's not a real command, just a function
-    if test "$cmd" != "claude-clean"
+    if test "$cmd" != claude-clean
         set all_command_paths $all_command_paths $cmd
     end
-    
+
     set -l subcommands (discover_subcommands $cmd)
     if test (count $subcommands) -gt 0
         for subcmd in $subcommands
@@ -180,18 +180,18 @@ for cmd in $discovered_commands
 end
 
 # Generate main help documentation
-help_to_markdown "flo" $main_help >"$reference_dir/README.md"
+help_to_markdown flo $main_help >"$reference_dir/README.md"
 
 # Generate documentation for each command and subcommand
 for cmd_path in $all_command_paths
     set -l output_file ""
-    
+
     if string match -q "*/*" $cmd_path
         # It's a subcommand - create directory structure
         set -l parts (string split "/" $cmd_path)
         set -l main_cmd $parts[1]
         set -l subcmd $parts[2]
-        
+
         gum log --level info "Processing subcommand: $main_cmd $subcmd"
         mkdir -p "$reference_dir/$main_cmd"
         set output_file "$reference_dir/$main_cmd/$subcmd.md"
@@ -200,7 +200,7 @@ for cmd_path in $all_command_paths
         gum log --level info "Processing command: $cmd_path"
         set output_file "$reference_dir/$cmd_path.md"
     end
-    
+
     generate_command_help $cmd_path $output_file
 end
 
@@ -235,7 +235,7 @@ for cmd in $discovered_commands
             break
         end
     end
-    
+
     # Check if command has subcommands
     set -l has_subcommands 0
     for cmd_path in $all_command_paths
@@ -244,10 +244,10 @@ for cmd in $discovered_commands
             break
         end
     end
-    
+
     if test $has_subcommands -eq 1
         echo "- [$cmd]($cmd/) - $desc" >>$reference_dir/README.md
-        
+
         # Generate index for subcommands
         echo "# flo $cmd" >"$reference_dir/$cmd/README.md"
         echo "" >>"$reference_dir/$cmd/README.md"
@@ -255,7 +255,7 @@ for cmd in $discovered_commands
         echo "" >>"$reference_dir/$cmd/README.md"
         echo "## Subcommands" >>"$reference_dir/$cmd/README.md"
         echo "" >>"$reference_dir/$cmd/README.md"
-        
+
         for cmd_path in $all_command_paths
             if string match -q "$cmd/*" $cmd_path
                 set -l subcmd (string replace "$cmd/" "" $cmd_path)
@@ -324,7 +324,7 @@ printf '%s\n' \
     '    end' \
     '    ' \
     '    # Command implementation' \
-    'end' \
+    end \
     '```' \
     '' \
     '**Key conventions:**' \

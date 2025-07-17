@@ -1,18 +1,18 @@
 # flo pr
 
 ```
-Usage: flo pr [subcommand]
+Usage: flo pr [options]
 
-Subcommands:
-  create       Create a new pull request
-  push         Push current branch to origin
-  checks       Check PR status and CI checks
-  merge        Merge the pull request
+Create a pull request for the current branch.
 
-Default: create (if no subcommand given)
+Options:
+  -t, --title TEXT   PR title (default: generated from branch)
+  -b, --body TEXT    PR body/description
+  -d, --draft        Create as draft PR
+  --base BRANCH      Base branch (default: main)
+  -h, --help         Show this help
 
-Examples:
-  flo pr                Create a new PR
-  flo pr push           Push branch to origin
-  flo pr checks         Check CI status
+Example:
+  flo pr
+  flo pr --title "Fix navigation bug" --draft
 ```

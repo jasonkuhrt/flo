@@ -4,42 +4,41 @@
 
 # Generate documentation from help output
 docs:
-	@echo "📝 Generating documentation..."
 	@./scripts/generate-docs.fish
 
 # Clean generated documentation
 docs-clean:
-	@echo "🧹 Cleaning generated documentation..."
+	@echo "Cleaning generated documentation..."
 	@rm -rf docs/
 
 # Install flo (copies files)
 install:
-	@echo "📦 Installing flo..."
+	@echo "Installing flo..."
 	@./install.fish
 
 # Install flo for development (symlinks)
 install-dev:
-	@echo "🔧 Installing flo for development..."
+	@echo "Installing flo for development..."
 	@./install-dev.fish
 
 # Uninstall flo
 uninstall:
-	@echo "🗑️  Uninstalling flo..."
+	@echo "Uninstalling flo..."
 	@./uninstall.fish
 
 # Format all Fish files
 format:
-	@echo "🎨 Formatting Fish files..."
+	@echo "Formatting Fish files..."
 	@./scripts/format.fish
 
 # Check formatting of Fish files
 check-format:
-	@echo "🔍 Checking Fish formatting..."
+	@echo "Checking Fish formatting..."
 	@./scripts/check-format.fish
 
 # Install pre-commit hooks
 pre-commit:
-	@echo "🔗 Installing pre-commit hooks..."
+	@echo "Installing pre-commit hooks..."
 	@pre-commit install
 
 # Show help

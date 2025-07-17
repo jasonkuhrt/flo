@@ -1,6 +1,6 @@
 # Remove command - clean up issues, PRs, and worktrees
 
-function rm --description "Remove issue, PR, and/or worktree"
+function flo_rm --description "Remove issue, PR, and/or worktree"
     argparse --name="flo rm" \
         h/help \
         'issue=?' \
@@ -181,7 +181,7 @@ function rm --description "Remove issue, PR, and/or worktree"
     if test $do_delete_worktree -eq 1
         if __flo_worktree_exists $target_worktree
             echo "Deleting worktree '$target_worktree'..."
-            flo worktree delete $target_worktree
+            __flo_delete_worktree $target_worktree
             if test $status -eq 0
                 gum style --foreground 2 "✓ Deleted worktree"
             else

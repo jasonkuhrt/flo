@@ -82,57 +82,6 @@ function issue --description "Start work on a GitHub issue"
     echo "Creating branch: $branch_name"
 
     # Create worktree for the issue with progress indicator
-    gum spin --spinner dots --title "Creating worktree for issue #$issue_number..." -- flo worktree create $branch_name
+    gum spin --spinner dots --title "Creating worktree for issue #$issue_number..." -- __flo_create_worktree $branch_name
 end
 
-function issue-create --description "Create a new GitHub issue and start working on it"
-    # Check for help flag
-    if contains -- --help $argv; or contains -- -h $argv
-        echo "Usage: flo issue-create <title> [body]"
-        echo ""
-        echo "Create a new GitHub issue and immediately start working on it."
-        echo ""
-        echo "Arguments:"
-        echo "  <title>    Issue title (required)"
-        echo "  [body]     Issue body/description (optional)"
-        echo ""
-        echo "Examples:"
-        echo "  flo issue-create \"Fix navigation bug\""
-        echo "  flo issue-create \"Add new feature\" \"This feature will...\""
-        return 0
-    end
-
-    set -l title $argv[1]
-    set -l body $argv[2]
-
-    if test -z "$title"
-        echo "Usage: flo issue-create <title> [body]"
-        return 1
-    end
-
-    if not __flo_check_gh_auth
-        return 1
-    end
-
-    # Create the issue with progress indicator
-    set -l issue_url (gum spin --spinner dots --title "Creating issue: $title" -- gh issue create --title "$title" --body "$body" 2>&1)
-
-    if test $status -ne 0
-        echo "Failed to create issue"
-        echo $issue_url
-        return 1
-    end
-
-    # Extract issue number from URL
-    set -l issue_number (string replace -r '.*([0-9]+)$' '$1' $issue_url)
-
-    if test -z "$issue_number"
-        echo "Created issue but couldn't extract issue number from: $issue_url"
-        return 1
-    end
-
-    echo "Created issue #$issue_number"
-
-    # Start working on it
-    flo issue $issue_number
-end

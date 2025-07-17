@@ -3,28 +3,12 @@
 # Flo installation script
 
 set -l script_dir (dirname (status --current-filename))
-set -l fish_config_dir ~/.config/fish
-set -l functions_dir "$fish_config_dir/functions"
-set -l completions_dir "$fish_config_dir/completions"
 
-echo "Installing Flo..."
+# Set FLO_DIR so the helper can find the flo directory
+set -x FLO_DIR "$script_dir"
 
-# Create Fish config directories if they don't exist
-mkdir -p "$functions_dir"
-mkdir -p "$completions_dir"
+# Source the install helper
+source "$script_dir/functions/helpers/__flo_install.fish"
 
-# Copy all function files
-echo "Installing flo functions..."
-cp "$script_dir/functions/"*.fish "$functions_dir/"
-
-# Copy completions file
-echo "Installing flo completions..."
-cp "$script_dir/completions/flo.fish" "$completions_dir/"
-
-echo "Installation complete!"
-echo ""
-echo "To use flo, restart your Fish shell or run:"
-echo "  source ~/.config/fish/config.fish"
-echo ""
-echo "Then try:"
-echo "  flo --help"
+# Run the installation in copy mode
+__flo_install copy

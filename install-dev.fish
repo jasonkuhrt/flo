@@ -3,64 +3,12 @@
 # Flo development installation script - uses symlinks for live development
 
 set -l script_dir (dirname (status --current-filename))
-set -l fish_config_dir ~/.config/fish
-set -l functions_dir "$fish_config_dir/functions"
-set -l completions_dir "$fish_config_dir/completions"
 
-echo "Installing Flo for development (symlinks)..."
+# Set FLO_DIR so the helper can find the flo directory
+set -x FLO_DIR "$script_dir"
 
-# Create Fish config directories if they don't exist
-mkdir -p "$functions_dir"
-mkdir -p "$completions_dir"
+# Source the install helper
+source "$script_dir/functions/helpers/__flo_install.fish"
 
-# Clean out all existing flo-related files
-echo "Cleaning out existing flo files..."
-# Remove all flo-related files with a simple pattern
-rm -f "$functions_dir"/__flo_*.fish
-rm -f "$functions_dir"/flo.fish
-rm -f "$functions_dir"/flo-*.fish
-# Remove our known module files
-set -l flo_modules browse claude completions errors help helpers issue loader main next pr worktree
-for module in $flo_modules
-    rm -f "$functions_dir/$module.fish"
-end
-rm -f "$completions_dir/flo.fish"
-
-# Create symlinks for all function files
-echo "Creating symlinks for all flo function files..."
-for file in "$script_dir/functions"/*.fish
-    set -l basename (basename "$file")
-    set -l abs_file (realpath "$file")
-    echo "  Linking $basename..."
-    ln -sf "$abs_file" "$functions_dir/$basename"
-end
-
-# Create symlinks for all helper files
-echo "Creating symlinks for all helper files..."
-for file in "$script_dir/functions/helpers"/*.fish
-    set -l basename (basename "$file")
-    set -l abs_file (realpath "$file")
-    echo "  Linking $basename..."
-    ln -sf "$abs_file" "$functions_dir/$basename"
-end
-
-echo "Creating symlink for flo completions..."
-set -l abs_completions (realpath "$script_dir/completions/flo.fish")
-ln -sf "$abs_completions" "$completions_dir/flo.fish"
-
-# Verify symlinks
-if test -L "$functions_dir/flo.fish" -a -L "$completions_dir/flo.fish"
-    gum style --foreground 2 "✓ Development installation complete!"
-    echo ""
-    echo "The following symlinks were created:"
-    echo "  $functions_dir/flo.fish → $script_dir/functions/flo.fish"
-    echo "  $completions_dir/flo.fish → $script_dir/completions/flo.fish"
-    echo ""
-    echo "Any changes you make to files in the repo will immediately be reflected in your system."
-    echo ""
-    echo "To use flo, restart your Fish shell or run:"
-    echo "  source ~/.config/fish/config.fish"
-else
-    gum log --level error "✗ Failed to create symlinks"
-    exit 1
-end
+# Run the installation in symlink mode
+__flo_install symlink

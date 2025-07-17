@@ -14,7 +14,7 @@ end
 mkdir -p $reference_dir
 
 # Source the flo loader to make commands available
-source functions/loader.fish
+source functions/flo.fish
 
 echo "Generating documentation from --help output..."
 
@@ -43,101 +43,170 @@ end
 # Generate main help documentation
 echo "📝 Generating main help..."
 set -l main_help (flo help 2>/dev/null)
-help_to_markdown flo $main_help >"$reference_dir/flo.md"
+help_to_markdown flo $main_help >"$reference_dir/README.md"
 
-# Generate command-specific help documentation
-set -l commands issue issue-create pr worktree list status projects claude next
+# Define command structure with subcommands
+# Note: issue-create is a hyphenated command, not a subcommand
+set -l command_structure \
+    issue \
+    issue-create \
+    pr \
+    pr/create \
+    pr/push \
+    pr/checks \
+    pr/merge \
+    worktree \
+    worktree/create \
+    worktree/delete \
+    worktree/list \
+    worktree/switch \
+    list \
+    list/issues \
+    list/prs \
+    list/worktrees \
+    status \
+    projects \
+    claude \
+    next
 
-for cmd in $commands
-    echo "📝 Generating help for: $cmd"
+# Generate documentation for each command/subcommand
+for cmd_path in $command_structure
+    set -l flo_cmd ""
+    set -l output_path ""
+
+    # Check if it's a hyphenated command or a subcommand
+    if string match -q "*/*" $cmd_path
+        # It's a subcommand (e.g., pr/create)
+        set -l parts (string split "/" $cmd_path)
+
+        # Build the flo command
+        set flo_cmd flo
+        for part in $parts
+            set flo_cmd "$flo_cmd $part"
+        end
+
+        # Create directory structure
+        set -l dir_path $reference_dir
+        for i in (seq 1 (math (count $parts) - 1))
+            set dir_path "$dir_path/$parts[$i]"
+            mkdir -p $dir_path
+        end
+        set output_path "$dir_path/$parts[-1].md"
+    else
+        # It's a top-level command (possibly hyphenated like issue-create)
+        set flo_cmd "flo $cmd_path"
+        set output_path "$reference_dir/$cmd_path.md"
+    end
+
+    echo "📝 Generating help for: $flo_cmd"
 
     # Try to get help for the command
-    set -l help_output (flo $cmd --help 2>/dev/null)
+    set -l help_output (eval $flo_cmd --help 2>/dev/null)
 
     if test -z "$help_output"
         # If no --help flag, try to get help from the command itself
-        set help_output (flo $cmd 2>&1 | head -20)
+        set help_output (eval $flo_cmd 2>&1 | head -20)
     end
 
     if test -n "$help_output"
-        help_to_markdown "flo $cmd" $help_output >"$reference_dir/$cmd.md"
+        help_to_markdown "$flo_cmd" $help_output >$output_path
     else
-        echo "⚠️  No help output found for: $cmd"
+        echo "⚠️  No help output found for: $flo_cmd"
     end
 end
 
-# Generate help for subcommands
-set -l subcommands
-set -l subcommands $subcommands "pr create" "pr push" "pr checks" "pr merge"
-set -l subcommands $subcommands "worktree create" "worktree delete" "worktree list" "worktree switch"
-set -l subcommands $subcommands "list issues" "list prs" "list worktrees"
+# Generate index files for directories with subcommands
+function generate_index --description "Generate index.md for a directory"
+    set -l dir_path $argv[1]
+    set -l cmd_name $argv[2]
+    set -l cmd_desc $argv[3]
 
-for subcmd in $subcommands
-    set -l parts (string split " " $subcmd)
-    set -l cmd $parts[1]
-    set -l action $parts[2]
+    set -l index_file "$dir_path/README.md"
 
-    echo "📝 Generating help for: $cmd $action"
+    echo "# flo $cmd_name" >$index_file
+    echo "" >>$index_file
+    echo "$cmd_desc" >>$index_file
+    echo "" >>$index_file
+    echo "## Subcommands" >>$index_file
+    echo "" >>$index_file
 
-    # Try to get help for the subcommand
-    set -l help_output (flo $cmd $action --help 2>/dev/null)
-
-    if test -z "$help_output"
-        # Try alternative help patterns
-        set help_output (flo $cmd $action 2>&1 | head -20)
-    end
-
-    if test -n "$help_output"
-        set -l filename (string replace " " "-" $subcmd)
-        help_to_markdown "flo $subcmd" $help_output >"$reference_dir/$filename.md"
-    else
-        echo "⚠️  No help output found for: $cmd $action"
+    # List all .md files in the directory
+    for file in $dir_path/*.md
+        if test -f $file -a (basename $file) != "README.md"
+            set -l subcmd (basename $file .md)
+            echo "- [$subcmd]($subcmd.md)" >>$index_file
+        end
     end
 end
 
-# Generate index file using printf
-echo "📝 Generating index..."
-printf '%s\n' \
-    '# flo Command Reference' \
-    '' \
-    'This directory contains auto-generated documentation from flo'\''s internal `--help` output.' \
-    '' \
-    '## Commands' \
-    '' \
-    '### Core Commands' \
-    '- [flo](flo.md) - Main command help' \
-    '- [issue](issue.md) - Work on GitHub issues' \
-    '- [issue-create](issue-create.md) - Create new issues' \
-    '- [pr](pr.md) - Pull request management' \
-    '- [worktree](worktree.md) - Git worktree management' \
-    '' \
-    '### Browse Commands' \
-    '- [list](list.md) - List various items' \
-    '- [status](status.md) - Show status information' \
-    '- [projects](projects.md) - List GitHub projects' \
-    '' \
-    '### Workflow Commands' \
-    '- [claude](claude.md) - Claude AI integration' \
-    '- [claude-clean](claude-clean.md) - Clean Claude context files' \
-    '' \
-    '### Subcommands' \
-    '' \
-    '#### Pull Request Management' \
-    '- [pr create](pr-create.md) - Create pull requests' \
-    '- [pr push](pr-push.md) - Push current branch' \
-    '- [pr checks](pr-checks.md) - Check PR status' \
-    '- [pr merge](pr-merge.md) - Merge pull requests' \
-    '' \
-    '#### Worktree Management' \
-    '- [worktree create](worktree-create.md) - Create worktrees' \
-    '- [worktree delete](worktree-delete.md) - Delete worktrees' \
-    '- [worktree list](worktree-list.md) - List worktrees' \
-    '- [worktree switch](worktree-switch.md) - Switch worktrees' \
-    '' \
-    '#### List Commands' \
-    '- [list issues](list-issues.md) - List GitHub issues' \
-    '- [list prs](list-prs.md) - List pull requests' \
-    '- [list worktrees](list-worktrees.md) - List worktrees' >"$reference_dir/README.md"
+# Generate index files for command directories
+echo "📝 Generating index files for command directories..."
+if test -d "$reference_dir/issue"
+    generate_index "$reference_dir/issue" issue "GitHub issue management commands"
+end
+if test -d "$reference_dir/pr"
+    generate_index "$reference_dir/pr" pr "Pull request management commands"
+end
+if test -d "$reference_dir/worktree"
+    generate_index "$reference_dir/worktree" worktree "Git worktree management commands"
+end
+if test -d "$reference_dir/list"
+    generate_index "$reference_dir/list" list "Commands for listing various items"
+end
+
+# Generate main reference index
+echo "📝 Generating main reference index..."
+echo "" >>$reference_dir/README.md
+echo "# flo Command Reference" >>$reference_dir/README.md
+echo "" >>$reference_dir/README.md
+echo "This directory contains auto-generated documentation from flo's internal \`--help\` output." >>$reference_dir/README.md
+echo "" >>$reference_dir/README.md
+echo "## Main Command" >>$reference_dir/README.md
+echo "" >>$reference_dir/README.md
+echo "The main flo help documentation is above." >>$reference_dir/README.md
+echo "" >>$reference_dir/README.md
+echo "## Commands" >>$reference_dir/README.md
+echo "" >>$reference_dir/README.md
+echo "### Core Commands" >>$reference_dir/README.md
+echo "- [issue](issue.md) - Work on GitHub issues" >>$reference_dir/README.md
+echo "- [issue-create](issue-create.md) - Create new issues and start working" >>$reference_dir/README.md
+echo "- [pr/](pr/) - Pull request management" >>$reference_dir/README.md
+if test -d "$reference_dir/pr"
+    echo "  - [create](pr/create.md) - Create pull requests" >>$reference_dir/README.md
+    echo "  - [push](pr/push.md) - Push current branch" >>$reference_dir/README.md
+    echo "  - [checks](pr/checks.md) - Check PR status" >>$reference_dir/README.md
+    echo "  - [merge](pr/merge.md) - Merge pull requests" >>$reference_dir/README.md
+end
+echo "- [worktree/](worktree/) - Git worktree management" >>$reference_dir/README.md
+if test -d "$reference_dir/worktree"
+    echo "  - [create](worktree/create.md) - Create worktrees" >>$reference_dir/README.md
+    echo "  - [delete](worktree/delete.md) - Delete worktrees" >>$reference_dir/README.md
+    echo "  - [list](worktree/list.md) - List worktrees" >>$reference_dir/README.md
+    echo "  - [switch](worktree/switch.md) - Switch worktrees" >>$reference_dir/README.md
+end
+echo "" >>$reference_dir/README.md
+echo "### Browse Commands" >>$reference_dir/README.md
+echo "- [list/](list/) - List various items" >>$reference_dir/README.md
+if test -d "$reference_dir/list"
+    echo "  - [issues](list/issues.md) - List GitHub issues" >>$reference_dir/README.md
+    echo "  - [prs](list/prs.md) - List pull requests" >>$reference_dir/README.md
+    echo "  - [worktrees](list/worktrees.md) - List worktrees" >>$reference_dir/README.md
+end
+echo "- [status](status.md) - Show status information" >>$reference_dir/README.md
+echo "- [projects](projects.md) - List GitHub projects" >>$reference_dir/README.md
+echo "" >>$reference_dir/README.md
+echo "### Workflow Commands" >>$reference_dir/README.md
+echo "- [claude](claude.md) - Claude AI integration" >>$reference_dir/README.md
+echo "- [next](next.md) - Context-aware next issue command" >>$reference_dir/README.md
+echo "" >>$reference_dir/README.md
+echo "## Navigation" >>$reference_dir/README.md
+echo "" >>$reference_dir/README.md
+echo "Commands with subcommands have their own directories:" >>$reference_dir/README.md
+echo "- \`pr/\` - Pull request commands" >>$reference_dir/README.md
+echo "- \`worktree/\` - Worktree commands" >>$reference_dir/README.md
+echo "- \`list/\` - List commands" >>$reference_dir/README.md
+echo "" >>$reference_dir/README.md
+echo "Each directory contains a README.md with an overview and links to subcommand documentation." >>$reference_dir/README.md
 
 # Generate main docs index
 echo "📝 Generating main docs index..."
@@ -149,6 +218,8 @@ printf '%s\n' \
     '## Documentation Structure' \
     '' \
     '- **[Command Reference](reference/)** - Complete command documentation generated from `--help` output' \
+    '  - Commands are organized hierarchically with subcommands in subdirectories' \
+    '  - For example: `flo pr create` documentation is at `reference/pr/create.md`' \
     '- **Installation** - See main [README.md](../README.md) for installation instructions' \
     '- **Getting Started** - See main [README.md](../README.md) for quick start guide' \
     '' \
@@ -182,7 +253,7 @@ printf '%s\n' \
     '  status                  Show current worktree and PR status' \
     '  projects                List GitHub projects' \
     '  claude                  Add current branch context to Claude' \
-    '  claude-clean            Remove old Claude context files' \
+    '  next [number]           Transition to next issue (context-aware)' \
     '  help                    Show this help message' \
     '```' \
     '' \
@@ -195,6 +266,11 @@ echo "📁 Generated files in: $docs_dir"
 echo "   - Main index: $docs_dir/README.md"
 echo "   - Reference docs: $reference_dir/"
 echo ""
-echo "📖 To view documentation:"
-echo "   - Browse: $reference_dir/README.md"
-echo "   - Main docs: $docs_dir/README.md"
+echo "📂 Directory structure:"
+find $reference_dir -type d | sort | while read -l dir
+    set -l indent (string repeat -n (math (string split "/" $dir | count) - 3) "  ")
+    echo "$indent$(basename $dir)/"
+end
+echo ""
+echo "📄 Generated files:"
+find $reference_dir -name "*.md" | sort

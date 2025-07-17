@@ -5,6 +5,8 @@ Welcome to the flo documentation. flo is a Git workflow automation tool that int
 ## Documentation Structure
 
 - **[Command Reference](reference/)** - Complete command documentation generated from `--help` output
+  - Commands are organized hierarchically with subcommands in subdirectories
+  - For example: `flo pr create` documentation is at `reference/pr/create.md`
 - **Installation** - See main [README.md](../README.md) for installation instructions
 - **Getting Started** - See main [README.md](../README.md) for quick start guide
 
@@ -38,7 +40,7 @@ Commands:
   status                  Show current worktree and PR status
   projects                List GitHub projects
   claude                  Add current branch context to Claude
-  claude-clean            Remove old Claude context files
+  next [number]           Transition to next issue (context-aware)
   help                    Show this help message
 ```
 

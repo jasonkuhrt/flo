@@ -80,6 +80,22 @@ function issue --description "Start work on a GitHub issue"
 end
 
 function issue-create --description "Create a new GitHub issue and start working on it"
+    # Check for help flag
+    if contains -- --help $argv; or contains -- -h $argv
+        echo "Usage: flo issue-create <title> [body]"
+        echo ""
+        echo "Create a new GitHub issue and immediately start working on it."
+        echo ""
+        echo "Arguments:"
+        echo "  <title>    Issue title (required)"
+        echo "  [body]     Issue body/description (optional)"
+        echo ""
+        echo "Examples:"
+        echo "  flo issue-create \"Fix navigation bug\""
+        echo "  flo issue-create \"Add new feature\" \"This feature will...\""
+        return 0
+    end
+
     set -l title $argv[1]
     set -l body $argv[2]
 

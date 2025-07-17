@@ -126,6 +126,18 @@ function __flo_pr_create --description "Create a new pull request"
 end
 
 function __flo_pr_push --description "Push current branch to origin"
+    # Check for help flag
+    if contains -- --help $argv; or contains -- -h $argv
+        echo "Usage: flo pr push"
+        echo ""
+        echo "Push the current branch to origin."
+        echo ""
+        echo "This command will:"
+        echo "  - Push the current branch to the remote 'origin'"
+        echo "  - Set up tracking if not already configured"
+        return 0
+    end
+
     set -l current_branch (git branch --show-current)
 
     if test -z "$current_branch"
@@ -138,6 +150,19 @@ function __flo_pr_push --description "Push current branch to origin"
 end
 
 function __flo_pr_checks --description "Check the status of PR checks"
+    # Check for help flag
+    if contains -- --help $argv; or contains -- -h $argv
+        echo "Usage: flo pr checks"
+        echo ""
+        echo "Check the CI/CD status of the PR for the current branch."
+        echo ""
+        echo "Shows:"
+        echo "  - PR status checks (CI/CD runs)"
+        echo "  - Check names and their current state"
+        echo "  - Links to failed checks"
+        return 0
+    end
+
     if not __flo_check_gh_auth
         return 1
     end
@@ -155,6 +180,21 @@ function __flo_pr_checks --description "Check the status of PR checks"
 end
 
 function __flo_pr_merge --description "Merge the current pull request"
+    # Check for help flag
+    if contains -- --help $argv; or contains -- -h $argv
+        echo "Usage: flo pr merge"
+        echo ""
+        echo "Merge the pull request for the current branch."
+        echo ""
+        echo "Requirements:"
+        echo "  - PR must be approved"
+        echo "  - All checks must pass"
+        echo "  - No merge conflicts"
+        echo ""
+        echo "The merge will use the repository's default merge method."
+        return 0
+    end
+
     if not __flo_check_gh_auth
         return 1
     end

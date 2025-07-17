@@ -1,40 +1,63 @@
+# flo
+
+```
+flo - Git workflow automation tool
+
+Commands:
+  issue <number|title>    Start work on a GitHub issue
+  issue-create <title>    Create a new issue and start working on it
+  next [number]           Transition to next issue (context-aware)
+  pr [create|push|checks|merge]  Manage pull requests
+  worktree <create|delete|list|switch>  Manage git worktrees
+  list <issues|prs|worktrees>  List various items
+  status                  Show current worktree and PR status
+  projects                List GitHub projects
+  claude                  Add current branch context to Claude
+  claude-clean            Remove old Claude context files
+  help                    Show this help message
+```
+
 # flo Command Reference
 
-This directory contains auto-generated documentation from flo's internal `--help` output.
+This directory contains auto-generated documentation from flo's internal \`--help\` output.
+
+## Main Command
+
+The main flo help documentation is above.
 
 ## Commands
 
 ### Core Commands
-- [flo](flo.md) - Main command help
 - [issue](issue.md) - Work on GitHub issues
-- [issue-create](issue-create.md) - Create new issues
-- [pr](pr.md) - Pull request management
-- [worktree](worktree.md) - Git worktree management
+- [issue-create](issue-create.md) - Create new issues and start working
+- [pr/](pr/) - Pull request management
+  - [create](pr/create.md) - Create pull requests
+  - [push](pr/push.md) - Push current branch
+  - [checks](pr/checks.md) - Check PR status
+  - [merge](pr/merge.md) - Merge pull requests
+- [worktree/](worktree/) - Git worktree management
+  - [create](worktree/create.md) - Create worktrees
+  - [delete](worktree/delete.md) - Delete worktrees
+  - [list](worktree/list.md) - List worktrees
+  - [switch](worktree/switch.md) - Switch worktrees
 
 ### Browse Commands
-- [list](list.md) - List various items
+- [list/](list/) - List various items
+  - [issues](list/issues.md) - List GitHub issues
+  - [prs](list/prs.md) - List pull requests
+  - [worktrees](list/worktrees.md) - List worktrees
 - [status](status.md) - Show status information
 - [projects](projects.md) - List GitHub projects
 
 ### Workflow Commands
 - [claude](claude.md) - Claude AI integration
-- [claude-clean](claude-clean.md) - Clean Claude context files
+- [next](next.md) - Context-aware next issue command
 
-### Subcommands
+## Navigation
 
-#### Pull Request Management
-- [pr create](pr-create.md) - Create pull requests
-- [pr push](pr-push.md) - Push current branch
-- [pr checks](pr-checks.md) - Check PR status
-- [pr merge](pr-merge.md) - Merge pull requests
+Commands with subcommands have their own directories:
+- \`pr/\` - Pull request commands
+- \`worktree/\` - Worktree commands
+- \`list/\` - List commands
 
-#### Worktree Management
-- [worktree create](worktree-create.md) - Create worktrees
-- [worktree delete](worktree-delete.md) - Delete worktrees
-- [worktree list](worktree-list.md) - List worktrees
-- [worktree switch](worktree-switch.md) - Switch worktrees
-
-#### List Commands
-- [list issues](list-issues.md) - List GitHub issues
-- [list prs](list-prs.md) - List pull requests
-- [list worktrees](list-worktrees.md) - List worktrees
+Each directory contains a README.md with an overview and links to subcommand documentation.

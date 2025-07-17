@@ -1,10 +1,15 @@
 # flo issue-create
 
 ```
-Creating issue: --help
-Created issue #7
-Fetching issue #7...
-Creating branch: 7-help
-Unknown command: create
-Run 'flo help' for usage information
+Usage: flo issue-create <title> [body]
+
+Create a new GitHub issue and immediately start working on it.
+
+Arguments:
+  <title>    Issue title (required)
+  [body]     Issue body/description (optional)
+
+Examples:
+  flo issue-create "Fix navigation bug"
+  flo issue-create "Add new feature" "This feature will..."
 ```

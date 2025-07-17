@@ -3,13 +3,48 @@
 function browse --description "List issues, PRs, or worktrees"
     set -l target $argv[1]
 
+    # Check for help flag without a target
+    if test -z "$target"; and begin
+            contains -- --help $argv; or contains -- -h $argv
+        end
+        echo "Usage: flo list <target>"
+        echo ""
+        echo "List various GitHub and worktree items."
+        echo ""
+        echo "Targets:"
+        echo "  issues      List GitHub issues"
+        echo "  prs         List pull requests"
+        echo "  worktrees   List git worktrees"
+        echo ""
+        echo "Examples:"
+        echo "  flo list issues"
+        echo "  flo list prs"
+        echo "  flo list worktrees"
+        return 0
+    end
+
     switch $target
+        case --help -h help
+            echo "Usage: flo list <target>"
+            echo ""
+            echo "List various GitHub and worktree items."
+            echo ""
+            echo "Targets:"
+            echo "  issues      List GitHub issues"
+            echo "  prs         List pull requests"
+            echo "  worktrees   List git worktrees"
+            echo ""
+            echo "Examples:"
+            echo "  flo list issues"
+            echo "  flo list prs"
+            echo "  flo list worktrees"
+            return 0
         case issues
             __flo_list_issues $argv[2..-1]
         case prs
             __flo_list_prs $argv[2..-1]
         case worktrees
-            flo worktree list
+            flo worktree list $argv[2..-1]
         case '*'
             echo "Usage: flo list <issues|prs|worktrees>"
             return 1
@@ -42,6 +77,24 @@ function __flo_list_issues --description "List GitHub issues with optional filte
 end
 
 function __flo_list_prs --description "List GitHub pull requests with optional filtering"
+    # Check for help flag
+    if contains -- --help $argv; or contains -- -h $argv
+        echo "Usage: flo list prs [options]"
+        echo ""
+        echo "List pull requests for the current repository."
+        echo ""
+        echo "Options:"
+        echo "  --all        Show all PRs (open, closed, merged)"
+        echo "  --closed     Show only closed/merged PRs"
+        echo "  --limit N    Limit number of PRs (default: 20)"
+        echo ""
+        echo "Examples:"
+        echo "  flo list prs"
+        echo "  flo list prs --closed"
+        echo "  flo list prs --all --limit 50"
+        return 0
+    end
+
     if not __flo_check_gh_auth
         return 1
     end

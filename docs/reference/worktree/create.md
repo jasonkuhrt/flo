@@ -1,4 +1,4 @@
-# flo worktree
+# flo worktree create
 
 ```
 Usage: flo worktree <subcommand>

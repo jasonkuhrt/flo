@@ -1,4 +1,4 @@
-# flo worktree
+# flo worktree delete
 
 ```
 Usage: flo worktree <subcommand>

@@ -84,6 +84,16 @@ function __flo_worktree_delete --description "Delete a git worktree"
 end
 
 function __flo_worktree_list --description "List all git worktrees"
+    # Check for help flag
+    if contains -- --help $argv; or contains -- -h $argv
+        echo "Usage: flo worktree list"
+        echo ""
+        echo "List all git worktrees for the current repository."
+        echo ""
+        echo "Shows each worktree's branch name and directory path."
+        return 0
+    end
+
     git worktree list --porcelain | awk '
         /^worktree/ { worktree = $2 }
         /^HEAD/ { head = $2 }

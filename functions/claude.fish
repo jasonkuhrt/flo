@@ -97,10 +97,18 @@ function claude-clean --description "Remove old Claude context files"
 
     if test -z "$repo_name"
         # Clean all old files
-        set -l old_files (find $target_dir -name "*.md" -mtime +7)
+        if command -q fd
+            set -l old_files (fd --type f --extension md --changed-before 7d . $target_dir)
+        else
+            set -l old_files (find $target_dir -name "*.md" -mtime +7)
+        end
     else
         # Clean old files for current repo
-        set -l old_files (find $target_dir -name "$repo_name-*.md" -mtime +7)
+        if command -q fd
+            set -l old_files (fd --type f "^$repo_name-.*\.md\$" --changed-before 7d $target_dir)
+        else
+            set -l old_files (find $target_dir -name "$repo_name-*.md" -mtime +7)
+        end
     end
 
     if test (count $old_files) -eq 0

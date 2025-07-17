@@ -267,10 +267,21 @@ echo "   - Main index: $docs_dir/README.md"
 echo "   - Reference docs: $reference_dir/"
 echo ""
 echo "📂 Directory structure:"
-find $reference_dir -type d | sort | while read -l dir
-    set -l indent (string repeat -n (math (string split "/" $dir | count) - 3) "  ")
-    echo "$indent$(basename $dir)/"
+if command -q fd
+    fd --type d . $reference_dir | sort | while read -l dir
+        set -l indent (string repeat -n (math (string split "/" $dir | count) - 3) "  ")
+        echo "$indent$(basename $dir)/"
+    end
+else
+    find $reference_dir -type d | sort | while read -l dir
+        set -l indent (string repeat -n (math (string split "/" $dir | count) - 3) "  ")
+        echo "$indent$(basename $dir)/"
+    end
 end
 echo ""
 echo "📄 Generated files:"
-find $reference_dir -name "*.md" | sort
+if command -q fd
+    fd --type f --extension md . $reference_dir | sort
+else
+    find $reference_dir -name "*.md" | sort
+end

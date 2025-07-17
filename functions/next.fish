@@ -30,7 +30,6 @@ function next --description "Start next issue (context-aware)"
     # Get issue number
     set -l issue_number $argv[1]
     if test -z "$issue_number"
-        echo "Select an issue to work on:"
         set issue_number (__flo_select_issue); or return 1
     end
 

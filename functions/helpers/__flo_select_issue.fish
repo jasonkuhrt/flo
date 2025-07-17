@@ -19,6 +19,7 @@ function __flo_select_issue --description "Let user select from open issues"
         set -l display_num (math $i + 1)
         printf "%5d  #%-6d %s\n" $display_num $number $title >&2
     end
+    echo "" >&2 # Add blank line for clarity
 
     read -P "Select issue (1-N): " selection
 

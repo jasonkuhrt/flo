@@ -14,11 +14,30 @@ A GitHub issue-driven development workflow tool for Fish shell that integrates w
 
 ## Requirements
 
+### Required
 - **Fish shell** (3.0+)
 - **git** and **GitHub CLI** (`gh`)
 - **gum** - for interactive UI components ([github.com/charmbracelet/gum](https://github.com/charmbracelet/gum))
   - macOS: `brew install gum`
   - Other platforms: See [installation guide](https://github.com/charmbracelet/gum#installation)
+
+### Optional (Recommended)
+These tools enhance the flo experience but will fall back to standard alternatives if not installed:
+
+- **fd** - Fast and user-friendly alternative to `find` ([github.com/sharkdp/fd](https://github.com/sharkdp/fd))
+  - macOS: `brew install fd`
+  - Provides: Faster file searching, respects .gitignore by default
+- **bat** - A `cat` clone with syntax highlighting ([github.com/sharkdp/bat](https://github.com/sharkdp/bat))
+  - macOS: `brew install bat`
+  - Provides: Syntax-highlighted file viewing
+- **delta** - A syntax-highlighting pager for git diffs ([github.com/dandavison/delta](https://github.com/dandavison/delta))
+  - macOS: `brew install git-delta`
+  - Provides: Beautiful, side-by-side diffs with syntax highlighting
+
+Install all optional tools on macOS:
+```bash
+brew install fd bat git-delta
+```
 
 ## Installation
 

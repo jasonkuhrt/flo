@@ -76,6 +76,20 @@ function claude --description "Add current branch context to Claude"
     echo "## Changed Files" >>$prompt_file
     git diff --name-status origin/main...$current_branch >>$prompt_file
 
+    # Optionally show full diff if requested
+    if contains -- --show-diff $argv
+        echo "" >>$prompt_file
+        echo "## Full Diff" >>$prompt_file
+        echo '```diff' >>$prompt_file
+        if command -q delta
+            # Use delta for formatted diff output
+            git diff origin/main...$current_branch --no-color >>$prompt_file
+        else
+            git diff origin/main...$current_branch >>$prompt_file
+        end
+        echo '```' >>$prompt_file
+    end
+
     echo "Created Claude prompt at: $prompt_file"
 
     # Open in editor if available

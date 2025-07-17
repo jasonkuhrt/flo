@@ -1,0 +1,39 @@
+Usage: gum table [flags]
+
+Render a table of data
+
+Flags:
+  -h, --help                   Show context-sensitive help.
+  -v, --version                Print the version number
+
+  -s, --separator=","          Row separator
+  -c, --columns=COLUMNS,...    Column names
+  -w, --widths=WIDTHS,...      Column widths
+      --height=0               Table height
+  -p, --print                  static print
+  -f, --file=""                file path
+  -b, --border="rounded"       border style
+      --[no-]show-help         Show help keybinds ($GUM_TABLE_SHOW_HELP)
+      --[no-]hide-count        Hide item count on help keybinds
+                               ($GUM_TABLE_HIDE_COUNT)
+      --lazy-quotes            If LazyQuotes is true, a quote may appear in an
+                               unquoted field and a non-doubled quote may appear
+                               in a quoted field ($GUM_TABLE_LAZY_QUOTES)
+      --fields-per-record=0    Sets the number of expected fields per record
+                               ($GUM_TABLE_FIELDS_PER_RECORD)
+  -r, --return-column=0        Which column number should be returned instead of
+                               whole row as string. Default=0 returns whole Row
+      --timeout=0s             Timeout until choose returns selected element
+                               ($GUM_TABLE_TIMEOUT)
+
+Style Flags
+  --border.foreground=""         Foreground Color ($GUM_TABLE_BORDER_FOREGROUND)
+  --border.background=""         Background Color ($GUM_TABLE_BORDER_BACKGROUND)
+  --cell.foreground=""           Foreground Color ($GUM_TABLE_CELL_FOREGROUND)
+  --cell.background=""           Background Color ($GUM_TABLE_CELL_BACKGROUND)
+  --header.foreground=""         Foreground Color ($GUM_TABLE_HEADER_FOREGROUND)
+  --header.background=""         Background Color ($GUM_TABLE_HEADER_BACKGROUND)
+  --selected.foreground="212"    Foreground Color
+                                 ($GUM_TABLE_SELECTED_FOREGROUND)
+  --selected.background=""       Background Color
+                                 ($GUM_TABLE_SELECTED_BACKGROUND)

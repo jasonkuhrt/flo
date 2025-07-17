@@ -84,4 +84,3 @@ function issue --description "Start work on a GitHub issue"
     # Create worktree for the issue with progress indicator
     gum spin --spinner dots --title "Creating worktree for issue #$issue_number..." -- __flo_create_worktree $branch_name
 end
-

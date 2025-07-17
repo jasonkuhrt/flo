@@ -7,7 +7,7 @@ set -l reference_dir "$docs_dir/reference"
 # Clean out old docs first
 if test -d $reference_dir
     echo "🧹 Cleaning old documentation..."
-    rm -rf $reference_dir/*
+    command rm -rf $reference_dir/*
 end
 
 # Create docs directories
@@ -98,7 +98,7 @@ for cmd_path in $command_structure
         set output_path "$reference_dir/$cmd_path.md"
     end
 
-    echo "📝 Generating help for: $flo_cmd"
+    echo "📝 Generating help for: $cmd_path"
 
     # Try to get help for the command
     set -l help_output (eval $flo_cmd --help 2>/dev/null)
@@ -169,7 +169,7 @@ echo "## Commands" >>$reference_dir/README.md
 echo "" >>$reference_dir/README.md
 echo "### Core Commands" >>$reference_dir/README.md
 echo "- [issue](issue.md) - Work on GitHub issues" >>$reference_dir/README.md
-echo "- [issue-create](issue-create.md) - Create new issues and start working" >>$reference_dir/README.md
+echo "- [issue-create](issue-create.md) - Create new issue and start working" >>$reference_dir/README.md
 echo "- [pr/](pr/) - Pull request management" >>$reference_dir/README.md
 if test -d "$reference_dir/pr"
     echo "  - [create](pr/create.md) - Create pull requests" >>$reference_dir/README.md

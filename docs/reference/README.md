@@ -30,7 +30,7 @@ The main flo help documentation is above.
 
 ### Core Commands
 - [issue](issue.md) - Work on GitHub issues
-- [issue-create](issue-create.md) - Create new issues and start working
+- [issue-create](issue-create.md) - Create new issue and start working
 - [pr/](pr/) - Pull request management
   - [create](pr/create.md) - Create pull requests
   - [push](pr/push.md) - Push current branch

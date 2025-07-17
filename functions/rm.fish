@@ -74,124 +74,146 @@ function rm --description "Remove issue, PR, and/or worktree"
         end
     end
 
-    # Show what will be done
-    echo "Issue #$issue_number cleanup:"
-    echo ""
+    # Build list of available actions
+    set -l available_actions
+    set -l selected_actions
 
-    # Check if issue exists and is open
+    # Check what's available
     if __flo_check_gh_auth
         set -l issue_state (gh issue view $issue_number --json state -q .state 2>/dev/null)
-        if test -n "$issue_state"
+        if test "$issue_state" = OPEN
+            set available_actions $available_actions "Close issue #$issue_number"
             if set -q _flag_close_issue
-                if test "$issue_state" = OPEN
-                    echo "  • Close issue #$issue_number: YES"
-                else
-                    echo "  • Issue #$issue_number: already closed"
-                end
-            else
-                echo "  • Close issue #$issue_number: NO (use --close-issue to close)"
+                set selected_actions $selected_actions "Close issue #$issue_number"
             end
-        else
-            echo "  • Issue #$issue_number: not found"
         end
 
-        # Check if PR exists and is open
-        set -l pr_state (gh pr list --state all --search "head:issue/$issue_number" --json state -q '.[0].state' 2>/dev/null)
-        if test -n "$pr_state"
+        set -l pr_number (gh pr list --state open --search "head:issue/$issue_number" --json number -q '.[0].number' 2>/dev/null)
+        if test -n "$pr_number"
+            set available_actions $available_actions "Close PR #$pr_number"
             if set -q _flag_close_pr
-                if test "$pr_state" = OPEN
-                    echo "  • Close PR for issue #$issue_number: YES"
-                else
-                    echo "  • PR for issue #$issue_number: already closed/merged"
-                end
-            else
-                echo "  • Close PR for issue #$issue_number: NO (use --close-pr to close)"
+                set selected_actions $selected_actions "Close PR #$pr_number"
             end
-        else
-            echo "  • PR for issue #$issue_number: not found"
         end
     end
 
     # Check worktree
-    if not set -q _flag_no_delete_worktree
-        if __flo_worktree_exists $target_worktree
-            echo "  • Delete worktree '$target_worktree': YES"
-        else
-            # Check for other worktree patterns
-            set -l found_worktree ""
-            for wt in (git worktree list --porcelain | grep "^worktree" | cut -d' ' -f2)
-                if string match -q "*$issue_number*" (basename $wt)
-                    set found_worktree (basename $wt)
-                    break
-                end
+    set -l worktree_found 0
+    if __flo_worktree_exists $target_worktree
+        set available_actions $available_actions "Delete worktree '$target_worktree'"
+        set worktree_found 1
+    else
+        # Check for other worktree patterns
+        for wt in (git worktree list --porcelain | grep "^worktree" | cut -d' ' -f2)
+            if string match -q "*$issue_number*" (basename $wt)
+                set target_worktree (basename $wt)
+                set available_actions $available_actions "Delete worktree '$target_worktree'"
+                set worktree_found 1
+                break
             end
+        end
+    end
 
-            if test -n "$found_worktree"
-                echo "  • Delete worktree '$found_worktree': YES"
-                set target_worktree $found_worktree
-            else
-                echo "  • Worktree for issue #$issue_number: not found"
+    # Add to selected if not explicitly disabled
+    if test $worktree_found -eq 1 -a ! set -q _flag_no_delete_worktree
+        set selected_actions $selected_actions "Delete worktree '$target_worktree'"
+    end
+
+    if test (count $available_actions) -eq 0
+        echo "Nothing to clean up for issue #$issue_number"
+        return 0
+    end
+
+    # Skip interactive selection if --force flag is set
+    if not set -q _flag_force
+        # Use gum choose with multi-select for actions
+        set -l chosen_actions (printf '%s\n' $available_actions | gum choose \
+            --no-limit \
+            --show-help \
+            --header "Select cleanup actions for issue #$issue_number:" \
+            --selected (printf '%s\n' $selected_actions))
+
+        if test -z "$chosen_actions"
+            echo "No actions selected"
+            return 0
+        end
+
+        # Parse chosen actions
+        set -l do_close_issue 0
+        set -l do_close_pr 0
+        set -l do_delete_worktree 0
+
+        for action in $chosen_actions
+            if string match -q "Close issue*" $action
+                set do_close_issue 1
+            else if string match -q "Close PR*" $action
+                set do_close_pr 1
+            else if string match -q "Delete worktree*" $action
+                set do_delete_worktree 1
             end
         end
     else
-        echo "  • Delete worktree: NO (--no-delete-worktree specified)"
-    end
+        # Use flags directly when --force is set
+        set -l do_close_issue 0
+        set -l do_close_pr 0
+        set -l do_delete_worktree 1
 
-    echo ""
-
-    # Skip confirmation if --force flag is set
-    if not set -q _flag_force
-        if not gum confirm "Proceed with cleanup?"
-            echo Cancelled
-            return 0
+        if set -q _flag_close_issue
+            set do_close_issue 1
+        end
+        if set -q _flag_close_pr
+            set do_close_pr 1
+        end
+        if set -q _flag_no_delete_worktree
+            set do_delete_worktree 0
         end
     end
 
     # Execute the cleanup
 
     # If we're in the worktree to be deleted, move out first
-    if test $in_worktree -eq 1 -a ! set -q _flag_no_delete_worktree
+    if test $in_worktree -eq 1 -a $do_delete_worktree -eq 1
         echo "Moving to main repository before deletion..."
         cd (__flo_get_repo_root)
     end
 
     # Delete worktree if requested
-    if not set -q _flag_no_delete_worktree
+    if test $do_delete_worktree -eq 1
         if __flo_worktree_exists $target_worktree
             echo "Deleting worktree '$target_worktree'..."
             flo worktree delete $target_worktree
             if test $status -eq 0
-                echo "✓ Deleted worktree"
+                gum style --foreground 2 "✓ Deleted worktree"
             else
-                echo "✗ Failed to delete worktree" >&2
+                gum log --level error "✗ Failed to delete worktree"
             end
         end
     end
 
     # Close PR if requested
-    if set -q _flag_close_pr -a __flo_check_gh_auth
+    if test $do_close_pr -eq 1 -a __flo_check_gh_auth
         set -l pr_number (gh pr list --state open --search "head:issue/$issue_number" --json number -q '.[0].number' 2>/dev/null)
         if test -n "$pr_number"
             echo "Closing PR #$pr_number..."
             gh pr close $pr_number
             if test $status -eq 0
-                echo "✓ Closed PR"
+                gum style --foreground 2 "✓ Closed PR"
             else
-                echo "✗ Failed to close PR" >&2
+                gum log --level error "✗ Failed to close PR"
             end
         end
     end
 
     # Close issue if requested
-    if set -q _flag_close_issue -a __flo_check_gh_auth
+    if test $do_close_issue -eq 1 -a __flo_check_gh_auth
         set -l issue_state (gh issue view $issue_number --json state -q .state 2>/dev/null)
         if test "$issue_state" = OPEN
             echo "Closing issue #$issue_number..."
             gh issue close $issue_number
             if test $status -eq 0
-                echo "✓ Closed issue"
+                gum style --foreground 2 "✓ Closed issue"
             else
-                echo "✗ Failed to close issue" >&2
+                gum log --level error "✗ Failed to close issue"
             end
         end
     end

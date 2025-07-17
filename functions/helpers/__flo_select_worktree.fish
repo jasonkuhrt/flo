@@ -23,8 +23,8 @@ function __flo_select_worktree --description "Let user select from available wor
         return 1
     end
 
-    # Use gum to select worktree
-    set -l selected (echo $worktrees | tr ' ' '\n' | gum choose --header "Select worktree:")
+    # Use gum to select worktree with help shown
+    set -l selected (echo $worktrees | tr ' ' '\n' | gum choose --header "Select worktree:" --show-help)
 
     if test -z "$selected"
         return 1

@@ -10,8 +10,8 @@ function __flo_select_issue --description "Let user select from open issues"
         return 1
     end
 
-    # Use gum to select an issue
-    set -l selected (echo $issues | jq -r '.[] | "#\(.number) - \(.title)"' | gum choose --header "Select an issue:")
+    # Use gum to select an issue with help shown
+    set -l selected (echo $issues | jq -r '.[] | "#\(.number) - \(.title)"' | gum choose --header "Select an issue:" --show-help)
 
     if test -z "$selected"
         echo "No issue selected" >&2

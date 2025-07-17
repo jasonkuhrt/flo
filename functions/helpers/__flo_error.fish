@@ -1,6 +1,4 @@
 function __flo_error --description "Display error message and return failure" --argument-names message
-    set_color red
-    echo "flo: $message" >&2
-    set_color normal
+    gum log --level error "flo: $message"
     return 1
 end

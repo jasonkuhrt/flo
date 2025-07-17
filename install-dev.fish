@@ -50,9 +50,7 @@ ln -sf "$abs_completions" "$completions_dir/flo.fish"
 
 # Verify symlinks
 if test -L "$functions_dir/flo.fish" -a -L "$completions_dir/flo.fish"
-    set_color green
-    echo "✓ Development installation complete!"
-    set_color normal
+    gum style --foreground 2 "✓ Development installation complete!"
     echo ""
     echo "The following symlinks were created:"
     echo "  $functions_dir/flo.fish → $script_dir/functions/flo.fish"
@@ -63,8 +61,6 @@ if test -L "$functions_dir/flo.fish" -a -L "$completions_dir/flo.fish"
     echo "To use flo, restart your Fish shell or run:"
     echo "  source ~/.config/fish/config.fish"
 else
-    set_color red
-    echo "✗ Failed to create symlinks"
-    set_color normal
+    gum log --level error "✗ Failed to create symlinks"
     exit 1
 end

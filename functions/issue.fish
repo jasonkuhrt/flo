@@ -60,11 +60,16 @@ function issue --description "Start work on a GitHub issue"
         # If multiple results, let user choose
         if test (echo $search_results | jq '. | length') -gt 1
             echo "Multiple issues found:"
-            echo $search_results | jq -r '.[] | "#\(.number) - \(.title)"' | nl -v 0
-            read -P "Select issue number (0-9): " selection
+            set -l selected (echo $search_results | jq -r '.[] | "#\(.number) - \(.title)"' | gum choose --header "Select an issue:" --show-help)
 
-            set issue_number (echo $search_results | jq -r ".[$selection].number")
-            set title (echo $search_results | jq -r ".[$selection].title")
+            if test -z "$selected"
+                echo "No issue selected"
+                return 1
+            end
+
+            # Extract issue number from selection
+            set issue_number (echo $selected | sed 's/^#\([0-9]*\).*/\1/')
+            set title (echo $search_results | jq -r ".[] | select(.number == $issue_number) | .title")
         else
             set issue_number (echo $search_results | jq -r '.[0].number')
             set title (echo $search_results | jq -r '.[0].title')

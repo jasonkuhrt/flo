@@ -20,9 +20,7 @@ if test -e "$completions_dir/flo.fish"
     rm -f "$completions_dir/flo.fish"
 end
 
-set_color green
-echo "✓ Flo has been uninstalled"
-set_color normal
+gum style --foreground 2 "✓ Flo has been uninstalled"
 echo ""
 echo "To complete the removal, restart your Fish shell or run:"
 echo "  source ~/.config/fish/config.fish"

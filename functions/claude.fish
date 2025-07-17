@@ -117,10 +117,9 @@ function claude-clean --description "Remove old Claude context files"
         echo "  - "(basename $file)
     end
 
-    read -P "Delete these files? (y/N) " confirm
-    if test "$confirm" = y -o "$confirm" = Y
+    if gum confirm "Delete these files?"
         rm $old_files
-        echo "Deleted "(count $old_files)" files"
+        gum style --foreground 2 "✓ Deleted "(count $old_files)" files"
     else
         echo Cancelled
     end

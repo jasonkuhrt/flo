@@ -46,9 +46,7 @@ function flo --description "GitHub issue flow tool for managing worktrees"
     # Check if command requires git
     if contains -- $cmd $git_required_cmds
         if test $in_git_repo = false
-            set_color red
-            echo "Error: Command '$cmd' requires a git repository"
-            set_color normal
+            gum log --level error "Error: Command '$cmd' requires a git repository"
             return 1
         end
     end
@@ -57,9 +55,7 @@ function flo --description "GitHub issue flow tool for managing worktrees"
     if test $in_git_repo = true
         set -l project_name (__flo_get_project_name)
         if not set -q project_name[1]
-            set_color red
-            echo "Error: Could not determine project name"
-            set_color normal
+            gum log --level error "Error: Could not determine project name"
             return 1
         end
         set -l base_dir "$base_root/$project_name"
@@ -101,9 +97,7 @@ function flo --description "GitHub issue flow tool for managing worktrees"
         case issues i
             # Requires git to list repo issues
             if test $in_git_repo = false
-                set_color red
-                echo "Error: Command 'issues' requires a git repository"
-                set_color normal
+                gum log --level error "Error: Command 'issues' requires a git repository"
                 return 1
             end
             __flo_issues
@@ -111,9 +105,7 @@ function flo --description "GitHub issue flow tool for managing worktrees"
         case pr
             # Requires git for PR operations
             if test $in_git_repo = false
-                set_color red
-                echo "Error: Command 'pr' requires a git repository"
-                set_color normal
+                gum log --level error "Error: Command 'pr' requires a git repository"
                 return 1
             end
             __flo_pr $argv
@@ -129,9 +121,7 @@ function flo --description "GitHub issue flow tool for managing worktrees"
         case '*'
             # Don't show error for --help since it's handled above
             if not contains -- $cmd --help
-                set_color red
-                echo "Unknown command: $cmd"
-                set_color normal
+                gum log --level error "Unknown command: $cmd"
             end
             __flo_help
             return 1

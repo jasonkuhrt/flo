@@ -1,6 +1,6 @@
 # Next issue workflow command
 
-function flo-next --description "Start next issue (context-aware)"
+function next --description "Start next issue (context-aware)"
     argparse --name="flo next" h/help no-claude -- $argv; or return
 
     if set -q _flag_help

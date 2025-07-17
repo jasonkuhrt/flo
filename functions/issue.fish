@@ -1,4 +1,4 @@
-function flo-issue --description "Start work on a GitHub issue"
+function issue --description "Start work on a GitHub issue"
     argparse --name="flo issue" h/help z/zed c/claude -- $argv; or return
 
     if set -q _flag_help
@@ -79,7 +79,7 @@ function flo-issue --description "Start work on a GitHub issue"
     flo create $branch_name
 end
 
-function flo-issue-create --description "Create a new GitHub issue and start working on it"
+function issue-create --description "Create a new GitHub issue and start working on it"
     set -l title $argv[1]
     set -l body $argv[2]
 

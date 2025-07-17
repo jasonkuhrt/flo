@@ -1,6 +1,23 @@
 # Git worktree management functions
 
-function flo-worktree --description "Manage git worktrees"
+function worktree --description "Manage git worktrees"
+    # Check for help flag
+    if contains -- --help $argv; or contains -- -h $argv
+        echo "Usage: flo worktree <subcommand>"
+        echo ""
+        echo "Subcommands:"
+        echo "  create <name>    Create a new worktree"
+        echo "  delete <name>    Delete a worktree"
+        echo "  list             List all worktrees"
+        echo "  switch <name>    Switch to a worktree"
+        echo ""
+        echo "Examples:"
+        echo "  flo worktree create feature-x"
+        echo "  flo worktree delete feature-x"
+        echo "  flo worktree list"
+        return 0
+    end
+
     set -l cmd $argv[1]
     set -e argv[1]
 

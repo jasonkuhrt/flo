@@ -1,10 +1,51 @@
 # Pull request management functions
 
-function flo-pr --description "Create or manage pull requests"
+function pr --description "Create or manage pull requests"
     set -l cmd $argv[1]
-    set -e argv[1]
+
+    # Check for help flag without subcommand
+    if test -z "$cmd"; and begin
+            contains -- --help $argv; or contains -- -h $argv
+        end
+        echo "Usage: flo pr [subcommand]"
+        echo ""
+        echo "Subcommands:"
+        echo "  create       Create a new pull request"
+        echo "  push         Push current branch to origin"
+        echo "  checks       Check PR status and CI checks"
+        echo "  merge        Merge the pull request"
+        echo ""
+        echo "Default: create (if no subcommand given)"
+        echo ""
+        echo "Examples:"
+        echo "  flo pr                Create a new PR"
+        echo "  flo pr push           Push branch to origin"
+        echo "  flo pr checks         Check CI status"
+        return 0
+    end
+
+    # Only set -e if we have a command
+    if test -n "$cmd"
+        set -e argv[1]
+    end
 
     switch $cmd
+        case --help -h help
+            echo "Usage: flo pr [subcommand]"
+            echo ""
+            echo "Subcommands:"
+            echo "  create       Create a new pull request"
+            echo "  push         Push current branch to origin"
+            echo "  checks       Check PR status and CI checks"
+            echo "  merge        Merge the pull request"
+            echo ""
+            echo "Default: create (if no subcommand given)"
+            echo ""
+            echo "Examples:"
+            echo "  flo pr                Create a new PR"
+            echo "  flo pr push           Push branch to origin"
+            echo "  flo pr checks         Check CI status"
+            return 0
         case create
             __flo_pr_create $argv
         case push
@@ -20,6 +61,20 @@ function flo-pr --description "Create or manage pull requests"
 end
 
 function __flo_pr_create --description "Create a new pull request"
+    # Check for help flag
+    if contains -- --help $argv; or contains -- -h $argv
+        echo "Usage: flo pr create"
+        echo ""
+        echo "Create a pull request for the current branch."
+        echo "Automatically detects issue number from branch name and includes issue details."
+        echo ""
+        echo "Requirements:"
+        echo "  - Must be on a feature branch (not main/master)"
+        echo "  - Must have commits to push"
+        echo "  - GitHub CLI must be authenticated"
+        return 0
+    end
+
     if not __flo_check_gh_auth
         return 1
     end

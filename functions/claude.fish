@@ -1,6 +1,6 @@
 # Claude AI integration
 
-function flo-claude --description "Add current branch context to Claude"
+function claude --description "Add current branch context to Claude"
     argparse --name="flo claude" h/help a/all c/clean -- $argv; or return
 
     if set -q _flag_help
@@ -88,7 +88,7 @@ function flo-claude --description "Add current branch context to Claude"
     end
 end
 
-function flo-claude-clean --description "Remove old Claude context files"
+function claude-clean --description "Remove old Claude context files"
     set -l claude_dir ~/Library/CloudStorage/Dropbox/Documents-Dropbox/Contextual/claude
     set -l target_dir "$claude_dir/prompts"
 

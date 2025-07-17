@@ -1,6 +1,6 @@
 # Browse and list commands
 
-function flo-list --description "List issues, PRs, or worktrees"
+function browse --description "List issues, PRs, or worktrees"
     set -l target $argv[1]
 
     switch $target
@@ -65,7 +65,7 @@ function __flo_list_prs --description "List GitHub pull requests with optional f
     gh pr list --state $state --limit $limit
 end
 
-function flo-status --description "Show current worktree and PR status"
+function flo_status --description "Show current worktree and PR status"
     # Current worktree info
     set -l current_branch (git branch --show-current 2>/dev/null)
     set -l current_worktree (pwd)
@@ -99,7 +99,7 @@ function flo-status --description "Show current worktree and PR status"
     git status -s
 end
 
-function flo-projects --description "List GitHub projects"
+function projects --description "List GitHub projects"
     if not __flo_check_gh_auth
         return 1
     end

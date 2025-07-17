@@ -98,15 +98,38 @@ function __flo_worktree_list --description "List all git worktrees"
         return 0
     end
 
-    # Simple worktree list with branch and path
-    git worktree list | while read -l line
-        set -l parts (string split " " $line)
-        set -l path $parts[1]
-        set -l branch (string match -r '\[(.+)\]' $line | string replace -r '^\[|\]$' '')
-        if test -n "$branch"
-            printf "%-40s %s\n" $branch $path
+    # Build CSV data for gum table
+    echo "Branch,Path,Status" >/tmp/flo_worktree_list.csv
+
+    git worktree list --porcelain | while read -l line
+        if string match -q "worktree *" $line
+            set -l path (string replace "worktree " "" $line)
+            set -a paths $path
+        else if string match -q "branch *" $line
+            set -l branch (string replace "branch refs/heads/" "" $line)
+            set -a branches $branch
         end
-    end | column -t
+    end
+
+    # Check status of each worktree
+    for i in (seq (count $paths))
+        set -l path $paths[$i]
+        set -l branch $branches[$i]
+
+        # Check if worktree has uncommitted changes
+        set -l status Clean
+        if test -d $path
+            set -l git_status (git -C $path status --porcelain 2>/dev/null)
+            if test -n "$git_status"
+                set status Modified
+            end
+        end
+
+        echo "$branch,$path,$status" >>/tmp/flo_worktree_list.csv
+    end
+
+    cat /tmp/flo_worktree_list.csv | gum table --print
+    rm -f /tmp/flo_worktree_list.csv
 end
 
 function __flo_worktree_switch --description "Switch to a git worktree"

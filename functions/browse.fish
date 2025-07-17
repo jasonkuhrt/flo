@@ -72,8 +72,9 @@ function __flo_list_issues --description "List GitHub issues with optional filte
         set -l limit $_flag_limit
     end
 
-    echo "Fetching $state issues..."
-    gh issue list --state $state --limit $limit
+    gum spin --spinner dots --title "Fetching $state issues..." -- gh issue list --state $state --limit $limit --json number,title,author,updatedAt,labels,milestone 2>/dev/null |
+        jq -r '"Number,Title,Author,Updated,Labels\n" + (.[] | "#\(.number),\(.title),\(.author.login),\(((.updatedAt | fromdateiso8601) - (now | floor)) / 86400 | floor | tostring + " days ago"),\(.labels | map(.name) | join("; "))")' |
+        gum table --print --widths 10,50,15,15,20
 end
 
 function __flo_list_prs --description "List GitHub pull requests with optional filtering"
@@ -114,8 +115,9 @@ function __flo_list_prs --description "List GitHub pull requests with optional f
         end
     end
 
-    echo "Fetching $state PRs..."
-    gh pr list --state $state --limit $limit
+    gum spin --spinner dots --title "Fetching $state PRs..." -- gh pr list --state $state --limit $limit --json number,title,author,updatedAt,headRefName,isDraft,reviewDecision 2>/dev/null |
+        jq -r '"Number,Title,Author,Branch,Status,Updated\n" + (.[] | "#\(.number),\(.title),\(.author.login),\(.headRefName),\(if .isDraft then "Draft" elif .reviewDecision == "APPROVED" then "Approved" elif .reviewDecision == "CHANGES_REQUESTED" then "Changes Requested" else "Pending" end),\(((.updatedAt | fromdateiso8601) - (now | floor)) / 86400 | floor | tostring + " days ago")")' |
+        gum table --print --widths 10,40,15,20,18,15
 end
 
 function flo_status --description "Show current worktree and PR status"
@@ -128,26 +130,59 @@ function flo_status --description "Show current worktree and PR status"
         return 1
     end
 
-    echo "Current branch: $current_branch"
-    echo "Worktree: $current_worktree"
+    # Display basic info in a nice table
+    echo -e "Branch,Worktree\n$current_branch,$current_worktree" | gum table --print
     echo ""
 
     # Check for associated PR
     if __flo_check_gh_auth
-        set -l pr_info (gh pr view --json number,title,state,url 2>/dev/null)
+        set -l pr_info (gh pr view --json number,title,state,url,mergeable,reviews 2>/dev/null)
 
         if test $status -eq 0
-            echo "Pull Request:"
-            echo $pr_info | jq -r '"  #\(.number) - \(.title)\n  State: \(.state)\n  URL: \(.url)"'
+            # Extract PR details
+            set -l pr_number (echo $pr_info | jq -r '.number')
+            set -l pr_title (echo $pr_info | jq -r '.title')
+            set -l pr_state (echo $pr_info | jq -r '.state')
+            set -l pr_url (echo $pr_info | jq -r '.url')
+            set -l pr_mergeable (echo $pr_info | jq -r '.mergeable // "UNKNOWN"')
+            set -l review_count (echo $pr_info | jq -r '.reviews | length')
+
+            # Create PR details table
+            echo "Field,Value" >/tmp/flo_pr_status.csv
+            echo "PR Number,#$pr_number" >>/tmp/flo_pr_status.csv
+            echo "Title,$pr_title" >>/tmp/flo_pr_status.csv
+            echo "State,$pr_state" >>/tmp/flo_pr_status.csv
+            echo "Mergeable,$pr_mergeable" >>/tmp/flo_pr_status.csv
+            echo "Reviews,$review_count" >>/tmp/flo_pr_status.csv
+            echo "URL,$pr_url" >>/tmp/flo_pr_status.csv
+
+            cat /tmp/flo_pr_status.csv | gum table --print
+            rm -f /tmp/flo_pr_status.csv
         else
-            echo "No pull request found for this branch"
+            gum style --foreground 245 "No pull request found for this branch"
         end
         echo ""
     end
 
-    # Git status
-    echo "Git status:"
-    git status -s
+    # Git status summary
+    set -l git_status (git status --porcelain 2>/dev/null)
+    if test -n "$git_status"
+        set -l modified_count (echo "$git_status" | grep -c '^.M')
+        set -l added_count (echo "$git_status" | grep -c '^A')
+        set -l deleted_count (echo "$git_status" | grep -c '^D')
+        set -l untracked_count (echo "$git_status" | grep -c '^??')
+
+        echo "Git Status Summary:" | gum style --bold
+        echo -e "Type,Count\nModified,$modified_count\nAdded,$added_count\nDeleted,$deleted_count\nUntracked,$untracked_count" | gum table --print
+
+        if test (count (echo "$git_status" | head -10)) -gt 0
+            echo ""
+            echo "Recent changes:" | gum style --italic
+            git status -s | head -10
+        end
+    else
+        gum style --foreground 2 "✓ Working directory clean"
+    end
 end
 
 function projects --description "List GitHub projects"

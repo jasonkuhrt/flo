@@ -175,8 +175,32 @@ function __flo_pr_checks --description "Check the status of PR checks"
         return 1
     end
 
-    echo "Checking PR #$pr_number status..."
-    gh pr checks $pr_number
+    gum style --bold "PR #$pr_number Status Checks:"
+    echo ""
+
+    # Get check runs data and format as table
+    set -l checks_json (gh api "repos/{owner}/{repo}/pulls/$pr_number" --jq '.head.sha' | \
+        xargs -I {} gh api "repos/{owner}/{repo}/commits/{}/check-runs" --jq '.check_runs')
+
+    if test -n "$checks_json"
+        echo "$checks_json" | jq -r '"Check,Status,Conclusion,Duration\n" + (.[] | "\(.name),\(.status),\(.conclusion // "pending"),\(((.completed_at // now | fromdateiso8601) - (.started_at | fromdateiso8601)) / 60 | floor | tostring + " min")")' | gum table --print --widths 40,15,15,10
+
+        # Show summary
+        echo ""
+        set -l total_checks (echo "$checks_json" | jq 'length')
+        set -l completed_checks (echo "$checks_json" | jq '[.[] | select(.status == "completed")] | length')
+        set -l failed_checks (echo "$checks_json" | jq '[.[] | select(.conclusion == "failure")] | length')
+
+        if test $failed_checks -gt 0
+            gum style --foreground 1 "⚠ $failed_checks checks failed"
+        else if test $completed_checks -eq $total_checks
+            gum style --foreground 2 "✓ All checks passed"
+        else
+            gum style --foreground 3 "⏳ Checks in progress: $completed_checks/$total_checks completed"
+        end
+    else
+        echo "No status checks found for this PR"
+    end
 end
 
 function __flo_pr_merge --description "Merge the current pull request"

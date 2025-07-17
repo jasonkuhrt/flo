@@ -6,23 +6,30 @@ function __flo_select_issue --description "Let user select from open issues"
     set -l issues (gh issue list --json number,title --limit 20 2>/dev/null)
 
     if test -z "$issues" -o "$issues" = "[]"
-        echo "No open issues found"
+        echo "No open issues found" >&2
         return 1
     end
 
-    echo "Open issues:"
-    echo $issues | jq -r '.[] | "#\(.number) - \(.title)"' | nl -v 1
+    echo "Open issues:" >&2
+    # Display the issues with proper formatting
+    set -l issue_count (echo $issues | jq 'length')
+    for i in (seq 0 (math $issue_count - 1))
+        set -l number (echo $issues | jq -r ".[$i].number")
+        set -l title (echo $issues | jq -r ".[$i].title")
+        set -l display_num (math $i + 1)
+        printf "%5d  #%-6d %s\n" $display_num $number $title >&2
+    end
 
     read -P "Select issue (1-N): " selection
 
     if test -z "$selection"
-        echo "No selection made"
+        echo "No selection made" >&2
         return 1
     end
 
     # Validate selection is a number
     if not string match -qr '^[0-9]+$' -- $selection
-        echo "Invalid selection: $selection"
+        echo "Invalid selection: $selection" >&2
         return 1
     end
 
@@ -31,7 +38,7 @@ function __flo_select_issue --description "Let user select from open issues"
     set -l issue_number (echo $issues | jq -r ".[$index].number" 2>/dev/null)
 
     if test -z "$issue_number" -o "$issue_number" = null
-        echo "Invalid selection: $selection"
+        echo "Invalid selection: $selection" >&2
         return 1
     end
 

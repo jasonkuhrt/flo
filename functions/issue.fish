@@ -51,7 +51,7 @@ function issue --description "Start work on a GitHub issue"
             echo "Error: jq is required for JSON parsing. Please install jq." >&2
             return 1
         end
-        
+
         set title (echo $issue_data | jq -r '.title')
     else
         # Search for issue by title

@@ -12,7 +12,7 @@ function __flo_create_worktree --description "Create a git worktree for a branch
         echo "Error: Not in a git repository" >&2
         return 1
     end
-    
+
     set -l repo_name (basename $repo_root)
     set -l location ~/worktrees/$repo_name
     mkdir -p $location

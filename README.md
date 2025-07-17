@@ -12,6 +12,14 @@ A GitHub issue-driven development workflow tool for Fish shell that integrates w
 - **Zed editor support**: Opens worktrees in Zed automatically
 - **Comprehensive status**: Shows issue, PR, and worktree status
 
+## Requirements
+
+- **Fish shell** (3.0+)
+- **git** and **GitHub CLI** (`gh`)
+- **gum** - for interactive UI components ([github.com/charmbracelet/gum](https://github.com/charmbracelet/gum))
+  - macOS: `brew install gum`
+  - Other platforms: See [installation guide](https://github.com/charmbracelet/gum#installation)
+
 ## Installation
 
 ### Standard Installation

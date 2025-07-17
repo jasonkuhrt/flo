@@ -7,6 +7,7 @@ Commands:
   issue <number|title>    Start work on a GitHub issue
   issue-create <title>    Create a new issue and start working on it
   next [number]           Transition to next issue (context-aware)
+  rm [number]             Remove issue, PR, and/or worktree
   pr [create|push|checks|merge]  Manage pull requests
   worktree <create|delete|list|switch>  Manage git worktrees
   list <issues|prs|worktrees>  List various items

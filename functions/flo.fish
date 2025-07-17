@@ -43,6 +43,8 @@ function flo --description "Git workflow automation tool"
             next $argv
         case rm
             rm $argv
+        case reload
+            __flo_reload $argv
         case help ''
             echo "flo - Git workflow automation tool"
             echo ""

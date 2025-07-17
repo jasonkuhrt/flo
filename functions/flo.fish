@@ -2,34 +2,34 @@ function flo --description "GitHub issue flow tool"
     # Parse arguments
     set -l cmd $argv[1]
     set -e argv[1]
-    
+
     # Check for --help flag only if it's the first argument or no command
     if test -z "$cmd"; or test "$cmd" = --help
         __flo_help
         return 0
     end
-    
+
     # Show help and exit
     if contains -- $cmd help h
         __flo_help
         return 0
     end
-    
+
     # Check if cmd is a number (issue workflow)
     if string match -qr '^\d+$' -- $cmd
         __flo_issue $cmd $argv
         return
     end
-    
+
     # Determine if we're in a git repository
     set -l in_git_repo (git rev-parse --git-dir >/dev/null 2>&1; and echo true; or echo false)
     set -l project_name ""
     set -l base_root (test -n "$FLO_BASE_DIR"; and echo "$FLO_BASE_DIR"; or echo "$HOME/worktrees")
     set -l base_dir ""
-    
+
     # Commands that require git repository
     set -l git_required_cmds create c
-    
+
     # Check if command requires git
     if contains -- $cmd $git_required_cmds
         if test $in_git_repo = false
@@ -39,7 +39,7 @@ function flo --description "GitHub issue flow tool"
             return 1
         end
     end
-    
+
     # Get project context if in git repo
     if test $in_git_repo = true
         set project_name (__flo_get_project_name)
@@ -51,44 +51,44 @@ function flo --description "GitHub issue flow tool"
         end
         set base_dir "$base_root/$project_name"
     end
-    
+
     # Configuration
     set -l branch_prefix (test -n "$FLO_BRANCH_PREFIX"; and echo "$FLO_BRANCH_PREFIX"; or echo "claude/")
     set -l issue_prefix (test -n "$FLO_ISSUE_PREFIX"; and echo "$FLO_ISSUE_PREFIX"; or echo "issue/")
-    
+
     switch $cmd
         case create c
             # Requires git (checked above)
             __flo_create $base_dir $branch_prefix $issue_prefix $argv
-            
+
         case rm remove r
             # Doesn't require git - works with paths
             __flo_remove $base_root $in_git_repo $project_name $argv
-            
+
         case cd
             # Doesn't require git - just navigation
             __flo_cd $base_root $in_git_repo $project_name $argv
-            
+
         case claude
             # May require git if creating new worktree
             __flo_claude $base_root $in_git_repo $project_name $branch_prefix $issue_prefix $argv
-            
+
         case next n
             # Context-aware next issue workflow
             flo-next $argv
-            
+
         case list ls l
             # Doesn't require git
             __flo_list $base_root $in_git_repo $project_name $argv
-            
+
         case status s
             # Doesn't require git
             __flo_status $base_root $in_git_repo $project_name $argv
-            
+
         case projects p
             # Doesn't require git
             __flo_projects $base_root
-            
+
         case issues i
             # Requires git to list repo issues
             if test $in_git_repo = false
@@ -98,7 +98,7 @@ function flo --description "GitHub issue flow tool"
                 return 1
             end
             __flo_issues
-            
+
         case pr
             # Requires git for PR operations
             if test $in_git_repo = false
@@ -108,15 +108,15 @@ function flo --description "GitHub issue flow tool"
                 return 1
             end
             __flo_pr $argv
-            
+
         case sync
             # Doesn't require git at top level
             __flo_sync $base_root
-            
+
         case zed z
             # Doesn't require git
             __flo_zed $base_root $in_git_repo $project_name $argv
-            
+
         case '*'
             # Don't show error for --help since it's handled above
             if not contains -- $cmd --help
@@ -135,7 +135,7 @@ function __flo_get_project_name
         echo "$FLO_PROJECT_NAME"
         return 0
     end
-    
+
     # Try to get from remote origin
     set -l remote_url (git remote get-url origin 2>/dev/null)
     if test -n "$remote_url"
@@ -146,7 +146,7 @@ function __flo_get_project_name
             return 0
         end
     end
-    
+
     # Fallback to directory name
     basename (git rev-parse --show-toplevel)
 end
@@ -345,7 +345,7 @@ function __flo_issue --argument-names issue_number
     # Parse remaining arguments for flags
     set -l do_zed false
     set -l do_claude false
-    
+
     for arg in $argv
         switch $arg
             case --zed
@@ -354,7 +354,7 @@ function __flo_issue --argument-names issue_number
                 set do_claude true
         end
     end
-    
+
     # Check if we're in a git repository
     if not git rev-parse --git-dir >/dev/null 2>&1
         set_color red
@@ -362,7 +362,7 @@ function __flo_issue --argument-names issue_number
         set_color normal
         return 1
     end
-    
+
     # Get project context
     set -l project_name (__flo_get_project_name)
     if test -z "$project_name"
@@ -371,13 +371,13 @@ function __flo_issue --argument-names issue_number
         set_color normal
         return 1
     end
-    
+
     set -l base_root (test -n "$FLO_BASE_DIR"; and echo "$FLO_BASE_DIR"; or echo "$HOME/worktrees")
     set -l base_dir "$base_root/$project_name"
     set -l issue_prefix (test -n "$FLO_ISSUE_PREFIX"; and echo "$FLO_ISSUE_PREFIX"; or echo "issue/")
     set -l worktree_name "$issue_prefix$issue_number"
     set -l worktree_path "$base_dir/$worktree_name"
-    
+
     # Check if issue exists via gh
     echo "Checking issue #$issue_number..."
     set -l issue_data (gh issue view $issue_number --json number,title,state,body,labels,assignees 2>/dev/null)
@@ -387,29 +387,29 @@ function __flo_issue --argument-names issue_number
         set_color normal
         return 1
     end
-    
+
     # Parse issue data
     set -l issue_title (echo $issue_data | jq -r '.title')
     set -l issue_state (echo $issue_data | jq -r '.state')
-    
+
     # Show issue info
     set_color green
     echo "Issue #$issue_number: $issue_title"
     set_color normal
     echo "State: $issue_state"
     echo ""
-    
+
     # Check if worktree already exists
     if test -d "$worktree_path"
         echo "Navigating to existing worktree..."
         cd "$worktree_path"
-        
+
         # Update context files
         __flo_update_issue_context $worktree_path $issue_number $issue_data
     else
         # Create new worktree
         echo "Creating new worktree..."
-        
+
         # Ensure base directory exists
         mkdir -p "$base_dir"; or begin
             set_color red
@@ -417,7 +417,7 @@ function __flo_issue --argument-names issue_number
             set_color normal
             return 1
         end
-        
+
         # Create worktree
         git worktree add "$worktree_path" -b "$worktree_name"; or begin
             set_color red
@@ -425,19 +425,19 @@ function __flo_issue --argument-names issue_number
             set_color normal
             return 1
         end
-        
+
         echo "Created worktree at: $worktree_path"
         cd "$worktree_path"
-        
+
         # Create initial context files
         __flo_create_issue_context $worktree_path $issue_number $issue_data
     end
-    
+
     # Handle flags
     if test $do_zed = true
         zed .
     end
-    
+
     if test $do_claude = true
         # Create context-aware prompt
         set -l prompt "I'm working on issue #$issue_number: '$issue_title' in repository $project_name on branch '$worktree_name'. "
@@ -450,12 +450,12 @@ function __flo_issue --argument-names issue_number
             set prompt "$prompt No PR exists yet. "
         end
         set prompt "$prompt The issue details are in CLAUDE.local.md and full data in .flo/cache/. How can I help with this issue?"
-        
+
         # Allow custom prompt override
         if test -n "$FLO_CLAUDE_PROMPT"
             set prompt (string replace -a "{{issue_number}}" "$issue_number" $FLO_CLAUDE_PROMPT | string replace -a "{{issue_title}}" "$issue_title")
         end
-        
+
         claude "$prompt"
     end
 end
@@ -463,22 +463,22 @@ end
 function __flo_create_issue_context --argument-names worktree_path issue_number issue_data
     # Create .flo/cache directory
     mkdir -p "$worktree_path/.flo/cache"
-    
+
     # Save raw issue data
-    echo $issue_data > "$worktree_path/.flo/cache/issue.json"
-    
+    echo $issue_data >"$worktree_path/.flo/cache/issue.json"
+
     # Get issue comments
-    gh issue view $issue_number --comments --json comments | jq '.comments' > "$worktree_path/.flo/cache/comments.json" 2>/dev/null
-    
+    gh issue view $issue_number --comments --json comments | jq '.comments' >"$worktree_path/.flo/cache/comments.json" 2>/dev/null
+
     # Create metadata
-    echo "{\"updated\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\", \"version\": \"1.0\"}" > "$worktree_path/.flo/cache/metadata.json"
-    
+    echo "{\"updated\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\", \"version\": \"1.0\"}" >"$worktree_path/.flo/cache/metadata.json"
+
     # Create CLAUDE.local.md
-    __flo_generate_claude_context $worktree_path $issue_number $issue_data > "$worktree_path/CLAUDE.local.md"
-    
+    __flo_generate_claude_context $worktree_path $issue_number $issue_data >"$worktree_path/CLAUDE.local.md"
+
     # Ensure .gitignore entries
     __flo_ensure_gitignore $worktree_path
-    
+
     set_color green
     echo "Created context files in .flo/cache/ and CLAUDE.local.md"
     set_color normal
@@ -488,7 +488,7 @@ function __flo_update_issue_context --argument-names worktree_path issue_number 
     # Check cache age
     set -l cache_ttl (test -n "$FLO_CACHE_TTL"; and echo "$FLO_CACHE_TTL"; or echo "30")
     set -l should_update false
-    
+
     if test -f "$worktree_path/.flo/cache/metadata.json"
         set -l last_update (cat "$worktree_path/.flo/cache/metadata.json" | jq -r '.updated' 2>/dev/null)
         if test -n "$last_update"
@@ -502,7 +502,7 @@ function __flo_update_issue_context --argument-names worktree_path issue_number 
     else
         set should_update true
     end
-    
+
     if test $should_update = true
         echo "Updating context files..."
         __flo_create_issue_context $worktree_path $issue_number $issue_data
@@ -514,7 +514,7 @@ function __flo_generate_claude_context --argument-names worktree_path issue_numb
     set -l state (echo $issue_data | jq -r '.state')
     set -l body (echo $issue_data | jq -r '.body // "No description"')
     set -l labels (echo $issue_data | jq -r '.labels[].name' | string join ', ')
-    
+
     echo "# Issue #$issue_number: $title"
     echo ""
     echo "## Status"
@@ -522,7 +522,7 @@ function __flo_generate_claude_context --argument-names worktree_path issue_numb
     if test -n "$labels"
         echo "- Labels: $labels"
     end
-    
+
     # Check for PR
     set -l pr_info (gh pr list --head "issue/$issue_number" --json number,state,url --jq '.[0]' 2>/dev/null)
     if test -n "$pr_info"
@@ -531,7 +531,7 @@ function __flo_generate_claude_context --argument-names worktree_path issue_numb
         set -l pr_url (echo $pr_info | jq -r '.url')
         echo "- PR: #$pr_number ($pr_state)"
     end
-    
+
     echo ""
     echo "## Description"
     echo "$body"
@@ -554,27 +554,27 @@ end
 function __flo_ensure_gitignore --argument-names worktree_path
     set -l gitignore_path "$worktree_path/.gitignore"
     set -l needs_update false
-    
+
     # Check if entries exist
     if test -f "$gitignore_path"
-        if not string match -q '*CLAUDE.local.md*' < "$gitignore_path"
+        if not string match -q '*CLAUDE.local.md*' <"$gitignore_path"
             set needs_update true
         end
-        if not string match -q '*.flo/*' < "$gitignore_path"
+        if not string match -q '*.flo/*' <"$gitignore_path"
             set needs_update true
         end
     else
         set needs_update true
     end
-    
+
     if test $needs_update = true
-        echo "" >> "$gitignore_path"
-        echo "# flo context files" >> "$gitignore_path"
-        if not string match -q '*CLAUDE.local.md*' < "$gitignore_path"
-            echo "CLAUDE.local.md" >> "$gitignore_path"
+        echo "" >>"$gitignore_path"
+        echo "# flo context files" >>"$gitignore_path"
+        if not string match -q '*CLAUDE.local.md*' <"$gitignore_path"
+            echo "CLAUDE.local.md" >>"$gitignore_path"
         end
-        if not string match -q '*.flo/*' < "$gitignore_path"
-            echo ".flo/" >> "$gitignore_path"
+        if not string match -q '*.flo/*' <"$gitignore_path"
+            echo ".flo/" >>"$gitignore_path"
         end
         echo "Updated .gitignore with flo entries"
     end
@@ -582,13 +582,13 @@ end
 
 function __flo_create --argument-names base_dir branch_prefix issue_prefix
     set -e argv[1..3]
-    
+
     # Check for help flag
     if contains -- --help $argv
         __flo_help_create
         return 0
     end
-    
+
     # Ensure base directory exists
     if not test -d "$base_dir"
         mkdir -p "$base_dir"; or begin
@@ -598,7 +598,7 @@ function __flo_create --argument-names base_dir branch_prefix issue_prefix
             return 1
         end
     end
-    
+
     if test (count $argv) -eq 0
         set_color red
         echo "Error: No worktree name provided"
@@ -607,24 +607,24 @@ function __flo_create --argument-names base_dir branch_prefix issue_prefix
         echo "Run 'flo create --help' for more information"
         return 1
     end
-    
+
     for i in (seq (count $argv))
         set -l name $argv[$i]
         set -l source_branch ""
-        
+
         # Check if next argument is a source branch (only for single worktree creation)
         if test (count $argv) -eq 2 -a $i -eq 1
             set source_branch $argv[2]
             set i (math $i + 1)
         end
-        
+
         # Validate name
         if not __flo_validate_name $name
             continue
         end
-        
+
         set -l worktree_path "$base_dir/$name"
-        
+
         # Determine branch prefix based on name pattern
         set -l branch_name
         if string match -qr '^issue/\d+$' $name
@@ -634,7 +634,7 @@ function __flo_create --argument-names base_dir branch_prefix issue_prefix
             # Use regular branch prefix
             set branch_name "$branch_prefix$name"
         end
-        
+
         # Check if worktree already exists
         if test -d "$worktree_path"
             set_color yellow
@@ -642,12 +642,12 @@ function __flo_create --argument-names base_dir branch_prefix issue_prefix
             set_color normal
             continue
         end
-        
+
         # Create worktree
         set_color green
         echo "Creating worktree: $name"
         set_color normal
-        
+
         # Check if branch already exists
         set -l branch_exists (git show-ref --verify --quiet refs/heads/$branch_name 2>/dev/null; and echo true; or echo false)
         set -l remote_branch_exists false
@@ -658,7 +658,7 @@ function __flo_create --argument-names base_dir branch_prefix issue_prefix
                 set remote_branch_exists true
             end
         end
-        
+
         if test -n "$source_branch"
             # Creating from a specific source branch - always create new branch
             git worktree add "$worktree_path" -b "$branch_name" "$source_branch"; or begin
@@ -696,7 +696,7 @@ function __flo_create --argument-names base_dir branch_prefix issue_prefix
                 return 1
             end
         end
-        
+
         echo "  Path: $worktree_path"
         echo "  Branch: $branch_name"
     end
@@ -704,13 +704,13 @@ end
 
 function __flo_remove --argument-names base_root in_git_repo project_name
     set -e argv[1..3]
-    
+
     # Check for help flag
     if contains -- --help $argv
         __flo_help_remove
         return 0
     end
-    
+
     if test (count $argv) -eq 0
         set_color red
         echo "Error: No worktree name provided"
@@ -719,10 +719,10 @@ function __flo_remove --argument-names base_root in_git_repo project_name
         echo "Run 'flo remove --help' for more information"
         return 1
     end
-    
+
     for name in $argv
         set -l worktree_path ""
-        
+
         # Determine worktree path
         if string match -q '*/*' $name
             # Full project/name path
@@ -736,27 +736,27 @@ function __flo_remove --argument-names base_root in_git_repo project_name
             set_color normal
             return 1
         end
-        
+
         if not test -d "$worktree_path"
             set_color yellow
             echo "Warning: Worktree '$name' does not exist"
             set_color normal
             continue
         end
-        
+
         # Check for associated PR
         set -l branch (git -C "$worktree_path" branch --show-current 2>/dev/null)
         set -l pr_data ""
         set -l pr_number ""
         set -l pr_state ""
-        
+
         if test -n "$branch"
             set pr_data (gh pr list --head $branch --json number,state,title --jq '.[0]' 2>/dev/null)
-            if test -n "$pr_data" -a "$pr_data" != "null"
+            if test -n "$pr_data" -a "$pr_data" != null
                 set pr_number (echo $pr_data | jq -r '.number')
                 set pr_state (echo $pr_data | jq -r '.state')
                 set -l pr_title (echo $pr_data | jq -r '.title')
-                
+
                 echo ""
                 set_color cyan
                 echo "Associated PR #$pr_number: $pr_title"
@@ -764,25 +764,25 @@ function __flo_remove --argument-names base_root in_git_repo project_name
                 set_color normal
             end
         end
-        
+
         # Confirm removal
         set_color yellow
         printf "Remove worktree '%s'? [y/N] " $name
         set_color normal
         read -l reply
-        
+
         switch $reply
             case y Y yes YES Yes
                 # Handle PR if exists and is open
-                if test -n "$pr_number" -a "$pr_state" = "OPEN"
+                if test -n "$pr_number" -a "$pr_state" = OPEN
                     set -l auto_close_pr (test -n "$FLO_AUTO_CLOSE_PR"; and echo "$FLO_AUTO_CLOSE_PR"; or echo "true")
-                    
-                    if test "$auto_close_pr" = "true"
+
+                    if test "$auto_close_pr" = true
                         set_color yellow
                         printf "Close associated PR #$pr_number? [Y/n] "
                         set_color normal
                         read -l pr_reply
-                        
+
                         if test -z "$pr_reply" -o "$pr_reply" = y -o "$pr_reply" = Y
                             echo "Closing PR #$pr_number..."
                             gh pr close $pr_number
@@ -798,7 +798,7 @@ function __flo_remove --argument-names base_root in_git_repo project_name
                         end
                     end
                 end
-                
+
                 # Remove worktree
                 set_color green
                 echo "Removing worktree: $name"
@@ -818,7 +818,7 @@ end
 
 function __flo_cd --argument-names base_root in_git_repo project_name
     set -e argv[1..3]
-    
+
     if test (count $argv) -ne 1
         set_color red
         echo "Error: Provide exactly one worktree name"
@@ -826,10 +826,10 @@ function __flo_cd --argument-names base_root in_git_repo project_name
         echo "Usage: flo cd <name> or flo cd <project>/<name>"
         return 1
     end
-    
+
     set -l target $argv[1]
     set -l worktree_path ""
-    
+
     # Check if target contains a project separator
     if string match -q '*/*' $target
         # Cross-project navigation
@@ -848,7 +848,7 @@ function __flo_cd --argument-names base_root in_git_repo project_name
         __flo_list $base_root false "" --all
         return 1
     end
-    
+
     if not test -d "$worktree_path"
         set_color red
         echo "Error: Worktree '$target' does not exist"
@@ -856,7 +856,7 @@ function __flo_cd --argument-names base_root in_git_repo project_name
         __flo_list $base_root $in_git_repo $project_name --all
         return 1
     end
-    
+
     cd "$worktree_path"
     set_color green
     echo "Changed to worktree: $target"
@@ -865,13 +865,13 @@ end
 
 function __flo_claude --argument-names base_root in_git_repo project_name branch_prefix issue_prefix
     set -e argv[1..5]
-    
+
     # Check for help flag
     if contains -- --help $argv
         __flo_help_claude
         return 0
     end
-    
+
     # If no arguments, check if we're in a worktree
     if test (count $argv) -eq 0
         set -l current_path (pwd)
@@ -887,23 +887,23 @@ function __flo_claude --argument-names base_root in_git_repo project_name branch
                 set -l worktree_path "$base_root/$project_name/$name"
                 # Jump to the worktree workflow section
                 cd "$worktree_path"
-                
+
                 # Check if this is an issue worktree
                 if string match -qr '^issue/(\d+)$' $name
                     set -l issue_number (string replace -r '^issue/(\d+)$' '$1' $name)
-                    
+
                     # Update context if needed
                     set -l issue_data (gh issue view $issue_number --json number,title,state,body,labels,assignees 2>/dev/null)
                     if test -n "$issue_data"
                         __flo_update_issue_context $worktree_path $issue_number $issue_data
                     end
-                    
+
                     # Create context-aware prompt
                     set -l issue_title (echo $issue_data | jq -r '.title')
                     set -l prompt "I'm working on issue #$issue_number: '$issue_title' in repository $project_name on branch '$name'. "
-                    
+
                     set -l pr_info (gh pr list --head $name --json number,state --jq '.[0]' 2>/dev/null)
-                    if test -n "$pr_info" -a "$pr_info" != "null"
+                    if test -n "$pr_info" -a "$pr_info" != null
                         set -l pr_number (echo $pr_info | jq -r '.number')
                         set -l pr_state (echo $pr_info | jq -r '.state')
                         set prompt "$prompt There is PR #$pr_number ($pr_state) for this issue. "
@@ -911,27 +911,27 @@ function __flo_claude --argument-names base_root in_git_repo project_name branch
                         set prompt "$prompt No PR exists yet. "
                     end
                     set prompt "$prompt The issue details are in CLAUDE.local.md and full data in .flo/cache/. How can I help with this issue?"
-                    
+
                     # Allow custom prompt override
                     if test -n "$FLO_CLAUDE_PROMPT"
                         set prompt (string replace -a "{{issue_number}}" "$issue_number" $FLO_CLAUDE_PROMPT | string replace -a "{{issue_title}}" "$issue_title")
                     end
-                    
+
                     claude "$prompt"
                 else
                     # For non-issue worktrees, create a simple context file
                     if not test -f "$worktree_path/CLAUDE.local.md"
-                        echo "# Worktree: $name" > "$worktree_path/CLAUDE.local.md"
-                        echo "" >> "$worktree_path/CLAUDE.local.md"
-                        echo "## Project: $project_name" >> "$worktree_path/CLAUDE.local.md"
-                        echo "" >> "$worktree_path/CLAUDE.local.md"
-                        echo "## Branch: $name" >> "$worktree_path/CLAUDE.local.md"
-                        echo "" >> "$worktree_path/CLAUDE.local.md"
-                        echo "Created by flo for worktree development" >> "$worktree_path/CLAUDE.local.md"
-                        
+                        echo "# Worktree: $name" >"$worktree_path/CLAUDE.local.md"
+                        echo "" >>"$worktree_path/CLAUDE.local.md"
+                        echo "## Project: $project_name" >>"$worktree_path/CLAUDE.local.md"
+                        echo "" >>"$worktree_path/CLAUDE.local.md"
+                        echo "## Branch: $name" >>"$worktree_path/CLAUDE.local.md"
+                        echo "" >>"$worktree_path/CLAUDE.local.md"
+                        echo "Created by flo for worktree development" >>"$worktree_path/CLAUDE.local.md"
+
                         __flo_ensure_gitignore $worktree_path
                     end
-                    
+
                     # Start claude with basic context
                     set -l prompt "I'm working in worktree '$name' for project $project_name. How can I help?"
                     claude "$prompt"
@@ -947,7 +947,7 @@ function __flo_claude --argument-names base_root in_git_repo project_name branch
         echo "Run 'flo claude --help' for more information"
         return 1
     end
-    
+
     if test (count $argv) -ne 1
         set_color red
         echo "Error: Provide exactly one worktree name"
@@ -956,10 +956,10 @@ function __flo_claude --argument-names base_root in_git_repo project_name branch
         echo "Run 'flo claude --help' for more information"
         return 1
     end
-    
+
     set -l name $argv[1]
     set -l worktree_path ""
-    
+
     # Determine worktree path
     if string match -q '*/*' $name
         set worktree_path "$base_root/$name"
@@ -971,7 +971,7 @@ function __flo_claude --argument-names base_root in_git_repo project_name branch
         set_color normal
         return 1
     end
-    
+
     # Create worktree if it doesn't exist
     if not test -d "$worktree_path"
         if test $in_git_repo = false
@@ -980,12 +980,12 @@ function __flo_claude --argument-names base_root in_git_repo project_name branch
             set_color normal
             return 1
         end
-        
+
         set_color yellow
         printf "Worktree '%s' doesn't exist. Create it now? [y/N] " $name
         set_color normal
         read -l reply
-        
+
         switch $reply
             case y Y yes YES Yes
                 __flo_create "$base_root/$project_name" $branch_prefix $issue_prefix $name; or return 1
@@ -994,26 +994,26 @@ function __flo_claude --argument-names base_root in_git_repo project_name branch
                 return 1
         end
     end
-    
+
     # Create/update context files
     cd "$worktree_path"
-    
+
     # Check if this is an issue worktree
     if string match -qr '^issue/(\d+)$' $name
         set -l issue_number (string replace -r '^issue/(\d+)$' '$1' $name)
-        
+
         # Update context if needed
         set -l issue_data (gh issue view $issue_number --json number,title,state,body,labels,assignees 2>/dev/null)
         if test -n "$issue_data"
             __flo_update_issue_context $worktree_path $issue_number $issue_data
         end
-        
+
         # Create context-aware prompt
         set -l issue_title (echo $issue_data | jq -r '.title')
         set -l prompt "I'm working on issue #$issue_number: '$issue_title' in repository $project_name on branch '$name'. "
-        
+
         set -l pr_info (gh pr list --head $name --json number,state --jq '.[0]' 2>/dev/null)
-        if test -n "$pr_info" -a "$pr_info" != "null"
+        if test -n "$pr_info" -a "$pr_info" != null
             set -l pr_number (echo $pr_info | jq -r '.number')
             set -l pr_state (echo $pr_info | jq -r '.state')
             set prompt "$prompt There is PR #$pr_number ($pr_state) for this issue. "
@@ -1021,27 +1021,27 @@ function __flo_claude --argument-names base_root in_git_repo project_name branch
             set prompt "$prompt No PR exists yet. "
         end
         set prompt "$prompt The issue details are in CLAUDE.local.md and full data in .flo/cache/. How can I help with this issue?"
-        
+
         # Allow custom prompt override
         if test -n "$FLO_CLAUDE_PROMPT"
             set prompt (string replace -a "{{issue_number}}" "$issue_number" $FLO_CLAUDE_PROMPT | string replace -a "{{issue_title}}" "$issue_title")
         end
-        
+
         claude "$prompt"
     else
         # For non-issue worktrees, create a simple context file
         if not test -f "$worktree_path/CLAUDE.local.md"
-            echo "# Worktree: $name" > "$worktree_path/CLAUDE.local.md"
-            echo "" >> "$worktree_path/CLAUDE.local.md"
-            echo "## Project: $project_name" >> "$worktree_path/CLAUDE.local.md"
-            echo "" >> "$worktree_path/CLAUDE.local.md"
-            echo "## Branch: $name" >> "$worktree_path/CLAUDE.local.md"
-            echo "" >> "$worktree_path/CLAUDE.local.md"
-            echo "Created by flo for worktree development" >> "$worktree_path/CLAUDE.local.md"
-            
+            echo "# Worktree: $name" >"$worktree_path/CLAUDE.local.md"
+            echo "" >>"$worktree_path/CLAUDE.local.md"
+            echo "## Project: $project_name" >>"$worktree_path/CLAUDE.local.md"
+            echo "" >>"$worktree_path/CLAUDE.local.md"
+            echo "## Branch: $name" >>"$worktree_path/CLAUDE.local.md"
+            echo "" >>"$worktree_path/CLAUDE.local.md"
+            echo "Created by flo for worktree development" >>"$worktree_path/CLAUDE.local.md"
+
             __flo_ensure_gitignore $worktree_path
         end
-        
+
         # Start claude with basic context
         set -l prompt "I'm working in worktree '$name' for project $project_name. How can I help?"
         claude "$prompt"
@@ -1050,13 +1050,13 @@ end
 
 function __flo_list --argument-names base_root in_git_repo project_name
     set -e argv[1..3]
-    
+
     # Check for help flag
     if contains -- --help $argv
         __flo_help_list
         return 0
     end
-    
+
     # Determine default behavior
     set -l show_all false
     if test $in_git_repo = false
@@ -1065,7 +1065,7 @@ function __flo_list --argument-names base_root in_git_repo project_name
     else if contains -- --all $argv
         set show_all true
     end
-    
+
     if not test -d "$base_root"
         # Create base directory if it doesn't exist
         mkdir -p "$base_root"
@@ -1077,24 +1077,24 @@ function __flo_list --argument-names base_root in_git_repo project_name
         set_color normal
         return 0
     end
-    
+
     set -l current_path (pwd)
     set -l found_any false
-    
+
     if test $show_all = true
         echo "All worktrees:"
     else
         echo "Worktrees for project: $project_name"
     end
     echo ""
-    
+
     if test $show_all = true
         # Show all projects
         for project_dir in $base_root/*
             if test -d "$project_dir"
                 set -l proj_name (basename $project_dir)
                 set -l has_worktrees false
-                
+
                 # Check if project has worktrees
                 for worktree in $project_dir/*
                     if test -d "$worktree"
@@ -1104,10 +1104,10 @@ function __flo_list --argument-names base_root in_git_repo project_name
                             echo "[$proj_name]"
                             set_color normal
                         end
-                        
+
                         set -l name (basename $worktree)
                         set -l is_current (test "$worktree" = "$current_path"; and echo true; or echo false)
-                        
+
                         # Try to get branch info
                         set -l branch_info ""
                         if test -f "$worktree/.git"
@@ -1116,7 +1116,7 @@ function __flo_list --argument-names base_root in_git_repo project_name
                                 set branch_info " (branch: $branch)"
                             end
                         end
-                        
+
                         if test $is_current = true
                             set_color green
                             echo "  → $name$branch_info"
@@ -1137,7 +1137,7 @@ function __flo_list --argument-names base_root in_git_repo project_name
                     set found_any true
                     set -l name (basename $worktree)
                     set -l is_current (test "$worktree" = "$current_path"; and echo true; or echo false)
-                    
+
                     # Try to get branch info
                     set -l branch_info ""
                     if test -f "$worktree/.git"
@@ -1146,7 +1146,7 @@ function __flo_list --argument-names base_root in_git_repo project_name
                             set branch_info " (branch: $branch)"
                         end
                     end
-                    
+
                     if test $is_current = true
                         set_color green
                         echo "→ $name$branch_info"
@@ -1158,7 +1158,7 @@ function __flo_list --argument-names base_root in_git_repo project_name
             end
         end
     end
-    
+
     if not test $found_any = true
         set_color yellow
         if test $show_all = true
@@ -1177,17 +1177,17 @@ end
 
 function __flo_status --argument-names base_root in_git_repo project_name
     set -e argv[1..3]
-    
+
     # Check for help flag
     if contains -- --help $argv
         __flo_help_status
         return 0
     end
-    
+
     # Parse --project flag
     set -l target_project ""
     set -l remaining_args
-    
+
     # Only process if there are arguments
     if test (count $argv) -gt 0
         set -l skip_next false
@@ -1196,7 +1196,7 @@ function __flo_status --argument-names base_root in_git_repo project_name
                 set skip_next false
                 continue
             end
-            
+
             if test "$argv[$i]" = --project
                 if test (math $i + 1) -le (count $argv)
                     set target_project $argv[(math $i + 1)]
@@ -1207,7 +1207,7 @@ function __flo_status --argument-names base_root in_git_repo project_name
             end
         end
     end
-    
+
     # Determine what to show based on context
     if test -n "$target_project"
         if test "$target_project" = all
@@ -1236,7 +1236,7 @@ end
 function __flo_status_worktree --argument-names worktree_path
     set -l worktree_name (basename $worktree_path)
     set -l project_name (basename (dirname $worktree_path))
-    
+
     # Header
     set_color cyan
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -1246,16 +1246,16 @@ function __flo_status_worktree --argument-names worktree_path
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     set_color normal
     echo ""
-    
+
     # Git information
     cd "$worktree_path"
     set -l current_branch (git branch --show-current)
     set -l upstream (git rev-parse --abbrev-ref '@{upstream}' 2>/dev/null)
-    
+
     echo "Branch: $current_branch"
     if test -n "$upstream"
         echo "Tracking: $upstream"
-        
+
         # Get ahead/behind info
         set -l ahead_behind (git rev-list --left-right --count HEAD...$upstream 2>/dev/null)
         if test -n "$ahead_behind"
@@ -1281,29 +1281,29 @@ function __flo_status_worktree --argument-names worktree_path
         end
     end
     echo ""
-    
+
     # Check if this is an issue worktree
     if string match -qr '^issue/(\d+)$' $worktree_name
         set -l issue_number (string replace -r '^issue/(\d+)$' '$1' $worktree_name)
-        
+
         # Show issue info
         set_color green
         echo "Issue Information:"
         set_color normal
-        
+
         # Check cache
         if test -f "$worktree_path/.flo/cache/issue.json"
             set -l issue_data (cat "$worktree_path/.flo/cache/issue.json")
             set -l issue_title (echo $issue_data | jq -r '.title')
             set -l issue_state (echo $issue_data | jq -r '.state')
             set -l labels (echo $issue_data | jq -r '.labels[].name' | string join ', ')
-            
+
             echo "  #$issue_number: $issue_title"
             echo "  State: $issue_state"
             if test -n "$labels"
                 echo "  Labels: $labels"
             end
-            
+
             # Cache age
             if test -f "$worktree_path/.flo/cache/metadata.json"
                 set -l updated (cat "$worktree_path/.flo/cache/metadata.json" | jq -r '.updated')
@@ -1313,10 +1313,10 @@ function __flo_status_worktree --argument-names worktree_path
             echo "  #$issue_number (no cache - run 'flo sync')"
         end
         echo ""
-        
+
         # Check for PR
         set -l pr_data (gh pr list --head $current_branch --json number,state,url --jq '.[0]' 2>/dev/null)
-        if test -n "$pr_data" -a "$pr_data" != "null"
+        if test -n "$pr_data" -a "$pr_data" != null
             set_color green
             echo "Pull Request:"
             set_color normal
@@ -1326,13 +1326,13 @@ function __flo_status_worktree --argument-names worktree_path
         end
         echo ""
     end
-    
+
     # Git status
     set_color green
     echo "Git Status:"
     set_color normal
     git status -sb | head -10
-    
+
     set -l status_lines (git status -sb | wc -l)
     if test $status_lines -gt 10
         echo "  ... and "(math $status_lines - 10)" more lines"
@@ -1345,20 +1345,20 @@ function __flo_status_project --argument-names base_root project_name
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     set_color normal
     echo ""
-    
+
     if not test -d "$base_root/$project_name"
         set_color yellow
         echo "No worktrees found"
         set_color normal
         return
     end
-    
+
     # List worktrees with status
     for worktree_dir in "$base_root/$project_name"/*
         if test -d "$worktree_dir"
             set -l name (basename $worktree_dir)
             set -l branch (git -C "$worktree_dir" branch --show-current 2>/dev/null)
-            
+
             # Check git status
             set -l status_summary ""
             if test -n "$branch"
@@ -1366,23 +1366,23 @@ function __flo_status_project --argument-names base_root project_name
                 if test $changes -gt 0
                     set status_summary " ($changes changes)"
                 end
-                
+
                 # Check for PR
                 set -l pr_info (gh pr list --head $branch --json number,state --jq '.[0]' 2>/dev/null)
-                if test -n "$pr_info" -a "$pr_info" != "null"
+                if test -n "$pr_info" -a "$pr_info" != null
                     set -l pr_num (echo $pr_info | jq -r '.number')
                     set -l pr_state (echo $pr_info | jq -r '.state')
                     set status_summary "$status_summary PR #$pr_num ($pr_state)"
                 end
             end
-            
+
             # Check if issue worktree
             set -l issue_info ""
             if string match -qr '^issue/(\d+)$' $name
                 set -l issue_num (string replace -r '^issue/(\d+)$' '$1' $name)
                 set issue_info " Issue #$issue_num"
             end
-            
+
             echo "• $name → $branch$issue_info$status_summary"
         end
     end
@@ -1395,7 +1395,7 @@ function __flo_status_all_projects --argument-names base_root
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     set_color normal
     echo ""
-    
+
     if not test -d "$base_root"
         # Create base directory if it doesn't exist
         mkdir -p "$base_root"
@@ -1407,31 +1407,31 @@ function __flo_status_all_projects --argument-names base_root
         set_color normal
         return
     end
-    
+
     set -l total_worktrees 0
     set -l total_issues 0
     set -l total_prs 0
-    
+
     for project_dir in "$base_root"/*
         if test -d "$project_dir"
             set -l project (basename $project_dir)
             set -l worktree_count 0
             set -l issue_count 0
             set -l pr_count 0
-            
+
             # Count worktrees and gather stats
             for worktree in "$project_dir"/*
                 if test -d "$worktree"
                     set worktree_count (math $worktree_count + 1)
                     set total_worktrees (math $total_worktrees + 1)
-                    
+
                     # Check if issue worktree
                     set -l wt_name (basename $worktree)
                     if string match -qr '^issue/\d+$' $wt_name
                         set issue_count (math $issue_count + 1)
                         set total_issues (math $total_issues + 1)
                     end
-                    
+
                     # Check for PR
                     set -l branch (git -C "$worktree" branch --show-current 2>/dev/null)
                     if test -n "$branch"
@@ -1443,26 +1443,26 @@ function __flo_status_all_projects --argument-names base_root
                     end
                 end
             end
-            
+
             if test $worktree_count -gt 0
                 set_color green
                 echo -n "[$project] "
                 set_color normal
                 echo -n "$worktree_count worktrees"
-                
+
                 if test $issue_count -gt 0
                     echo -n ", $issue_count issues"
                 end
-                
+
                 if test $pr_count -gt 0
                     echo -n ", $pr_count PRs"
                 end
-                
+
                 echo ""
             end
         end
     end
-    
+
     echo ""
     set_color cyan
     echo "Summary:"
@@ -1484,29 +1484,29 @@ function __flo_projects --argument-names base_root
         set_color normal
         return 0
     end
-    
+
     echo "Projects with worktrees:"
     echo ""
-    
+
     set -l found_any false
     for project_dir in $base_root/*
         if test -d "$project_dir"
             set -l project_name (basename $project_dir)
             set -l worktree_count 0
-            
+
             # Count actual worktrees
             for worktree in $project_dir/*
                 if test -d "$worktree"
                     set worktree_count (math $worktree_count + 1)
                 end
             end
-            
+
             if test $worktree_count -gt 0
                 set found_any true
                 set_color cyan
                 echo "$project_name ($worktree_count worktrees)"
                 set_color normal
-                
+
                 # List worktrees in this project
                 for worktree in $project_dir/*
                     if test -d "$worktree"
@@ -1519,7 +1519,7 @@ function __flo_projects --argument-names base_root
             end
         end
     end
-    
+
     if not test $found_any = true
         set_color yellow
         echo "  No projects with worktrees found"
@@ -1531,12 +1531,12 @@ function __flo_issues
     echo "Repository Issues"
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     echo ""
-    
+
     # Get project context
     set -l project_name (__flo_get_project_name)
     set -l base_root (test -n "$FLO_BASE_DIR"; and echo "$FLO_BASE_DIR"; or echo "$HOME/worktrees")
     set -l base_dir "$base_root/$project_name"
-    
+
     # Get all worktrees for this project
     set -l worktree_branches
     if test -d "$base_dir"
@@ -1550,49 +1550,49 @@ function __flo_issues
             end
         end
     end
-    
+
     # Get open issues
     set -l issues (gh issue list --json number,title,state,labels,assignees --limit 50)
-    
+
     if test -z "$issues" -o "$issues" = "[]"
         set_color yellow
         echo "No open issues"
         set_color normal
         return 0
     end
-    
+
     # Display issues with worktree status
     echo $issues | jq -r '.[] | [.number, .title, .state, (.labels | map(.name) | join(",")), (.assignees | map(.login) | join(","))] | @tsv' | while read -d \t number title state labels assignees
         echo -n "#$number: $title"
-        
+
         # Check if has worktree
         if contains $number $worktree_branches
             set_color green
             echo -n " [✓ worktree]"
             set_color normal
         end
-        
+
         # Show labels
         if test -n "$labels"
             set_color cyan
             echo -n " ($labels)"
             set_color normal
         end
-        
+
         # Show assignees
         if test -n "$assignees"
             echo -n " @$assignees"
         end
-        
+
         echo ""
     end
-    
+
     echo ""
-    
+
     # Summary
     set -l total_issues (echo $issues | jq 'length')
     set -l with_worktrees (count $worktree_branches)
-    
+
     echo "Summary:"
     echo "  Total open issues: $total_issues"
     echo "  With worktrees: $with_worktrees"
@@ -1601,7 +1601,7 @@ end
 
 function __flo_pr
     set -e argv[1]
-    
+
     # Check for help flag
     if contains -- --help $argv; or test -z "$argv[1]"
         if test -z "$argv[1]"; or test "$argv[1]" = --help
@@ -1609,14 +1609,14 @@ function __flo_pr
             return 0
         end
     end
-    
+
     # Default to status if no subcommand
     set -l subcmd $argv[1]
     if test -z "$subcmd"
         set subcmd status
     end
     set -e argv[1]
-    
+
     switch $subcmd
         case create c
             __flo_pr_create $argv
@@ -1648,7 +1648,7 @@ function __flo_pr_create
         set_color normal
         return 1
     end
-    
+
     # Check if PR already exists
     set -l existing_pr (gh pr list --head $current_branch --json number --jq '.[0].number' 2>/dev/null)
     if test -n "$existing_pr"
@@ -1658,21 +1658,21 @@ function __flo_pr_create
         gh pr view --web
         return 0
     end
-    
+
     # Prepare PR title and body
     set -l pr_title ""
     set -l pr_body ""
-    
+
     # Check if this is an issue branch
     if string match -qr '^issue/(\d+)$' $current_branch
         set -l issue_number (string replace -r '^issue/(\d+)$' '$1' $current_branch)
-        
+
         # Get issue data
         set -l issue_data (gh issue view $issue_number --json title,body 2>/dev/null)
         if test -n "$issue_data"
             set -l issue_title (echo $issue_data | jq -r '.title')
             set pr_title "Fix: $issue_title"
-            
+
             # Create PR body with Closes reference
             set pr_body "Closes #$issue_number
 
@@ -1687,7 +1687,7 @@ This PR addresses issue #$issue_number: $issue_title
 - [ ] Manual testing completed"
         end
     end
-    
+
     # Fall back to branch name if no issue
     if test -z "$pr_title"
         set pr_title (string replace -a '-' ' ' $current_branch | string replace -a '_' ' ')
@@ -1700,15 +1700,15 @@ Description here
 ## Test Plan
 - [ ] Tests added"
     end
-    
+
     # Create PR
     echo "Creating pull request..."
     echo "Title: $pr_title"
     echo ""
-    
+
     # Create PR with body via heredoc to handle multiline
     set -l pr_url (echo "$pr_body" | gh pr create --title "$pr_title" --body-file - --web 2>&1)
-    
+
     if test $status -eq 0
         set_color green
         echo "Pull request created successfully"
@@ -1730,7 +1730,7 @@ function __flo_pr_open
         set_color normal
         return 1
     end
-    
+
     # Check if PR exists
     set -l pr_number (gh pr list --head $current_branch --json number --jq '.[0].number' 2>/dev/null)
     if test -n "$pr_number"
@@ -1755,15 +1755,15 @@ function __flo_pr_status
         __flo_pr_list
         return
     end
-    
+
     # Get PR for current branch
     set -l pr_data (gh pr list --head $current_branch --json number,title,state,url,reviewDecision,statusCheckRollup --jq '.[0]' 2>/dev/null)
-    
-    if test -z "$pr_data" -o "$pr_data" = "null"
+
+    if test -z "$pr_data" -o "$pr_data" = null
         set_color yellow
         echo "No PR found for branch: $current_branch"
         set_color normal
-        
+
         # Check if this is an issue branch
         if string match -qr '^issue/(\d+)$' $current_branch
             set -l issue_number (string replace -r '^issue/(\d+)$' '$1' $current_branch)
@@ -1773,7 +1773,7 @@ function __flo_pr_status
         end
         return 0
     end
-    
+
     # Parse PR data
     set -l pr_number (echo $pr_data | jq -r '.number')
     set -l pr_title (echo $pr_data | jq -r '.title')
@@ -1781,14 +1781,14 @@ function __flo_pr_status
     set -l pr_url (echo $pr_data | jq -r '.url')
     set -l review_decision (echo $pr_data | jq -r '.reviewDecision // "PENDING"')
     set -l checks (echo $pr_data | jq -r '.statusCheckRollup')
-    
+
     # Display PR status
     set_color green
     echo "PR #$pr_number: $pr_title"
     set_color normal
     echo "State: $pr_state"
     echo "URL: $pr_url"
-    
+
     # Review status
     echo -n "Reviews: "
     switch $review_decision
@@ -1806,9 +1806,9 @@ function __flo_pr_status
             echo "⏳ Pending"
     end
     set_color normal
-    
+
     # Check status
-    if test "$checks" != "null"
+    if test "$checks" != null
         set -l checks_conclusion (echo $checks | jq -r '.conclusion // "IN_PROGRESS"')
         echo -n "Checks: "
         switch $checks_conclusion
@@ -1829,17 +1829,17 @@ end
 function __flo_pr_list
     echo "Pull requests in current repository:"
     echo ""
-    
+
     # Get all open PRs
     set -l prs (gh pr list --json number,title,author,branch,state --limit 20)
-    
+
     if test -z "$prs" -o "$prs" = "[]"
         set_color yellow
         echo "No open pull requests"
         set_color normal
         return 0
     end
-    
+
     # Display PRs
     echo $prs | jq -r '.[] | "#\(.number) \(.title) (\(.branch)) by @\(.author.login)"'
 end
@@ -1848,7 +1848,7 @@ function __flo_sync --argument-names base_root
     echo "Syncing all worktrees..."
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     echo ""
-    
+
     if not test -d "$base_root"
         # Create base directory if it doesn't exist
         mkdir -p "$base_root"
@@ -1860,26 +1860,26 @@ function __flo_sync --argument-names base_root
         set_color normal
         return 0
     end
-    
+
     set -l updated_count 0
     set -l removed_count 0
     set -l error_count 0
-    
+
     # Process each project
     for project_dir in "$base_root"/*
         if test -d "$project_dir"
             set -l project (basename $project_dir)
-            
+
             set_color cyan
             echo "Project: $project"
             set_color normal
-            
+
             # Process each worktree
             for worktree in "$project_dir"/*
                 if test -d "$worktree"
                     set -l name (basename $worktree)
                     echo -n "  $name: "
-                    
+
                     # Check if it's a git worktree
                     if not test -f "$worktree/.git"
                         set_color red
@@ -1887,7 +1887,7 @@ function __flo_sync --argument-names base_root
                         set_color normal
                         continue
                     end
-                    
+
                     # Get branch info
                     set -l branch (git -C "$worktree" branch --show-current 2>/dev/null)
                     if test -z "$branch"
@@ -1896,19 +1896,19 @@ function __flo_sync --argument-names base_root
                         set_color normal
                         continue
                     end
-                    
+
                     # Check for merged PR
                     set -l pr_data (gh pr list --head $branch --state all --json number,state,mergedAt --jq '.[0]' 2>/dev/null)
-                    if test -n "$pr_data" -a "$pr_data" != "null"
+                    if test -n "$pr_data" -a "$pr_data" != null
                         set -l pr_state (echo $pr_data | jq -r '.state')
                         set -l merged_at (echo $pr_data | jq -r '.mergedAt // empty')
-                        
-                        if test "$pr_state" = "MERGED" -o -n "$merged_at"
+
+                        if test "$pr_state" = MERGED -o -n "$merged_at"
                             set_color yellow
                             echo -n "PR merged - remove worktree? [y/N] "
                             set_color normal
                             read -l reply
-                            
+
                             if test "$reply" = y -o "$reply" = Y
                                 git worktree remove "$worktree" 2>/dev/null; or git worktree remove --force "$worktree"
                                 if test $status -eq 0
@@ -1928,7 +1928,7 @@ function __flo_sync --argument-names base_root
                             end
                         end
                     end
-                    
+
                     # Update from upstream
                     cd "$worktree"
                     set -l upstream (git rev-parse --abbrev-ref '@{upstream}' 2>/dev/null)
@@ -1955,12 +1955,12 @@ function __flo_sync --argument-names base_root
                     else
                         echo "no upstream"
                     end
-                    
+
                     # Update cache for issue worktrees
                     if string match -qr '^issue/(\d+)$' $name
                         set -l issue_number (string replace -r '^issue/(\d+)$' '$1' $name)
                         echo -n "    Updating issue cache... "
-                        
+
                         # Get fresh issue data
                         set -l issue_data (gh issue view $issue_number --json number,title,state,body,labels,assignees 2>/dev/null)
                         if test -n "$issue_data"
@@ -1979,7 +1979,7 @@ function __flo_sync --argument-names base_root
             echo ""
         end
     end
-    
+
     # Summary
     set_color cyan
     echo "Summary:"
@@ -1995,16 +1995,16 @@ end
 
 function __flo_zed --argument-names base_root in_git_repo project_name
     set -e argv[1..3]
-    
+
     # If no argument, open current directory
     if test (count $argv) -eq 0
         zed .
         return
     end
-    
+
     set -l target $argv[1]
     set -l worktree_path ""
-    
+
     # Determine worktree path
     if string match -q '*/*' $target
         # Project/name format
@@ -2018,14 +2018,14 @@ function __flo_zed --argument-names base_root in_git_repo project_name
         set_color normal
         return 1
     end
-    
+
     if not test -d "$worktree_path"
         set_color red
         echo "Error: Worktree '$target' does not exist"
         set_color normal
         return 1
     end
-    
+
     # Open in Zed
     zed "$worktree_path"
     set_color green
@@ -2041,7 +2041,7 @@ function __flo_validate_name --argument-names name
         set_color normal
         return 1
     end
-    
+
     # Check for invalid characters
     if string match -q -r '[\\:*?"<>|]' $name
         set_color red
@@ -2050,7 +2050,7 @@ function __flo_validate_name --argument-names name
         set_color normal
         return 1
     end
-    
+
     # Allow forward slash for project/name format
     # Warn about spaces (but allow them)
     if string match -q '* *' $name
@@ -2058,6 +2058,6 @@ function __flo_validate_name --argument-names name
         echo "Warning: Worktree name contains spaces: '$name'"
         set_color normal
     end
-    
+
     return 0
 end

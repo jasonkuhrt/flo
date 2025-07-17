@@ -1,7 +1,7 @@
 #!/usr/bin/env fish
 # Generate documentation from flo's internal --help output
 
-set -l docs_dir "docs"
+set -l docs_dir docs
 set -l reference_dir "$docs_dir/reference"
 
 # Create docs directories
@@ -16,16 +16,16 @@ echo "Generating documentation from --help output..."
 function help_to_markdown --description "Convert help output to markdown format"
     set -l title $argv[1]
     set -l help_output $argv[2..-1]
-    
+
     echo "# $title"
     echo ""
-    
+
     # Check if we have actual help content
     if test -z "$help_output"
         echo "No help available for this command."
         return
     end
-    
+
     echo '```'
     # Format the help output with proper line breaks
     for line in $help_output
@@ -37,24 +37,24 @@ end
 # Generate main help documentation
 echo "📝 Generating main help..."
 set -l main_help (flo help 2>/dev/null)
-help_to_markdown "flo" $main_help > "$reference_dir/flo.md"
+help_to_markdown flo $main_help >"$reference_dir/flo.md"
 
 # Generate command-specific help documentation
 set -l commands issue issue-create pr worktree list status projects claude claude-clean
 
 for cmd in $commands
     echo "📝 Generating help for: $cmd"
-    
+
     # Try to get help for the command
     set -l help_output (flo $cmd --help 2>/dev/null)
-    
+
     if test -z "$help_output"
         # If no --help flag, try to get help from the command itself
         set help_output (flo $cmd 2>&1 | head -20)
     end
-    
+
     if test -n "$help_output"
-        help_to_markdown "flo $cmd" $help_output > "$reference_dir/$cmd.md"
+        help_to_markdown "flo $cmd" $help_output >"$reference_dir/$cmd.md"
     else
         echo "⚠️  No help output found for: $cmd"
     end
@@ -70,20 +70,20 @@ for subcmd in $subcommands
     set -l parts (string split " " $subcmd)
     set -l cmd $parts[1]
     set -l action $parts[2]
-    
+
     echo "📝 Generating help for: $cmd $action"
-    
+
     # Try to get help for the subcommand
     set -l help_output (flo $cmd $action --help 2>/dev/null)
-    
+
     if test -z "$help_output"
         # Try alternative help patterns
         set help_output (flo $cmd $action 2>&1 | head -20)
     end
-    
+
     if test -n "$help_output"
         set -l filename (string replace " " "-" $subcmd)
-        help_to_markdown "flo $subcmd" $help_output > "$reference_dir/$filename.md"
+        help_to_markdown "flo $subcmd" $help_output >"$reference_dir/$filename.md"
     else
         echo "⚠️  No help output found for: $cmd $action"
     end
@@ -131,8 +131,7 @@ printf '%s\n' \
     '#### List Commands' \
     '- [list issues](list-issues.md) - List GitHub issues' \
     '- [list prs](list-prs.md) - List pull requests' \
-    '- [list worktrees](list-worktrees.md) - List worktrees' \
-    > "$reference_dir/README.md"
+    '- [list worktrees](list-worktrees.md) - List worktrees' >"$reference_dir/README.md"
 
 # Generate main docs index
 echo "📝 Generating main docs index..."
@@ -182,8 +181,7 @@ printf '%s\n' \
     '```' \
     '' \
     'For detailed command documentation, see the [Command Reference](reference/).' \
-    '' \
-    > "$docs_dir/README.md"
+    '' >"$docs_dir/README.md"
 
 echo ""
 echo "✅ Documentation generation complete!"

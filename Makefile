@@ -1,6 +1,6 @@
 # Makefile for flo project
 
-.PHONY: docs docs-clean install install-dev uninstall help
+.PHONY: docs docs-clean install install-dev uninstall format check-format help
 
 # Generate documentation from help output
 docs:
@@ -27,15 +27,27 @@ uninstall:
 	@echo "🗑️  Uninstalling flo..."
 	@./uninstall.fish
 
+# Format all Fish files
+format:
+	@echo "🎨 Formatting Fish files..."
+	@./scripts/format.fish
+
+# Check formatting of Fish files
+check-format:
+	@echo "🔍 Checking Fish formatting..."
+	@./scripts/check-format.fish
+
 # Show help
 help:
 	@echo "flo project tasks:"
 	@echo ""
-	@echo "  docs        Generate documentation from --help output"
-	@echo "  docs-clean  Remove generated documentation"
-	@echo "  install     Install flo (copies files)"
-	@echo "  install-dev Install flo for development (symlinks)"
-	@echo "  uninstall   Remove flo from system"
-	@echo "  help        Show this help message"
+	@echo "  docs         Generate documentation from --help output"
+	@echo "  docs-clean   Remove generated documentation"
+	@echo "  install      Install flo (copies files)"
+	@echo "  install-dev  Install flo for development (symlinks)"
+	@echo "  uninstall    Remove flo from system"
+	@echo "  format       Format all Fish files with fish_indent"
+	@echo "  check-format Check if Fish files are properly formatted"
+	@echo "  help         Show this help message"
 	@echo ""
 	@echo "Generated documentation will be in docs/"

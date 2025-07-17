@@ -11,14 +11,14 @@ source $flo_dir/issue.fish
 source $flo_dir/pr.fish
 source $flo_dir/browse.fish
 source $flo_dir/claude.fish
-source $flo_dir/next.fish
+source $flo_dir/flo-next.fish
 source $flo_dir/completions.fish
 
 # Main flo command dispatcher
 function flo --description "Git workflow automation tool"
     set -l cmd $argv[1]
     set -e argv[1]
-    
+
     switch $cmd
         case issue
             flo-issue $argv

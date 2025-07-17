@@ -113,18 +113,18 @@ complete -c flo -s h -l help -d "Show help" -x
 complete -c flo -n "__fish_seen_subcommand_from create c" -xa "(__flo_branch_names)" -d "Branch name"
 
 # Command: remove (multiple worktrees allowed)
-complete -c flo -n "__fish_seen_subcommand_from rm remove r" -xa "(__flo_worktree_names)" -d "Worktree"
+complete -c flo -n "__fish_seen_subcommand_from rm remove r" -xa "(__flo_worktree_names)" -d Worktree
 
 # Command: cd
 complete -c flo -n "__fish_seen_subcommand_from cd" -xa "(__flo_worktree_names)" -d "Worktree in current project"
 complete -c flo -n "__fish_seen_subcommand_from cd" -xa "(__flo_project_worktree_names)" -d "Worktree in other project"
 
 # Command: claude (optional argument - can be run without args in a worktree)
-complete -c flo -n "__fish_seen_subcommand_from claude" -xa "(__flo_worktree_names)" -d "Worktree"
+complete -c flo -n "__fish_seen_subcommand_from claude" -xa "(__flo_worktree_names)" -d Worktree
 complete -c flo -n "__fish_seen_subcommand_from claude" -xa "(__flo_project_worktree_names)" -d "Worktree in other project"
 
 # Command: status
-complete -c flo -n "__fish_seen_subcommand_from status s" -xa "(__flo_worktree_names)" -d "Worktree"
+complete -c flo -n "__fish_seen_subcommand_from status s" -xa "(__flo_worktree_names)" -d Worktree
 complete -c flo -n "__fish_seen_subcommand_from status s" -l project -r -xa "all (__flo_project_names)" -d "Filter by project"
 
 # Command: list
@@ -153,7 +153,7 @@ function __flo_issues_with_status
     set -l worktree_issues
     set -l base_root (test -n "$FLO_BASE_DIR"; and echo "$FLO_BASE_DIR"; or echo "$HOME/worktrees")
     set -l project (__flo_current_project)
-    
+
     if test -n "$project" -a -d "$base_root/$project"
         for worktree in "$base_root/$project"/*
             if test -d "$worktree"
@@ -164,7 +164,7 @@ function __flo_issues_with_status
             end
         end
     end
-    
+
     gh issue list --state open --json number,title --jq '.[]' 2>/dev/null | while read -l issue
         set -l num (echo $issue | jq -r '.number')
         set -l title (echo $issue | jq -r '.title' | string sub -l 50)

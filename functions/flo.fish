@@ -4,7 +4,6 @@
 set -l flo_dir (dirname (status -f))
 
 # Load modules in dependency order
-source $flo_dir/errors.fish
 source $flo_dir/helpers.fish
 source $flo_dir/issue.fish
 source $flo_dir/pr.fish
@@ -29,8 +28,6 @@ function flo --description "Git workflow automation tool"
             flo_rm $argv
         case claude
             claude $argv
-        case claude-clean
-            claude-clean $argv
         case reload
             __flo_reload $argv
         case help ''

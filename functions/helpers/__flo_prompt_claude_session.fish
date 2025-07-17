@@ -1,10 +1,10 @@
 function __flo_prompt_claude_session --description "Prompt user for Claude session ID"
-    echo ""
-    echo "To resume your Claude session:"
-    echo "1. Run '/status' in Claude"
-    echo "2. Copy the Session ID from output like:"
-    echo "   Session ID: bbf041be-3b3c-4913-9b13-211921ef0048"
-    echo ""
+    echo "" >&2
+    echo "To resume your Claude session:" >&2
+    echo "1. Run '/status' in Claude" >&2
+    echo "2. Copy the Session ID from output like:" >&2
+    echo "   Session ID: bbf041be-3b3c-4913-9b13-211921ef0048" >&2
+    echo "" >&2
 
     read -P "Session ID (or Enter to skip): " session_id
 

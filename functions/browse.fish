@@ -138,9 +138,7 @@ function flo_status --description "Show current worktree and PR status"
 
         if test $status -eq 0
             echo "Pull Request:"
-            echo $pr_info | jq -r '"  #\(.number) - \(.title)"'
-            echo $pr_info | jq -r '"  State: \(.state)"'
-            echo $pr_info | jq -r '"  URL: \(.url)"'
+            echo $pr_info | jq -r '"  #\(.number) - \(.title)\n  State: \(.state)\n  URL: \(.url)"'
         else
             echo "No pull request found for this branch"
         end

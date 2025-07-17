@@ -98,17 +98,15 @@ function __flo_worktree_list --description "List all git worktrees"
         return 0
     end
 
-    git worktree list --porcelain | awk '
-        /^worktree/ { worktree = $2 }
-        /^HEAD/ { head = $2 }
-        /^branch/ { branch = $2; sub(/^refs\/heads\//, "", branch) }
-        /^$/ {
-            if (worktree && branch) {
-                printf "%-40s %s\n", branch, worktree
-            }
-            worktree = ""; head = ""; branch = ""
-        }
-    '
+    # Simple worktree list with branch and path
+    git worktree list | while read -l line
+        set -l parts (string split " " $line)
+        set -l path $parts[1]
+        set -l branch (string match -r '\[(.+)\]' $line | string replace -r '^\[|\]$' '')
+        if test -n "$branch"
+            printf "%-40s %s\n" $branch $path
+        end
+    end | column -t
 end
 
 function __flo_worktree_switch --description "Switch to a git worktree"

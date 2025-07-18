@@ -19,7 +19,7 @@ function __flo_install --description "Install flo functions and completions"
         return 1
     end
 
-    set -l fish_config_dir ~/.config/fish
+    set -l fish_config_dir $__fish_config_dir
     set -l functions_dir "$fish_config_dir/functions"
     set -l completions_dir "$fish_config_dir/completions"
 
@@ -97,7 +97,7 @@ function __flo_install --description "Install flo functions and completions"
             gum style --foreground 2 "✓ Installation complete!"
             echo ""
             echo "To use flo, restart your Fish shell or run:"
-            echo "  source ~/.config/fish/config.fish"
+            echo "  source $fish_config_dir/config.fish"
         end
         return 0
     else

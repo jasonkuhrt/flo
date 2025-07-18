@@ -1,6 +1,6 @@
 # Makefile for flo project
 
-.PHONY: docs docs-clean install install-dev uninstall format check-format pre-commit help
+.PHONY: docs docs-clean tool-docs install install-dev uninstall format check-format pre-commit help
 
 # Generate documentation from help output
 docs:
@@ -10,6 +10,10 @@ docs:
 docs-clean:
 	@echo "Cleaning generated documentation..."
 	@rm -rf docs/
+
+# Generate tool documentation for external tools (gitignored)
+tool-docs:
+	@./scripts/generate-tool-docs.fish
 
 # Install flo (copies files)
 install:
@@ -47,6 +51,7 @@ help:
 	@echo ""
 	@echo "  docs         Generate documentation from --help output"
 	@echo "  docs-clean   Remove generated documentation"
+	@echo "  tool-docs    Generate tool documentation for external tools (gitignored)"
 	@echo "  install      Install flo (copies files)"
 	@echo "  install-dev  Install flo for development (symlinks)"
 	@echo "  uninstall    Remove flo from system"

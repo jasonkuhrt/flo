@@ -10,20 +10,27 @@ function flo_claude --description "Add current branch context to Claude"
             --description "Generate Claude context files for current or all worktrees." \
             --options "-h, --help    Show this help message
 -a, --all     Generate context for all worktrees
--c, --clean   Clean up old context files" \
+-c, --clean   Clean up old context files
+
+Environment Variables:
+  FLO_CLAUDE_DIR    Directory to save context files (default: current directory)" \
             --examples "flo claude                # Generate context for current worktree
 flo claude --all          # Generate context for all worktrees
-flo claude --clean        # Clean old context files"
+flo claude --clean        # Clean old context files
+
+export FLO_CLAUDE_DIR=~/Documents/claude-contexts
+flo claude                # Save to custom directory"
         return 0
     end
 
-    set -l claude_dir ~/Library/CloudStorage/Dropbox/Documents-Dropbox/Contextual/claude
-    set -l target_dir "$claude_dir/prompts"
+    # Use environment variable or default to current directory
+    set -l claude_dir (set -q FLO_CLAUDE_DIR; and echo $FLO_CLAUDE_DIR; or echo ".")
+    set -l target_dir "$claude_dir"
 
     # Ensure directory exists
     if not test -d $target_dir
-        echo "Claude prompts directory not found: $target_dir"
-        echo "Please create the directory or configure FLO_CLAUDE_DIR environment variable"
+        echo "Claude context directory not found: $target_dir"
+        echo "Please create the directory or set FLO_CLAUDE_DIR environment variable"
         return 1
     end
 

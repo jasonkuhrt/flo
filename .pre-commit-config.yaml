@@ -7,3 +7,6 @@ repos:
         language: system
         files: \.fish$
         pass_filenames: false
+        verbose: true
+        always_run: false
+        stages: [manual]

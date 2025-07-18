@@ -1,7 +1,7 @@
 function __flo_uninstall --description "Uninstall all flo files from the system"
     argparse --name="__flo_uninstall" q/quiet -- $argv; or return
 
-    set -l fish_config_dir ~/.config/fish
+    set -l fish_config_dir $__fish_config_dir
     set -l functions_dir "$fish_config_dir/functions"
     set -l completions_dir "$fish_config_dir/completions"
 

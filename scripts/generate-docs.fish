@@ -18,10 +18,17 @@ set -l script_dir (dirname (status --current-filename))
 set -l flo_dir "$script_dir/../functions"
 
 # Source the CLI framework first
-source "$script_dir/../lib/cli/\$.fish"
+source "$script_dir/../functions/flo/lib/cli/\$.fish"
 
 # Source helpers
 source "$flo_dir/helpers.fish"
+# Load all helper functions
+set -l helpers_dir "$flo_dir/flo/app/helpers"
+for helper_file in $helpers_dir/*.fish
+    if test -f "$helper_file"
+        source "$helper_file"
+    end
+end
 
 # Initialize the CLI framework manually
 set -g __cli_name flo
@@ -30,7 +37,15 @@ set -g __cli_dir $flo_dir
 set -g __cli_description "Git workflow automation tool"
 set -g __cli_version "1.0.0"
 
-# Load commands
+# Load commands from the new structure
+set -l commands_dir "$flo_dir/flo/app/commands"
+for cmd_file in $commands_dir/*.fish
+    if test -f "$cmd_file"
+        source "$cmd_file"
+    end
+end
+
+# Also load the top-level files needed for the CLI framework
 for cmd_file in $flo_dir/*.fish
     if test -f "$cmd_file"
         set -l cmd_name (basename "$cmd_file" .fish)
@@ -101,11 +116,6 @@ function discover_subcommands
         end
     end
 
-    # Special handling for claude command - it has a --clean flag that we treat as a subcommand
-    if test "$parent_cmd" = claude
-        set subcommands $subcommands clean
-    end
-
     # Output each subcommand on a separate line
     for subcmd in $subcommands
         echo $subcmd
@@ -126,19 +136,8 @@ function generate_command_help
         set -l main_cmd $parts[1]
         set -l subcmd $parts[2]
 
-        # Try different ways to get subcommand help
-        if test "$main_cmd" = claude && test "$subcmd" = clean
-            # For claude-clean, create custom help since it's a flag not a subcommand
-            set help_output "Usage: flo claude --clean"
-            set help_output $help_output ""
-            set help_output $help_output "Clean up old context files"
-            set help_output $help_output ""
-            set help_output $help_output "Examples:"
-            set help_output $help_output "  flo claude --clean        # Clean old context files"
-        else
-            # Try as a regular subcommand
-            set help_output (flo $main_cmd $subcmd --help 2>/dev/null)
-        end
+        # Try as a regular subcommand
+        set help_output (flo $main_cmd $subcmd --help 2>/dev/null)
 
         if test -z "$help_output"
             set help_output (flo $main_cmd $subcmd 2>&1 | head -20)

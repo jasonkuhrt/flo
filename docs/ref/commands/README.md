@@ -6,13 +6,12 @@ flo - Git workflow automation tool
 Usage: flo <command> [options]
 
 Commands:
-  claude          ./scripts/../functions/claude.fish
-  claude_clean    ./scripts/../functions/claude.fish
-  issue           ./scripts/../functions/issue.fish
-  next            ./scripts/../functions/next.fish
-  pr              ./scripts/../functions/pr.fish
-  reload          ./scripts/../functions/reload.fish
-  rm              ./scripts/../functions/rm.fish
+  claude          Generate Claude context files for current or all worktrees.
+  issue           Start work on a GitHub issue by creating a worktree and branch.
+  next            Context-aware next issue command: - In worktree: transition workflow (delete → sync → create → claude) - In main project: regular issue workflow (create → claude)
+  pr              Create a pull request for the current branch.
+  reload          Reload all flo functions and commands.
+  rm              Remove issue, pull request, and/or worktree. By default, deletes the worktree but leaves issue and PR open.
 
 Options:
   -h, --help     Show this help message
@@ -31,9 +30,9 @@ The main flo help documentation is above.
 
 ## Commands
 
-- [claude](claude/) - ./scripts/../functions/claude.fish
-- [issue](issue.md) - ./scripts/../functions/issue.fish
-- [next](next.md) - ./scripts/../functions/next.fish
-- [pr](pr.md) - ./scripts/../functions/pr.fish
-- [reload](reload.md) - ./scripts/../functions/reload.fish
-- [rm](rm.md) - ./scripts/../functions/rm.fish
+- [claude](claude.md) - Generate Claude context files for current or all worktrees.
+- [issue](issue.md) - Start work on a GitHub issue by creating a worktree and branch.
+- [next](next.md) - Context-aware next issue command: - In worktree: transition workflow (delete → sync → create → claude) - In main project: regular issue workflow (create → claude)
+- [pr](pr.md) - Context-aware next issue command: - In worktree: transition workflow (delete → sync → create → claude) - In main project: regular issue workflow (create → claude)
+- [reload](reload.md) - Reload all flo functions and commands.
+- [rm](rm.md) - Remove issue, pull request, and/or worktree. By default, deletes the worktree but leaves issue and PR open.

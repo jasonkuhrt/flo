@@ -55,7 +55,7 @@ This command would be invoked as: `flo status`
 
 ## CLI Framework
 
-Flo uses a custom CLI framework (`lib/cli/`) that provides:
+Flo uses a custom CLI framework (`functions/flo/lib/cli/`) that provides:
 
 - **Dynamic command dispatch**: Commands are discovered automatically
 - **Consistent help generation**: Help text is auto-generated from function descriptions
@@ -111,9 +111,26 @@ fisher remove ~/projects/jasonkuhrt/flo
 
 ### Pre-commit Hooks
 
-Install pre-commit hooks for automatic formatting:
+Flo uses pre-commit hooks to automatically format code before commits. The configuration is in `.pre-commit-config.yaml`.
+
+Install pre-commit hooks:
 ```fish
 make pre-commit
+```
+
+**How it works:**
+- When you commit, pre-commit automatically runs the hooks defined in `.pre-commit-config.yaml`
+- Currently configured to run `fish_indent` to format all `.fish` files
+- If files are reformatted, they're automatically staged and the commit proceeds
+- **Changes to `.pre-commit-config.yaml` are automatically applied** - no need to reinstall
+
+**Current hooks:**
+- `fish-format`: Automatically formats Fish files using `fish_indent`
+
+**Manual formatting:**
+You can also format files manually without committing:
+```fish
+make format
 ```
 
 ## Architecture
@@ -121,16 +138,28 @@ make pre-commit
 ### Project Structure
 
 ```
-functions/                       # Command directory
-├── <command>.fish              # Top-level commands
-├── <command>/                  # Subcommand directory (if applicable)
-│   ├── <subcommand>.fish      # Individual subcommands
-│   └── ...                    # More subcommands
-├── helpers/                   # Helper functions
-│   └── __flo_*.fish           # Internal helper functions
-├── helpers.fish               # Helper loader
-├── flo.fish                   # Main dispatcher
-└── completions.fish           # Tab completions
+functions/                       # Fisher-compatible structure
+├── flo.fish                    # Main entry point
+├── flo/                        # Private flo directory
+│   ├── app/                    # Application code
+│   │   ├── commands/           # Command implementations
+│   │   │   ├── <command>.fish  # Individual commands
+│   │   │   └── ...             # More commands
+│   │   └── helpers/            # Helper functions
+│   │       └── __flo_*.fish    # Internal helper functions
+│   └── lib/                    # Library code
+│       └── cli/                # CLI framework
+│           ├── $.fish          # Framework entry point
+│           ├── discovery.fish  # Command discovery
+│           ├── help.fish       # Help system
+│           └── ...             # Other framework files
+├── completions.fish            # Top-level completions loader
+├── errors.fish                 # Error handling
+├── help.fish                   # Help system loader
+└── helpers.fish                # Helper loader
+
+completions/                    # Tab completions
+└── flo.fish                   # Flo completions
 
 scripts/                        # Development scripts
 ├── generate-docs.fish         # Documentation generator
@@ -139,9 +168,10 @@ scripts/                        # Development scripts
 
 docs/                          # Generated documentation
 ├── README.md                 # Documentation index
-└── reference/                # Command reference docs
-    ├── <command>.md          # Individual command docs
-    └── <command>/            # Subcommand docs
+└── ref/                      # Reference documentation
+    └── commands/             # Command reference docs
+        ├── <command>.md      # Individual command docs
+        └── README.md         # Commands index
 ```
 
 ### Command Discovery
@@ -158,10 +188,10 @@ Adding new commands to flo is simple thanks to the CLI framework and naming conv
 
 ### 1. Create the Command File
 
-Create a new file in `functions/<command>.fish` with the function name `flo_<command>`:
+Create a new file in `functions/flo/app/commands/<command>.fish` with the function name `flo_<command>`:
 
 ```fish
-# functions/mycommand.fish
+# functions/flo/app/commands/mycommand.fish
 
 function flo_mycommand --description "Brief description of what this command does"
     argparse --name="flo mycommand" h/help f/flag l/long-flag= o/option= -- $argv; or return
@@ -222,7 +252,7 @@ That's it! The CLI framework automatically:
 
 ### 3. Add Tab Completions (Optional)
 
-Add completions in `functions/completions.fish`:
+Add completions in `completions/flo.fish`:
 
 ```fish
 # Main command completion
@@ -277,7 +307,7 @@ make docs
 
 ### Helper Functions
 
-Use existing helper functions in `functions/helpers/`:
+Use existing helper functions in `functions/flo/app/helpers/`:
 
 ```fish
 # Check GitHub authentication
@@ -300,7 +330,7 @@ __flo_info "Information message"
 For commands with subcommands, create a directory structure:
 
 ```
-functions/
+functions/flo/app/commands/
 ├── mycommand.fish          # Main command
 └── mycommand/
     ├── subcmd1.fish        # flo mycommand subcmd1

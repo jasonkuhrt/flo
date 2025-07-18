@@ -11,6 +11,8 @@ Arguments:
   issue-number    Optional issue number to work on
 
 Options:
+  --no-claude   Skip Claude launch
+  -h, --help    Show this help
 
 Examples:
   flo next              Select from issue list

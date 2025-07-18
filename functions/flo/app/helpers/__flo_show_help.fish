@@ -22,8 +22,11 @@ function __flo_show_help --description "Display standardized help text for flo c
     # Arguments section (optional)
     if set -q _flag_args
         echo "Arguments:"
-        for arg in (string split \n $_flag_args)
-            echo "  $arg"
+        # Handle both literal newlines and \n escape sequences
+        echo "$_flag_args" | while read -l line
+            if test -n "$line"
+                echo "  $line"
+            end
         end
         echo ""
     end
@@ -31,8 +34,11 @@ function __flo_show_help --description "Display standardized help text for flo c
     # Options section (optional)
     if set -q _flag_options
         echo "Options:"
-        for option in (string split \n $_flag_options)
-            echo "  $option"
+        # Handle both literal newlines and \n escape sequences
+        echo "$_flag_options" | while read -l line
+            if test -n "$line"
+                echo "  $line"
+            end
         end
         echo ""
     end
@@ -40,8 +46,11 @@ function __flo_show_help --description "Display standardized help text for flo c
     # Examples section (optional)
     if set -q _flag_examples
         echo "Examples:"
-        for example in (string split \n $_flag_examples)
-            echo "  $example"
+        # Handle both literal newlines and \n escape sequences
+        echo "$_flag_examples" | while read -l line
+            if test -n "$line"
+                echo "  $line"
+            end
         end
         echo ""
     end

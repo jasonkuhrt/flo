@@ -41,38 +41,61 @@ brew install fd bat git-delta
 
 ## Installation
 
-### Using Fisher (Recommended)
+### Using Fisher
+
+[Fisher](https://github.com/jorgebucaran/fisher) is the recommended way to install flo:
 
 ```fish
 fisher install jasonkuhrt/flo
 ```
 
-<details>
-<summary>Manual Installation</summary>
+**Why Fisher?**
+- Clean installation and removal
+- Automatic updates with `fisher update`
+- Proper Fish shell integration
+- No manual file management
+
+### First-time Fisher Setup
 
 If you don't have Fisher installed:
+
+```fish
+# Install Fisher
+curl -sL https://raw.githubusercontent.com/jorgebucaran/fisher/main/functions/fisher.fish | source && fisher install jorgebucaran/fisher
+
+# Then install flo
+fisher install jasonkuhrt/flo
+```
+
+### Managing flo
+
+```fish
+# Update flo to the latest version
+fisher update jasonkuhrt/flo
+
+# Remove flo
+fisher remove jasonkuhrt/flo
+```
+
+<details>
+<summary>Manual Installation (Not Recommended)</summary>
+
+Only use this if you cannot use Fisher:
 
 1. Clone this repository:
    ```fish
    git clone https://github.com/jasonkuhrt/flo.git ~/projects/jasonkuhrt/flo
+   cd ~/projects/jasonkuhrt/flo && make install
    ```
 
-2. Run the install script:
-   ```fish
-   ~/projects/jasonkuhrt/flo/install.fish
-   ```
-
-3. Restart your Fish shell or run:
+2. Restart your Fish shell or run:
    ```fish
    source ~/.config/fish/config.fish
    ```
 
-### Manual Uninstallation
-
-To remove flo from your system:
-
+**To uninstall manually:**
 ```fish
-~/projects/jasonkuhrt/flo/uninstall.fish
+cd ~/projects/jasonkuhrt/flo && make uninstall
 ```
 
 </details>

@@ -1,7 +1,8 @@
 # Claude AI integration
 
 function flo_claude --description "Add current branch context to Claude"
-    argparse --name="flo claude" h/help a/all c/clean -- $argv; or return
+    argparse --name="flo claude" h/help a/all c/clean -- $argv
+    or return
 
     if set -q _flag_help
         __flo_show_help \

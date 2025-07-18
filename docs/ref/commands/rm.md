@@ -10,11 +10,6 @@ Arguments:
   issue-number    Issue number to remove (default: current worktree's issue)
 
 Options:
-  --close-issue         Close the GitHub issue (default: no)
-  --close-pr            Close the pull request (default: no)
-  --no-delete-worktree  Don't delete the worktree (default: delete)
-  -f, --force           Skip confirmation prompt
-  -h, --help            Show this help
 
 Examples:
   flo rm                    Delete current worktree, keep issue/PR open

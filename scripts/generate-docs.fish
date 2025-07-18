@@ -2,7 +2,7 @@
 # Generate documentation from flo's actual command structure
 
 set -l docs_dir docs
-set -l reference_dir "$docs_dir/reference"
+set -l reference_dir "$docs_dir/ref/commands"
 
 # Clean out old docs first
 if test -d $reference_dir
@@ -13,7 +13,32 @@ end
 mkdir -p $reference_dir
 
 # Source the flo functions we need
-source functions/flo.fish
+# We need to set the context properly for status -f to work
+set -l script_dir (dirname (status --current-filename))
+set -l flo_dir "$script_dir/../functions"
+
+# Source the CLI framework first
+source "$script_dir/../lib/cli/\$.fish"
+
+# Source helpers
+source "$flo_dir/helpers.fish"
+
+# Initialize the CLI framework manually
+set -g __cli_name flo
+set -g __cli_prefix flo
+set -g __cli_dir $flo_dir
+set -g __cli_description "Git workflow automation tool"
+set -g __cli_version "1.0.0"
+
+# Load commands
+for cmd_file in $flo_dir/*.fish
+    if test -f "$cmd_file"
+        set -l cmd_name (basename "$cmd_file" .fish)
+        if test "$cmd_name" != flo && test "$cmd_name" != helpers && test "$cmd_name" != completions
+            source "$cmd_file"
+        end
+    end
+end
 
 # Helper function to convert help output to markdown
 function help_to_markdown --description "Convert help output to markdown format"
@@ -37,38 +62,24 @@ function help_to_markdown --description "Convert help output to markdown format"
     echo '```'
 end
 
-# Extract commands from the flo dispatcher switch statement
+# Extract commands using the CLI framework discovery
 function extract_commands_from_dispatcher
+    # Get all flo_ functions and extract command names
     set -l commands_found
-    set -l in_switch 0
 
-    # Read the flo.fish file and extract case statements
-    while read -l line
-        # Look for the switch statement
-        if string match -q "*switch*" "$line"
-            set in_switch 1
-            continue
-        end
-
-        # Exit when we hit the end of the switch
-        if test $in_switch -eq 1 && string match -q "*end*" "$line"
-            break
-        end
-
-        # Extract case statements
-        if test $in_switch -eq 1 && string match -q "*case*" "$line"
-            # Extract the command name after "case"
-            set -l cmd_name (string match -r 'case\s+([a-zA-Z0-9_-]+)' "$line" | tail -1)
-            if test -n "$cmd_name" && test "$cmd_name" != help && test "$cmd_name" != "'*'"
-                set commands_found $commands_found $cmd_name
+    for func in (functions -n)
+        if string match -q "flo_*" $func
+            # Extract command name (remove flo_ prefix)
+            set -l cmd (string replace "flo_" "" $func)
+            # Skip internal functions (those with __) and deprecated functions
+            if not string match -q "*__*" $cmd && test "$cmd" != claude_clean
+                set -a commands_found $cmd
             end
         end
-    end <functions/flo.fish
-
-    # Output each command on a separate line to preserve array structure
-    for cmd in $commands_found
-        echo $cmd
     end
+
+    # Sort and return unique commands
+    printf '%s\n' $commands_found | sort -u
 end
 
 # Function to discover subcommands for a given command
@@ -135,10 +146,20 @@ function generate_command_help
 
         set flo_cmd "flo $main_cmd $subcmd"
     else
-        # It's a top-level command
-        set help_output (flo $cmd_path --help 2>/dev/null)
-        if test -z "$help_output"
-            set help_output (flo $cmd_path 2>&1 | head -20)
+        # It's a top-level command - call the function directly with --help
+        set -l func_name "flo_$cmd_path"
+        if functions -q $func_name
+            # Try to call the function with --help flag and capture output properly
+            set help_output ($func_name --help 2>/dev/null | string collect)
+            if test -z "$help_output"
+                # If that fails, try to get the description at least
+                set -l desc (functions -D $func_name)
+                set help_output "flo $cmd_path - $desc"
+                set help_output $help_output ""
+                set help_output $help_output "Usage: flo $cmd_path [options]"
+                set help_output $help_output ""
+                set help_output $help_output "Run 'flo $cmd_path --help' for detailed help"
+            end
         end
 
         set flo_cmd "flo $cmd_path"
@@ -157,8 +178,34 @@ end
 # Start generation
 gum log --level info "Generating documentation from flo command structure"
 
-# Get the main help output
-set -l main_help (flo help 2>/dev/null)
+# Get the main help output by calling the CLI framework help directly
+set -l main_help
+if functions -q __cli_show_help
+    set main_help (__cli_show_help)
+else
+    # Fallback to manual help generation
+    set main_help "$__cli_name - $__cli_description"
+    set main_help $main_help ""
+    set main_help $main_help "Usage: $__cli_name <command> [options]"
+    set main_help $main_help ""
+    set main_help $main_help "Commands:"
+
+    # List all commands
+    for cmd in (extract_commands_from_dispatcher)
+        set -l func_name "flo_$cmd"
+        if functions -q $func_name
+            set -l desc (functions -D $func_name)
+            set main_help $main_help "  $cmd\t\t$desc"
+        end
+    end
+
+    set main_help $main_help ""
+    set main_help $main_help "Options:"
+    set main_help $main_help "  -h, --help     Show this help message"
+    set main_help $main_help "  -v, --version  Show version information"
+    set main_help $main_help ""
+    set main_help $main_help "Run 'flo <command> --help' for command-specific help"
+end
 
 # Extract commands from dispatcher
 set -l discovered_commands (extract_commands_from_dispatcher)
@@ -275,7 +322,7 @@ printf '%s\n' \
     '' \
     '## Documentation Structure' \
     '' \
-    '- **[Command Reference](reference/)** - Complete command documentation generated from `--help` output' \
+    '- **[Command Reference](ref/commands/)** - Complete command documentation generated from `--help` output' \
     '- **Installation** - See main [README.md](../README.md) for installation instructions' \
     '- **Getting Started** - See main [README.md](../README.md) for quick start guide' \
     '' \
@@ -347,7 +394,7 @@ end
 printf '%s\n' \
     '```' \
     '' \
-    'For detailed command documentation, see the [Command Reference](reference/).' \
+    'For detailed command documentation, see the [Command Reference](ref/commands/).' \
     '' \
     '## Recommended Improvements' \
     '' \

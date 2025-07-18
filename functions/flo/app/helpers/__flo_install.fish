@@ -34,43 +34,25 @@ function __flo_install --description "Install flo functions and completions"
     # Clean existing installation first
     # Source the uninstall helper if not already available
     if not functions -q __flo_uninstall
-        source "$flo_dir/functions/helpers/__flo_uninstall.fish"
+        source "$flo_dir/functions/flo/app/helpers/__flo_uninstall.fish"
     end
     __flo_uninstall --quiet
 
     # Install based on mode
     if test "$mode" = symlink
         if not set -q _flag_quiet
-            echo "Creating symlinks for all flo function files..."
+            echo "Creating symlinks for flo..."
         end
 
-        # Create symlinks for all function files
-        for file in "$flo_dir/functions"/*.fish
-            set -l basename (basename "$file")
-            set -l abs_file (realpath "$file")
-            if not set -q _flag_quiet
-                echo "  Linking $basename..."
-            end
-            ln -sf "$abs_file" "$functions_dir/$basename"
-        end
+        # Create symlink for main function file
+        set -l abs_flo_file (realpath "$flo_dir/functions/flo.fish")
+        ln -sf "$abs_flo_file" "$functions_dir/flo.fish"
 
-        # Create symlinks for all helper files
-        if not set -q _flag_quiet
-            echo "Creating symlinks for all helper files..."
-        end
-        for file in "$flo_dir/functions/helpers"/*.fish
-            set -l basename (basename "$file")
-            set -l abs_file (realpath "$file")
-            if not set -q _flag_quiet
-                echo "  Linking $basename..."
-            end
-            ln -sf "$abs_file" "$functions_dir/$basename"
-        end
+        # Create symlink for the entire flo subdirectory structure
+        set -l abs_flo_dir (realpath "$flo_dir/functions/flo")
+        ln -sf "$abs_flo_dir" "$functions_dir/flo"
 
         # Create symlink for completions
-        if not set -q _flag_quiet
-            echo "Creating symlink for flo completions..."
-        end
         set -l abs_completions (realpath "$flo_dir/completions/flo.fish")
         ln -sf "$abs_completions" "$completions_dir/flo.fish"
 
@@ -78,6 +60,7 @@ function __flo_install --description "Install flo functions and completions"
             echo ""
             echo "The following symlinks were created:"
             echo "  $functions_dir/flo.fish → $flo_dir/functions/flo.fish"
+            echo "  $functions_dir/flo/ → $flo_dir/functions/flo/"
             echo "  $completions_dir/flo.fish → $flo_dir/completions/flo.fish"
             echo ""
             echo "Any changes you make to files in the repo will immediately be reflected in your system."
@@ -92,18 +75,8 @@ function __flo_install --description "Install flo functions and completions"
         # Copy main function file
         cp "$flo_dir/functions/flo.fish" "$functions_dir/flo.fish"
 
-        # Copy all helper files
-        for file in "$flo_dir/functions/helpers"/*.fish
-            cp "$file" "$functions_dir/"
-        end
-
-        # Copy other function files
-        for file in "$flo_dir/functions"/*.fish
-            set -l basename (basename "$file")
-            if test "$basename" != "flo.fish"
-                cp "$file" "$functions_dir/"
-            end
-        end
+        # Copy the entire flo subdirectory structure
+        cp -r "$flo_dir/functions/flo" "$functions_dir/"
 
         # Copy completions
         cp "$flo_dir/completions/flo.fish" "$completions_dir/flo.fish"
@@ -112,6 +85,7 @@ function __flo_install --description "Install flo functions and completions"
             echo ""
             echo "Flo has been installed to:"
             echo "  $functions_dir/flo.fish"
+            echo "  $functions_dir/flo/"
             echo "  $completions_dir/flo.fish"
         end
     end

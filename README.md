@@ -41,7 +41,16 @@ brew install fd bat git-delta
 
 ## Installation
 
-### Standard Installation
+### Using Fisher (Recommended)
+
+```fish
+fisher install jasonkuhrt/flo
+```
+
+<details>
+<summary>Manual Installation</summary>
+
+If you don't have Fisher installed:
 
 1. Clone this repository:
    ```fish
@@ -58,14 +67,15 @@ brew install fd bat git-delta
    source ~/.config/fish/config.fish
    ```
 
-
-### Uninstallation
+### Manual Uninstallation
 
 To remove flo from your system:
 
 ```fish
 ~/projects/jasonkuhrt/flo/uninstall.fish
 ```
+
+</details>
 
 ## How Flo Works
 
@@ -137,13 +147,9 @@ set -gx FLO_EDITOR code
 Complete command documentation is available in the [docs/](docs/) directory, automatically generated from flo's internal help system.
 
 - **[Main Documentation](docs/README.md)** - Architecture and overview
-- **[Command Reference](docs/reference/)** - Complete command documentation
+- **[Command Reference](docs/ref/commands/)** - Complete command documentation
 
 
 ## Development
 
 For development information, including adding new commands, testing, and contributing guidelines, see [DEVELOPMENT.md](DEVELOPMENT.md).
-
-## License
-
-MIT

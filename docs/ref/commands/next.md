@@ -7,9 +7,10 @@ Context-aware next issue command:
 - In worktree: transition workflow (delete → sync → create → claude)
 - In main project: regular issue workflow (create → claude)
 
+Arguments:
+  issue-number    Optional issue number to work on
+
 Options:
-  --no-claude   Skip Claude launch
-  -h, --help    Show this help
 
 Examples:
   flo next              Select from issue list

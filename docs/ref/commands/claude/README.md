@@ -1,6 +1,6 @@
 # flo claude
 
-Add current branch context to Claude
+./scripts/../functions/claude.fish
 
 ## Subcommands
 

@@ -4,7 +4,7 @@ Welcome to the flo documentation. flo is a Git workflow automation tool that int
 
 ## Documentation Structure
 
-- **[Command Reference](reference/)** - Complete command documentation generated from `--help` output
+- **[Command Reference](ref/commands/)** - Complete command documentation generated from `--help` output
 - **Installation** - See main [README.md](../README.md) for installation instructions
 - **Getting Started** - See main [README.md](../README.md) for quick start guide
 
@@ -69,16 +69,25 @@ end
 ```
 flo - Git workflow automation tool
 
+Usage: flo <command> [options]
+
 Commands:
-  issue <number|title>    Start work on a GitHub issue
-  next [number]           Transition to next issue (context-aware)
-  rm [number]             Remove issue, PR, and/or worktree
-  pr                      Create pull request for current branch
-  claude                  Add current branch context to Claude
-  help                    Show this help message
+  claude          ./scripts/../functions/claude.fish
+  claude_clean    ./scripts/../functions/claude.fish
+  issue           ./scripts/../functions/issue.fish
+  next            ./scripts/../functions/next.fish
+  pr              ./scripts/../functions/pr.fish
+  reload          ./scripts/../functions/reload.fish
+  rm              ./scripts/../functions/rm.fish
+
+Options:
+  -h, --help     Show this help message
+  -v, --version  Show version information
+
+Run 'flo <command> --help' for command-specific help
 ```
 
-For detailed command documentation, see the [Command Reference](reference/).
+For detailed command documentation, see the [Command Reference](ref/commands/).
 
 ## Recommended Improvements
 

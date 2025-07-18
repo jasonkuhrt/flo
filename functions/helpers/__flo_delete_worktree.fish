@@ -1,13 +1,10 @@
 function __flo_delete_worktree --description "Delete a git worktree"
     set -l branch_name $argv[1]
 
-    if test -z "$branch_name"
-        echo "Error: Branch name required" >&2
-        return 1
-    end
+    __flo_require_param branch_name "$branch_name" "Usage: __flo_delete_worktree <branch-name>"; or return
 
     if not __flo_worktree_exists $branch_name
-        echo "Worktree '$branch_name' does not exist" >&2
+        __flo_error "Worktree '$branch_name' does not exist"
         return 1
     end
 

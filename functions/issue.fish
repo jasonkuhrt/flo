@@ -2,19 +2,16 @@ function issue --description "Start work on a GitHub issue"
     argparse --name="flo issue" h/help z/zed c/claude -- $argv; or return
 
     if set -q _flag_help
-        echo "Usage: flo issue <issue-number|issue-title>"
-        echo ""
-        echo "Start work on a GitHub issue by creating a worktree and branch."
-        echo ""
-        echo "Options:"
-        echo "  -h, --help    Show this help message"
-        echo "  -z, --zed     Open worktree in Zed editor"
-        echo "  -c, --claude  Generate Claude context after creation"
-        echo ""
-        echo "Examples:"
-        echo "  flo issue 123"
-        echo "  flo issue \"Fix bug in parser\""
-        echo "  flo issue 123 --zed --claude"
+        __flo_show_help \
+            --usage "flo issue <issue-number|issue-title>" \
+            --description "Start work on a GitHub issue by creating a worktree and branch." \
+            --args "issue-number|issue-title    GitHub issue number or search term" \
+            --options "-h, --help    Show this help message
+-z, --zed     Open worktree in Zed editor
+-c, --claude  Generate Claude context after creation" \
+            --examples "flo issue 123
+flo issue \"Fix bug in parser\"
+flo issue 123 --zed --claude"
         return 0
     end
 
@@ -46,28 +43,22 @@ function issue --description "Start work on a GitHub issue"
             return 1
         end
 
-        # Check if jq is available
-        if not command -q jq
-            echo "Error: jq is required for JSON parsing. Please install jq." >&2
-            return 1
-        end
-
-        set title (echo $issue_data | jq -r '.title')
+        set title (__flo_parse_github_json "$issue_data" ".title"); or return
     else
         # Search for issue by title
         echo "Searching for issues matching: $issue_ref"
         set -l search_results (gh issue list --search "$issue_ref" --json number,title --limit 30)
 
-        if test (echo $search_results | jq '. | length') -eq 0
+        if test (__flo_parse_github_json "$search_results" ". | length") -eq 0
             echo "No issues found matching: $issue_ref"
             return 1
         end
 
-        set -l result_count (echo $search_results | jq '. | length')
+        set -l result_count (__flo_parse_github_json "$search_results" ". | length")
 
         # Always use filter for text search results
         echo "Found $result_count issues:"
-        set -l formatted_results (echo $search_results | jq -r '.[] | "#\(.number) - \(.title)"')
+        set -l formatted_results (__flo_parse_github_json "$search_results" '.[] | "#\(.number) - \(.title)"')
         set -l selected (echo $formatted_results | gum filter \
             --placeholder "Type to refine search..." \
             --header "Filter $result_count results for: $issue_ref" \
@@ -80,7 +71,7 @@ function issue --description "Start work on a GitHub issue"
 
         # Extract issue number from selection
         set issue_number (echo $selected | sed 's/^#\([0-9]*\).*/\1/')
-        set title (echo $search_results | jq -r ".[] | select(.number == $issue_number) | .title")
+        set title (__flo_parse_github_json "$search_results" ".[] | select(.number == $issue_number) | .title")
     end
 
     # Generate branch name

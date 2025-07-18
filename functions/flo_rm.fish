@@ -11,26 +11,20 @@ function flo_rm --description "Remove issue, PR, and/or worktree"
         -- $argv; or return
 
     if set -q _flag_help
-        echo "Usage: flo rm [issue-number] [options]"
-        echo ""
-        echo "Remove issue, pull request, and/or worktree."
-        echo "By default, deletes the worktree but leaves issue and PR open."
-        echo ""
-        echo "Arguments:"
-        echo "  issue-number    Issue number to remove (default: current worktree's issue)"
-        echo ""
-        echo "Options:"
-        echo "  --close-issue         Close the GitHub issue (default: no)"
-        echo "  --close-pr            Close the pull request (default: no)"
-        echo "  --no-delete-worktree  Don't delete the worktree (default: delete)"
-        echo "  -f, --force           Skip confirmation prompt"
-        echo "  -h, --help            Show this help"
-        echo ""
-        echo "Examples:"
-        echo "  flo rm                    Delete current worktree, keep issue/PR open"
-        echo "  flo rm 123                Delete worktree for issue #123"
-        echo "  flo rm --close-issue      Delete worktree and close issue"
-        echo "  flo rm --close-pr --close-issue  Delete worktree, close PR and issue"
+        __flo_show_help \
+            --usage "flo rm [issue-number] [options]" \
+            --description "Remove issue, pull request, and/or worktree.
+By default, deletes the worktree but leaves issue and PR open." \
+            --args "issue-number    Issue number to remove (default: current worktree's issue)" \
+            --options "--close-issue         Close the GitHub issue (default: no)
+--close-pr            Close the pull request (default: no)
+--no-delete-worktree  Don't delete the worktree (default: delete)
+-f, --force           Skip confirmation prompt
+-h, --help            Show this help" \
+            --examples "flo rm                    Delete current worktree, keep issue/PR open
+flo rm 123                Delete worktree for issue #123
+flo rm --close-issue      Delete worktree and close issue
+flo rm --close-pr --close-issue  Delete worktree, close PR and issue"
         return 0
     end
 
@@ -183,9 +177,9 @@ function flo_rm --description "Remove issue, PR, and/or worktree"
             echo "Deleting worktree '$target_worktree'..."
             __flo_delete_worktree $target_worktree
             if test $status -eq 0
-                gum style --foreground 2 "✓ Deleted worktree"
+                __flo_success "✓ Deleted worktree"
             else
-                gum log --level error "✗ Failed to delete worktree"
+                __flo_error "✗ Failed to delete worktree"
             end
         end
     end
@@ -197,9 +191,9 @@ function flo_rm --description "Remove issue, PR, and/or worktree"
             echo "Closing PR #$pr_number..."
             gh pr close $pr_number
             if test $status -eq 0
-                gum style --foreground 2 "✓ Closed PR"
+                __flo_success "✓ Closed PR"
             else
-                gum log --level error "✗ Failed to close PR"
+                __flo_error "✗ Failed to close PR"
             end
         end
     end
@@ -211,9 +205,9 @@ function flo_rm --description "Remove issue, PR, and/or worktree"
             echo "Closing issue #$issue_number..."
             gh issue close $issue_number
             if test $status -eq 0
-                gum style --foreground 2 "✓ Closed issue"
+                __flo_success "✓ Closed issue"
             else
-                gum log --level error "✗ Failed to close issue"
+                __flo_error "✗ Failed to close issue"
             end
         end
     end

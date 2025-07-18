@@ -4,19 +4,15 @@ function claude --description "Add current branch context to Claude"
     argparse --name="flo claude" h/help a/all c/clean -- $argv; or return
 
     if set -q _flag_help
-        echo "Usage: flo claude [options]"
-        echo ""
-        echo "Generate Claude context files for current or all worktrees."
-        echo ""
-        echo "Options:"
-        echo "  -h, --help    Show this help message"
-        echo "  -a, --all     Generate context for all worktrees"
-        echo "  -c, --clean   Clean up old context files"
-        echo ""
-        echo "Examples:"
-        echo "  flo claude                # Generate context for current worktree"
-        echo "  flo claude --all          # Generate context for all worktrees"
-        echo "  flo claude --clean        # Clean old context files"
+        __flo_show_help \
+            --usage "flo claude [options]" \
+            --description "Generate Claude context files for current or all worktrees." \
+            --options "-h, --help    Show this help message
+-a, --all     Generate context for all worktrees
+-c, --clean   Clean up old context files" \
+            --examples "flo claude                # Generate context for current worktree
+flo claude --all          # Generate context for all worktrees
+flo claude --clean        # Clean old context files"
         return 0
     end
 
@@ -37,7 +33,7 @@ function claude --description "Add current branch context to Claude"
         return 1
     end
 
-    set -l repo_name (basename (__flo_get_repo_root))
+    set -l repo_name (__flo_get_repo_name); or return
     set -l prompt_file "$target_dir/$repo_name-$current_branch.md"
 
     # Get issue/PR info if available
@@ -107,7 +103,7 @@ function claude-clean --description "Remove old Claude context files"
         return 1
     end
 
-    set -l repo_name (basename (__flo_get_repo_root) 2>/dev/null)
+    set -l repo_name (__flo_get_repo_name 2>/dev/null)
 
     if test -z "$repo_name"
         # Clean all old files
@@ -137,7 +133,7 @@ function claude-clean --description "Remove old Claude context files"
 
     if gum confirm "Delete these files?"
         rm $old_files
-        gum style --foreground 2 "✓ Deleted "(count $old_files)" files"
+        __flo_success "✓ Deleted "(count $old_files)" files"
     else
         echo Cancelled
     end

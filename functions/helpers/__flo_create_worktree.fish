@@ -1,27 +1,16 @@
 function __flo_create_worktree --description "Create a git worktree for a branch"
     set -l branch_name $argv[1]
 
-    if test -z "$branch_name"
-        echo "Error: Branch name required" >&2
-        return 1
-    end
+    __flo_require_param branch_name "$branch_name" "Usage: __flo_create_worktree <branch-name>"; or return
 
     # Get the worktree location
-    set -l repo_root (__flo_get_repo_root)
-    if test -z "$repo_root"
-        echo "Error: Not in a git repository" >&2
-        return 1
-    end
-
-    set -l repo_name (basename $repo_root)
-    set -l location ~/worktrees/$repo_name
-    mkdir -p $location
+    set -l location (__flo_get_worktree_location); or return
 
     set -l worktree_path "$location/$branch_name"
 
     # Check if worktree already exists
     if __flo_worktree_exists $branch_name
-        echo "Worktree '$branch_name' already exists" >&2
+        __flo_error "Worktree '$branch_name' already exists"
         return 1
     end
 

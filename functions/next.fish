@@ -4,26 +4,23 @@ function next --description "Start next issue (context-aware)"
     argparse --name="flo next" h/help no-claude -- $argv; or return
 
     if set -q _flag_help
-        echo "Usage: flo next [issue-number]"
-        echo ""
-        echo "Context-aware next issue command:"
-        echo "- In worktree: transition workflow (delete → sync → create → claude)"
-        echo "- In main project: regular issue workflow (create → claude)"
-        echo ""
-        echo "Options:"
-        echo "  --no-claude   Skip Claude launch"
-        echo "  -h, --help    Show this help"
-        echo ""
-        echo "Examples:"
-        echo "  flo next              Select from issue list"
-        echo "  flo next 123          Work on issue #123"
-        echo "  flo next 123 --no-claude  Work on issue #123 without Claude"
+        __flo_show_help \
+            --usage "flo next [issue-number]" \
+            --description "Context-aware next issue command:
+- In worktree: transition workflow (delete → sync → create → claude)
+- In main project: regular issue workflow (create → claude)" \
+            --args "issue-number    Optional issue number to work on" \
+            --options "--no-claude   Skip Claude launch
+-h, --help    Show this help" \
+            --examples "flo next              Select from issue list
+flo next 123          Work on issue #123
+flo next 123 --no-claude  Work on issue #123 without Claude"
         return 0
     end
 
     # Validate we're in a git project
     if not git rev-parse --git-dir >/dev/null 2>&1
-        echo "Error: Must be run from within a git project" >&2
+        __flo_error "Must be run from within a git project"
         return 1
     end
 
@@ -62,7 +59,7 @@ function next --description "Start next issue (context-aware)"
             echo "Failed to sync main branch" >&2
             return 1
         end
-        gum style --foreground 2 "✓ Synced main branch"
+        __flo_success "✓ Synced main branch"
 
         # Create new issue worktree
         flo issue $issue_number; or begin

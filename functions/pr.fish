@@ -4,20 +4,16 @@ function pr --description "Create a pull request for current branch"
     argparse --name="flo pr" h/help d/draft t/title= b/body= base= -- $argv; or return
 
     if set -q _flag_help
-        echo "Usage: flo pr [options]"
-        echo ""
-        echo "Create a pull request for the current branch."
-        echo ""
-        echo "Options:"
-        echo "  -t, --title TEXT   PR title (default: generated from branch)"
-        echo "  -b, --body TEXT    PR body/description"
-        echo "  -d, --draft        Create as draft PR"
-        echo "  --base BRANCH      Base branch (default: main)"
-        echo "  -h, --help         Show this help"
-        echo ""
-        echo "Example:"
-        echo "  flo pr"
-        echo "  flo pr --title \"Fix navigation bug\" --draft"
+        __flo_show_help \
+            --usage "flo pr [options]" \
+            --description "Create a pull request for the current branch." \
+            --options "-t, --title TEXT   PR title (default: generated from branch)
+-b, --body TEXT    PR body/description
+-d, --draft        Create as draft PR
+--base BRANCH      Base branch (default: main)
+-h, --help         Show this help" \
+            --examples "flo pr
+flo pr --title \"Fix navigation bug\" --draft"
         return 0
     end
 

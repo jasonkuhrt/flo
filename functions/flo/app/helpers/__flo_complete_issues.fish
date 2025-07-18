@@ -3,8 +3,9 @@ function __flo_complete_issues --description "Complete issue numbers and titles 
         return 1
     end
 
-    # Simple caching - use a cache file with timestamp
-    set -l cache_file "$HOME/.cache/flo/issues_complete"
+    # Simple caching - use XDG Base Directory or fallback
+    set -l cache_dir (set -q XDG_CACHE_HOME; and echo $XDG_CACHE_HOME; or echo $HOME/.cache)
+    set -l cache_file "$cache_dir/flo/issues_complete"
     set -l cache_age_minutes 5
 
     # Create cache directory if it doesn't exist

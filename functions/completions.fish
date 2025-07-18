@@ -7,7 +7,6 @@ complete -c flo -f -n __fish_use_subcommand -a next -d "Start next issue (contex
 complete -c flo -f -n __fish_use_subcommand -a rm -d "Remove issue, PR, and/or worktree"
 complete -c flo -f -n __fish_use_subcommand -a claude -d "Add current branch context to Claude"
 complete -c flo -f -n __fish_use_subcommand -a claude-clean -d "Remove old Claude context files"
-complete -c flo -f -n __fish_use_subcommand -a reload -d "Reload flo functions"
 complete -c flo -f -n __fish_use_subcommand -a help -d "Show help message"
 
 # Use dynamic completions for flo issue

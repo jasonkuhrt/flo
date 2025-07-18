@@ -7,9 +7,3 @@ repos:
         language: system
         files: \.fish$
         pass_filenames: false
-      - id: fish-check-format
-        name: Check Fish formatting
-        entry: ./scripts/check-format.fish
-        language: system
-        files: \.fish$
-        pass_filenames: false

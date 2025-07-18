@@ -4,13 +4,34 @@ This document contains information for developers working on the flo project.
 
 ## Development Installation
 
-For development, use symlinks so changes in the repo are immediately reflected:
+Flo uses Fisher for both development and production installations. This provides a consistent experience and better plugin management.
+
+### Initial Development Setup
+
+Install flo as a Fisher plugin from your local development directory:
 
 ```fish
-~/projects/jasonkuhrt/flo/install-dev.fish
+# Install flo for development
+fisher install ~/projects/jasonkuhrt/flo
 ```
 
-This creates symlinks instead of copying files, allowing you to work on the main branch and test changes immediately.
+### Development Workflow
+
+After making changes to the code, update the Fisher installation to reflect your changes:
+
+```fish
+# After making changes, update the Fisher installation
+fisher update ~/projects/jasonkuhrt/flo
+```
+
+This copies the latest files from your development directory to the Fisher installation, making your changes immediately available.
+
+### Why Fisher for Development?
+
+- **Consistent with production**: Same installation method for dev and prod
+- **Proper file organization**: Maintains the Fisher-compatible directory structure
+- **Easy updates**: Simple `fisher update` command to refresh changes
+- **Clean uninstall**: `fisher remove` cleans up completely
 
 ## Command Naming Convention
 
@@ -73,19 +94,19 @@ make check-format
 
 ### Installation Tasks
 
-Install flo for development (symlinks):
+Install flo for development:
 ```fish
-make install-dev
+fisher install ~/projects/jasonkuhrt/flo
 ```
 
-Install flo for production (copies files):
+Update flo after making changes:
 ```fish
-make install
+fisher update ~/projects/jasonkuhrt/flo
 ```
 
 Uninstall flo:
 ```fish
-make uninstall
+fisher remove ~/projects/jasonkuhrt/flo
 ```
 
 ### Pre-commit Hooks
@@ -308,7 +329,7 @@ end
 
 ## Testing Your Command
 
-1. **Install in development mode**: `./install-dev.fish`
+1. **Update Fisher installation**: `fisher update ~/projects/jasonkuhrt/flo`
 2. **Test all flag combinations**: Verify parsing works correctly
 3. **Test error cases**: Ensure proper error messages
 4. **Test help output**: Ensure help is clear and complete

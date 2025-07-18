@@ -13,7 +13,7 @@ function __flo_select_file --description "Let user select a file using gum filte
     end
 
     # Check if fd is available for better file finding
-    if command -q fd
+    if __flo_has_command fd
         set -l files (fd --type f "$pattern" "$path" 2>/dev/null)
     else
         # Fallback to find

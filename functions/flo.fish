@@ -1,48 +1,37 @@
-# Loader script for flo functions
-# This file sources all the flo modules in the correct order
+# Flo - Git workflow automation tool
+# This file initializes flo using the CLI framework
 
 set -l flo_dir (dirname (status -f))
 
-# Load modules in dependency order
+# Source the CLI framework
+source $flo_dir/../lib/cli/$.fish
+
+# Source helpers first (they're needed by commands)
 source $flo_dir/helpers.fish
-source $flo_dir/issue.fish
-source $flo_dir/pr.fish
-source $flo_dir/claude.fish
-source $flo_dir/next.fish
-source $flo_dir/flo_rm.fish
-source $flo_dir/completions.fish
 
-# Main flo command dispatcher
-function flo --description "Git workflow automation tool"
-    set -l cmd $argv[1]
-    set -e argv[1]
+# Initialize flo with the CLI framework
+__cli_init \
+    --name flo \
+    --prefix flo \
+    --dir $flo_dir \
+    --description "Git workflow automation tool" \
+    --version "1.0.0" \
+    --exclude flo helpers completions
 
-    switch $cmd
-        case issue
-            issue $argv
-        case pr
-            pr $argv
-        case next
-            next $argv
-        case rm
-            flo_rm $argv
-        case claude
-            claude $argv
-        case reload
-            __flo_reload $argv
-        case help ''
-            echo "flo - Git workflow automation tool"
-            echo ""
-            echo "Commands:"
-            echo "  issue <number|title>    Start work on a GitHub issue"
-            echo "  next [number]           Transition to next issue (context-aware)"
-            echo "  rm [number]             Remove issue, PR, and/or worktree"
-            echo "  pr                      Create pull request for current branch"
-            echo "  claude                  Add current branch context to Claude"
-            echo "  help                    Show this help message"
-        case '*'
-            echo "Unknown command: $cmd"
-            echo "Run 'flo help' for usage information"
-            return 1
-    end
+# Register command dependencies
+__cli_register_deps issue git gh gum jq
+__cli_register_deps pr git gh gum
+__cli_register_deps next git gh gum
+__cli_register_deps rm git gh gum
+__cli_register_deps claude git gh
+
+# The framework automatically creates the 'flo' function with:
+# - Dynamic command dispatch
+# - Auto-generated help
+# - Version display
+# - Command discovery
+
+# Source completions if available
+if test -f $flo_dir/completions.fish
+    source $flo_dir/completions.fish
 end

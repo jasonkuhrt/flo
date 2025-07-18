@@ -1,6 +1,6 @@
 # Claude AI integration
 
-function claude --description "Add current branch context to Claude"
+function flo_claude --description "Add current branch context to Claude"
     argparse --name="flo claude" h/help a/all c/clean -- $argv; or return
 
     if set -q _flag_help
@@ -37,7 +37,7 @@ flo claude --clean        # Clean old context files"
     set -l prompt_file "$target_dir/$repo_name-$current_branch.md"
 
     # Get issue/PR info if available
-    set -l issue_number (__flo_parse_issue_number $current_branch)
+    set -l issue_number (__flo_get_issue_from_context)
     set -l pr_info ""
 
     if __flo_check_gh_auth
@@ -45,8 +45,12 @@ flo claude --clean        # Clean old context files"
             # Use gh template for formatting
             set -l pr_info (gh issue view $issue_number --template '## Issue #{{.number}}{{"\n"}}{{.title}}{{"\n\n"}}{{.body}}{{"\n\n"}}URL: {{.url}}' 2>/dev/null)
         else
-            # Use gh template for PR formatting
-            set -l pr_info (gh pr view --template '## PR #{{.number}}{{"\n"}}{{.title}}{{"\n\n"}}{{.body}}{{"\n\n"}}URL: {{.url}}' 2>/dev/null)
+            # Check if there's a PR for current branch
+            set -l pr_number (__flo_check_pr_exists $current_branch branch)
+            if test -n "$pr_number"
+                # Use gh template for PR formatting
+                set -l pr_info (gh pr view $pr_number --template '## PR #{{.number}}{{"\n"}}{{.title}}{{"\n\n"}}{{.body}}{{"\n\n"}}URL: {{.url}}' 2>/dev/null)
+            end
         end
     end
 
@@ -77,7 +81,7 @@ flo claude --clean        # Clean old context files"
         echo "" >>$prompt_file
         echo "## Full Diff" >>$prompt_file
         echo '```diff' >>$prompt_file
-        if command -q delta
+        if __flo_has_command delta
             # Use delta for formatted diff output
             git diff origin/main...$current_branch --no-color >>$prompt_file
         else
@@ -89,12 +93,12 @@ flo claude --clean        # Clean old context files"
     echo "Created Claude prompt at: $prompt_file"
 
     # Open in editor if available
-    if command -v code >/dev/null
+    if __flo_has_command code
         code $prompt_file
     end
 end
 
-function claude-clean --description "Remove old Claude context files"
+function flo_claude_clean --description "Remove old Claude context files"
     set -l claude_dir ~/Library/CloudStorage/Dropbox/Documents-Dropbox/Contextual/claude
     set -l target_dir "$claude_dir/prompts"
 
@@ -107,14 +111,14 @@ function claude-clean --description "Remove old Claude context files"
 
     if test -z "$repo_name"
         # Clean all old files
-        if command -q fd
+        if __flo_has_command fd
             set -l old_files (fd --type f --extension md --changed-before 7d . $target_dir)
         else
             set -l old_files (find $target_dir -name "*.md" -mtime +7)
         end
     else
         # Clean old files for current repo
-        if command -q fd
+        if __flo_has_command fd
             set -l old_files (fd --type f "^$repo_name-.*\.md\$" --changed-before 7d $target_dir)
         else
             set -l old_files (find $target_dir -name "$repo_name-*.md" -mtime +7)

@@ -6,7 +6,7 @@ function __flo_get_repo_root --description "Get the root directory of the git re
         if string match -q "*/worktrees/*" $git_dir
             # Extract main repo path from worktree git-dir
             set -l main_git_dir (string replace -r '/worktrees/[^/]+$' '' $git_dir)
-            dirname $main_git_dir
+            dirname "$main_git_dir"
         else
             # In main repo
             git rev-parse --show-toplevel 2>/dev/null

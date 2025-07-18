@@ -29,30 +29,15 @@ flo rm --close-pr --close-issue  Delete worktree, close PR and issue"
     end
 
     # Get issue number from argument or current context
-    set -l issue_number $argv[1]
-
-    # If no issue number provided, try to get from current worktree
-    if test -z "$issue_number"
-        set -l current_worktree (__flo_get_current_worktree_name)
-
-        if test -z "$current_worktree"
-            echo "Error: No issue number provided and not in an issue worktree" >&2
-            echo "Usage: flo rm <issue-number>" >&2
-            return 1
-        end
-
-        # Extract issue number from worktree name (e.g., "issue/123" or "123-fix-bug")
-        set issue_number (__flo_parse_issue_number $current_worktree)
-
-        if test -z "$issue_number"
-            echo "Error: Could not determine issue number from worktree '$current_worktree'" >&2
-            return 1
-        end
+    set -l issue_number (__flo_get_issue_from_context $argv[1]); or begin
+        __flo_error "No issue number provided and not in an issue worktree"
+        echo "Usage: flo rm <issue-number>" >&2
+        return 1
     end
 
     # Validate issue number
-    if not string match -qr '^[0-9]+$' -- $issue_number
-        echo "Error: Invalid issue number: $issue_number" >&2
+    if not __flo_validate_issue_number $issue_number
+        __flo_error "Invalid issue number: $issue_number"
         return 1
     end
 
@@ -82,7 +67,7 @@ flo rm --close-pr --close-issue  Delete worktree, close PR and issue"
             end
         end
 
-        set -l pr_number (gh pr list --state open --search "head:issue/$issue_number" --json number -q '.[0].number' 2>/dev/null)
+        set -l pr_number (__flo_check_pr_exists $issue_number issue)
         if test -n "$pr_number"
             set available_actions $available_actions "Close PR #$pr_number"
             if set -q _flag_close_pr
@@ -121,11 +106,10 @@ flo rm --close-pr --close-issue  Delete worktree, close PR and issue"
     # Skip interactive selection if --force flag is set
     if not set -q _flag_force
         # Use gum choose with multi-select for actions
-        set -l chosen_actions (printf '%s\n' $available_actions | gum choose \
-            --no-limit \
-            --show-help \
+        set -l chosen_actions (__flo_gum_select_multi \
             --header "Select cleanup actions for issue #$issue_number:" \
-            --selected (printf '%s\n' $selected_actions))
+            --selected $selected_actions \
+            -- $available_actions)
 
         if test -z "$chosen_actions"
             echo "No actions selected"
@@ -186,7 +170,7 @@ flo rm --close-pr --close-issue  Delete worktree, close PR and issue"
 
     # Close PR if requested
     if test $do_close_pr -eq 1; and __flo_check_gh_auth
-        set -l pr_number (gh pr list --state open --search "head:issue/$issue_number" --json number -q '.[0].number' 2>/dev/null)
+        set -l pr_number (__flo_check_pr_exists $issue_number issue)
         if test -n "$pr_number"
             echo "Closing PR #$pr_number..."
             gh pr close $pr_number

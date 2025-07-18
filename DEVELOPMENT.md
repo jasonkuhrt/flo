@@ -12,6 +12,37 @@ For development, use symlinks so changes in the repo are immediately reflected:
 
 This creates symlinks instead of copying files, allowing you to work on the main branch and test changes immediately.
 
+## Command Naming Convention
+
+Flo uses a consistent naming convention to avoid conflicts with system commands:
+
+- **File name**: `<command>.fish` (e.g., `issue.fish`, `rm.fish`)
+- **Function name**: `flo_<command>` (e.g., `flo_issue`, `flo_rm`)
+
+This allows us to have a command like `rm` without conflicting with the system's `rm` command.
+
+### Example
+
+File: `functions/status.fish`
+```fish
+function flo_status --description "Show repository status"
+    # Implementation
+end
+```
+
+This command would be invoked as: `flo status`
+
+## CLI Framework
+
+Flo uses a custom CLI framework (`lib/cli/`) that provides:
+
+- **Dynamic command dispatch**: Commands are discovered automatically
+- **Consistent help generation**: Help text is auto-generated from function descriptions
+- **Dependency management**: Dependencies are checked before running commands
+- **Modular architecture**: Easy to add new commands
+
+The framework handles all the boilerplate, so new commands just need to follow the naming convention.
+
 ## Development Tasks
 
 The project includes several development tasks managed through the Makefile:
@@ -94,24 +125,24 @@ docs/                          # Generated documentation
 
 ### Command Discovery
 
-The documentation generator uses recursive discovery to find commands:
+With the CLI framework, commands are discovered automatically:
 
-1. **Main Commands**: Discovered by parsing the dispatcher switch statement in `flo.fish`
-2. **Subcommands**: Found by scanning `functions/<command>/` directories
-3. **Special Cases**: Some commands like `claude --clean` are handled as pseudo-subcommands
+1. **Main Commands**: Any function matching `flo_<command>` pattern
+2. **Dynamic Loading**: All `.fish` files in `functions/` are loaded (except excluded ones)
+3. **Auto Registration**: Commands appear in help automatically
 
 ## Adding New Commands
 
-Flo uses a consistent command structure that makes adding new commands straightforward. Follow these steps:
+Adding new commands to flo is simple thanks to the CLI framework and naming convention:
 
 ### 1. Create the Command File
 
-Create a new file in `functions/<command>.fish`:
+Create a new file in `functions/<command>.fish` with the function name `flo_<command>`:
 
 ```fish
 # functions/mycommand.fish
 
-function mycommand --description "Brief description of what this command does"
+function flo_mycommand --description "Brief description of what this command does"
     argparse --name="flo mycommand" h/help f/flag l/long-flag= o/option= -- $argv; or return
     
     if set -q _flag_help
@@ -153,26 +184,22 @@ function mycommand --description "Brief description of what this command does"
 end
 ```
 
-### 2. Add to Main Dispatcher
+### 2. Register Dependencies (Optional)
 
-Add a case for your command in `functions/flo.fish`:
-
-```fish
-# In the switch statement, add:
-case mycommand
-    mycommand $argv
-```
-
-### 3. Add Command Help to Main Help
-
-Update the help text in `functions/flo.fish`:
+If your command requires external tools, add them to `functions/flo.fish`:
 
 ```fish
-# In the help case, add:
-echo "  mycommand [args]        Brief description of what this command does"
+# Register command dependencies
+__cli_register_deps mycommand git jq
 ```
 
-### 4. Add Tab Completions (Optional)
+That's it! The CLI framework automatically:
+- Discovers your command
+- Adds it to the help system
+- Handles dispatch
+- Checks dependencies
+
+### 3. Add Tab Completions (Optional)
 
 Add completions in `functions/completions.fish`:
 

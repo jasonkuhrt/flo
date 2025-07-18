@@ -13,22 +13,22 @@ function __flo_view_file --description "View a file with bat if available, other
     end
 
     # Use bat if available
-    if command -q bat
-        set -l bat_cmd bat
+    if __flo_has_command bat
+        set -l bat_args
 
         # Add line numbers if requested
         if test "$line_numbers" = --line-numbers
-            set bat_cmd $bat_cmd --number
+            set -a bat_args --number
         end
 
         # Use plain style for non-interactive output
-        set bat_cmd $bat_cmd --style=plain
+        set -a bat_args --style=plain
 
         # Add file path
-        set bat_cmd $bat_cmd "$file_path"
+        set -a bat_args "$file_path"
 
         # Execute bat
-        eval $bat_cmd
+        bat $bat_args
     else
         # Fall back to cat
         if test "$line_numbers" = --line-numbers

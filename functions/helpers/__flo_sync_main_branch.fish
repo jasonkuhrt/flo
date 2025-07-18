@@ -2,7 +2,7 @@ function __flo_sync_main_branch --description "Sync main branch with upstream"
     set -l main_repo (__flo_get_repo_root)
     if test -n "$main_repo"
         set -l current_dir (pwd)
-        cd $main_repo
+        cd "$main_repo"
 
         # Fetch latest changes
         git fetch origin
@@ -14,7 +14,7 @@ function __flo_sync_main_branch --description "Sync main branch with upstream"
                 set main_branch master
             else
                 echo "Neither 'main' nor 'master' branch found" >&2
-                cd $current_dir
+                cd "$current_dir"
                 return 1
             end
         end
@@ -23,7 +23,7 @@ function __flo_sync_main_branch --description "Sync main branch with upstream"
         git pull origin $main_branch
 
         # Return to original directory
-        cd $current_dir
+        cd "$current_dir"
     else
         echo "Could not find repository root" >&2
         return 1

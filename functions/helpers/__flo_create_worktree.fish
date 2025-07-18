@@ -15,18 +15,16 @@ function __flo_create_worktree --description "Create a git worktree for a branch
     end
 
     # Create the worktree
-    git worktree add -b $branch_name $worktree_path
-
-    if test $status -eq 0
+    if git worktree add -b "$branch_name" "$worktree_path"
         echo "Created worktree at: $worktree_path"
 
         # Open in editor if available
-        if command -q zed
-            zed $worktree_path
-        else if command -q code
-            code $worktree_path
-        else if command -q cursor
-            cursor $worktree_path
+        if __flo_has_command zed
+            zed "$worktree_path"
+        else if __flo_has_command code
+            code "$worktree_path"
+        else if __flo_has_command cursor
+            cursor "$worktree_path"
         end
 
         return 0

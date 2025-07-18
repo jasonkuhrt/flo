@@ -28,60 +28,60 @@ function __flo_find_files --description "Find files using fd if available, other
     end
 
     # Use fd if available
-    if command -q fd
-        set -l fd_cmd fd
+    if __flo_has_command fd
+        set -l fd_args
 
         # Add type flag
         if test "$type" = f
-            set fd_cmd $fd_cmd --type file
+            set -a fd_args --type file
         else if test "$type" = d
-            set fd_cmd $fd_cmd --type directory
+            set -a fd_args --type directory
         end
 
         # Add pattern if provided
         if test -n "$pattern"
-            set fd_cmd $fd_cmd "$pattern"
+            set -a fd_args "$pattern"
         end
 
         # Add path
-        set fd_cmd $fd_cmd "$path"
+        set -a fd_args "$path"
 
         # Add max depth if specified
         if test -n "$max_depth"
-            set fd_cmd $fd_cmd --max-depth "$max_depth"
+            set -a fd_args --max-depth "$max_depth"
         end
 
         # Handle hidden files
         if test $exclude_hidden -eq 1
-            set fd_cmd $fd_cmd --no-hidden
+            set -a fd_args --no-hidden
         else
-            set fd_cmd $fd_cmd --hidden
+            set -a fd_args --hidden
         end
 
         # Execute fd
-        eval $fd_cmd 2>/dev/null
+        fd $fd_args 2>/dev/null
     else
         # Fall back to find
-        set -l find_cmd find "$path"
+        set -l find_args "$path"
 
         # Add max depth if specified
         if test -n "$max_depth"
-            set find_cmd $find_cmd -maxdepth "$max_depth"
+            set -a find_args -maxdepth "$max_depth"
         end
 
         # Add type
-        set find_cmd $find_cmd -type "$type"
+        set -a find_args -type "$type"
 
         # Add pattern if provided
         if test -n "$pattern"
-            set find_cmd $find_cmd -name "$pattern"
+            set -a find_args -name "$pattern"
         end
 
         # Execute find and filter hidden files if needed
         if test $exclude_hidden -eq 1
-            eval $find_cmd 2>/dev/null | grep -v '/\.'
+            find $find_args 2>/dev/null | grep -v '/\.'
         else
-            eval $find_cmd 2>/dev/null
+            find $find_args 2>/dev/null
         end
     end
 end

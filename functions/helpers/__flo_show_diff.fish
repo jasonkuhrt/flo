@@ -2,7 +2,7 @@ function __flo_show_diff --description "Show git diff with delta if available"
     set -l diff_args $argv
 
     # Use delta if available
-    if command -q delta
+    if __flo_has_command delta
         # Check if we're in a git repo
         if git rev-parse --git-dir >/dev/null 2>&1
             # Use git diff with delta as pager

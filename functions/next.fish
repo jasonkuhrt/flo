@@ -1,6 +1,6 @@
 # Next issue workflow command
 
-function next --description "Start next issue (context-aware)"
+function flo_next --description "Start next issue (context-aware)"
     argparse --name="flo next" h/help no-claude -- $argv; or return
 
     if set -q _flag_help
@@ -49,21 +49,21 @@ flo next 123 --no-claude  Work on issue #123 without Claude"
 
         # Delete current worktree
         __flo_remove_current_worktree; or begin
-            echo "Failed to remove current worktree" >&2
+            __flo_error "Failed to remove current worktree"
             return 1
         end
         echo "✓ Deleted worktree: $current_worktree"
 
         # Sync main branch
-        gum spin --spinner dots --title "Syncing main branch..." -- __flo_sync_main_branch; or begin
-            echo "Failed to sync main branch" >&2
+        __flo_gum_spin --title "Syncing main branch..." -- __flo_sync_main_branch; or begin
+            __flo_error "Failed to sync main branch"
             return 1
         end
         __flo_success "✓ Synced main branch"
 
         # Create new issue worktree
         flo issue $issue_number; or begin
-            echo "Failed to create new worktree" >&2
+            __flo_error "Failed to create new worktree"
             return 1
         end
         echo "✓ Created worktree: issue/$issue_number"
@@ -74,7 +74,7 @@ flo next 123 --no-claude  Work on issue #123 without Claude"
 
         # Create new issue worktree
         flo issue $issue_number; or begin
-            echo "Failed to create new worktree" >&2
+            __flo_error "Failed to create new worktree"
             return 1
         end
         echo "✓ Created worktree: issue/$issue_number"
@@ -83,9 +83,9 @@ flo next 123 --no-claude  Work on issue #123 without Claude"
     # Launch Claude if session provided or not disabled
     if test -n "$session_id"
         echo "Resuming Claude session..."
-        claude --resume $session_id
+        flo claude --resume $session_id
     else if not set -q _flag_no_claude
         echo "Starting new Claude session..."
-        claude
+        flo claude
     end
 end

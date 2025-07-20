@@ -29,6 +29,7 @@ __cli_init \
 ### Creating Commands
 
 Follow the naming convention:
+
 - File: `<command>.fish`
 - Function: `<prefix>_<command>`
 
@@ -52,9 +53,11 @@ __cli_register_deps deploy docker kubectl
 ### Core Functions
 
 #### `__cli_init`
+
 Initialize a CLI application.
 
 Options:
+
 - `--name`: CLI command name (required)
 - `--prefix`: Function prefix (defaults to name)
 - `--dir`: Directory containing command files (required)
@@ -63,6 +66,7 @@ Options:
 - `--exclude`: Files to exclude from loading
 
 #### `__cli_register_deps`
+
 Register dependencies for a command.
 
 ```fish
@@ -72,17 +76,21 @@ __cli_register_deps <command> <dep1> <dep2> ...
 ### Discovery Functions
 
 #### `__cli_get_commands`
+
 Get all available commands.
 
 #### `__cli_command_exists`
+
 Check if a command exists.
 
 #### `__cli_get_command_description`
+
 Get the description of a command.
 
 ### Helper Functions
 
 #### `__cli_reload`
+
 Reload all commands (useful for development).
 
 ## Example CLI

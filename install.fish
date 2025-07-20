@@ -1,43 +1,83 @@
 #!/usr/bin/env fish
 
 # Flo installation script
+# For the best experience, use Fisher instead: fisher install jasonkuhrt/flo
 
-set -l script_dir (dirname (status --current-filename))
+echo "📦 Manual installation of flo"
+echo ""
+echo "⚠️  We strongly recommend using Fisher for easier installation and updates:"
+echo ""
+echo "  fisher install jasonkuhrt/flo"
+echo ""
+echo "Fisher provides:"
+echo "  • Automatic installation and file management"
+echo "  • Easy updates with 'fisher update'"
+echo "  • Clean uninstall with 'fisher remove jasonkuhrt/flo'"
+echo "  • Better Fish shell integration"
+echo ""
+echo "If you don't have Fisher, install it first:"
+echo "  https://github.com/jorgebucaran/fisher"
+echo ""
 
-# Check if Fisher is available and suggest using it
-if command -q fisher
-    echo "🎣 Fisher detected! We recommend using Fisher for easier installation and updates:"
-    echo ""
-    echo "  fisher install jasonkuhrt/flo"
-    echo ""
-    echo "This will:"
-    echo "  • Install flo automatically"
-    echo "  • Enable easy updates with 'fisher update'"
-    echo "  • Provide clean uninstall with 'fisher remove jasonkuhrt/flo'"
-    echo ""
+# Ask user if they want to continue with manual install
+echo "Do you want to continue with manual installation instead? (y/N)"
+read -l response
 
-    # Ask user if they want to continue with manual install
-    echo "Do you want to continue with manual installation instead? (y/N)"
-    read -l response
-
-    if test "$response" != y -a "$response" != Y
-        echo "Installation cancelled. Use 'fisher install jasonkuhrt/flo' instead."
-        exit 0
-    end
-
-    echo "Proceeding with manual installation..."
-    echo ""
-else
-    echo "📦 Consider installing Fisher for easier package management:"
-    echo "  https://github.com/jorgebucaran/fisher"
-    echo ""
+if test "$response" != y -a "$response" != Y
+    echo "Installation cancelled. Use 'fisher install jasonkuhrt/flo' instead."
+    exit 0
 end
 
-# Set FLO_DIR so the helper can find the flo directory
-set -x FLO_DIR "$script_dir"
+echo "Proceeding with manual installation..."
+echo ""
 
-# Source the install helper
-source "$script_dir/functions/flo/app/helpers/__flo_install.fish"
+# Simple manual installation by copying files
+set -l script_dir (dirname (status --current-filename))
+set -l fish_config ~/.config/fish
 
-# Run the installation in copy mode
-__flo_install copy
+echo "Installing flo (manual copy mode)..."
+
+# Create Fish config directories if they don't exist
+mkdir -p $fish_config/functions
+mkdir -p $fish_config/completions
+
+# Copy main function files
+for file in $script_dir/functions/*.fish
+    if test -f $file
+        set -l basename (basename $file)
+        echo "  Copying $basename"
+        cp $file $fish_config/functions/$basename
+    end
+end
+
+# Copy function subdirectories
+for dir in $script_dir/functions/*/
+    if test -d $dir
+        set -l basename (basename $dir)
+        echo "  Copying $basename/"
+        cp -r $dir $fish_config/functions/$basename
+    end
+end
+
+# Copy completions
+for file in $script_dir/completions/*.fish
+    if test -f $file
+        set -l basename (basename $file)
+        echo "  Copying $basename"
+        cp $file $fish_config/completions/$basename
+    end
+end
+
+# Copy fisher.fish if it exists
+if test -f $script_dir/fisher.fish
+    echo "  Copying fisher.fish"
+    cp $script_dir/fisher.fish $fish_config/functions/fisher.fish
+end
+
+echo ""
+echo "✅ Manual installation complete!"
+echo ""
+echo "Restart your Fish shell or run:"
+echo "  source ~/.config/fish/config.fish"
+echo ""
+echo "To uninstall manually, delete the copied files from ~/.config/fish/"

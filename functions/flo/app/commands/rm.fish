@@ -14,30 +14,120 @@ function flo_rm --description "Remove issue, PR, and/or worktree"
         __flo_show_help \
             --usage "flo rm [issue-number] [options]" \
             --description "Remove issue, pull request, and/or worktree.
-By default, deletes the worktree but leaves issue and PR open." \
-            --args "issue-number    Issue number to remove (default: current worktree's issue)" \
+By default, deletes the worktree but leaves issue and PR open.
+If no issue number provided, shows interactive selection of removable items." \
+            --args "issue-number    Issue number to remove (optional: shows selection if omitted)" \
             --options "--close-issue         Close the GitHub issue (default: no)
 --close-pr            Close the pull request (default: no)
 --no-delete-worktree  Don't delete the worktree (default: delete)
 -f, --force           Skip confirmation prompt
 -h, --help            Show this help" \
-            --examples "flo rm                    Delete current worktree, keep issue/PR open
+            --examples "flo rm                    Show interactive selection of items to remove
 flo rm 123                Delete worktree for issue #123
 flo rm --close-issue      Delete worktree and close issue
 flo rm --close-pr --close-issue  Delete worktree, close PR and issue"
         return 0
     end
 
-    # Get issue number from argument or current context
-    set -l issue_number (__flo_get_issue_from_context $argv[1]); or begin
-        __flo_error "No issue number provided and not in an issue worktree"
-        echo "Usage: flo rm <issue-number>" >&2
+    # Get issue number from argument or current context, or show selection
+    set -l issue_number ""
+    set -l selected_worktree ""
+
+    if test (count $argv) -gt 0
+        # Issue number provided as argument
+        set issue_number $argv[1]
+        if not string match -qr '^[0-9]+$' $issue_number
+            __flo_error "Invalid issue number: $issue_number"
+            return 1
+        end
+    else
+        # Try to get from current context first
+        set issue_number (__flo_get_issue_from_context)
+
+        if test -z "$issue_number"
+            # Show interactive selection of available items
+            set -l removable_items (__flo_list_removable_items)
+
+            if test -z "$removable_items"
+                echo "No worktrees available for removal"
+                return 0
+            end
+
+            # Prepare choices for gum (display names only)
+            set -l choices
+            for item in $removable_items
+                set -l display_name (string split "|" $item)[1]
+                set choices $choices "$display_name"
+            end
+
+            # Show selection
+            set -l selected_display (gum choose \
+                --header "Select item to remove:" \
+                $choices)
+
+            if test -z "$selected_display"
+                echo "No item selected"
+                return 0
+            end
+
+            # Find the corresponding item info
+            for item in $removable_items
+                set -l parts (string split "|" $item)
+                if test "$parts[1]" = "$selected_display"
+                    set -l item_info $parts[2]
+                    set -l item_parts (string split ":" $item_info)
+                    set -l item_type $item_parts[1]
+                    set -l item_value $item_parts[2]
+
+                    if test "$item_type" = issue
+                        set issue_number $item_value
+                    else if test "$item_type" = worktree
+                        set selected_worktree $item_value
+                    end
+                    break
+                end
+            end
+        end
+    end
+
+    # Validate issue number (if we have one)
+    if test -n "$issue_number"; and not __flo_validate_issue_number $issue_number
+        __flo_error "Invalid issue number: $issue_number"
         return 1
     end
 
-    # Validate issue number
-    if not __flo_validate_issue_number $issue_number
-        __flo_error "Invalid issue number: $issue_number"
+    # Handle non-issue worktree removal
+    if test -z "$issue_number"; and test -n "$selected_worktree"
+        echo "Removing non-issue worktree: $selected_worktree"
+
+        # Check if we're in the worktree to be deleted
+        set -l current_worktree (__flo_get_current_worktree_name)
+        if test "$current_worktree" = "$selected_worktree"
+            echo "Moving to main repository before deletion..."
+            cd (__flo_get_repo_root)
+        end
+
+        # Delete the worktree
+        if __flo_worktree_exists $selected_worktree
+            echo "Deleting worktree '$selected_worktree'..."
+            __flo_delete_worktree $selected_worktree
+            if test $status -eq 0
+                __flo_success "✓ Deleted worktree '$selected_worktree'"
+            else
+                __flo_error "✗ Failed to delete worktree"
+                return 1
+            end
+        else
+            __flo_error "Worktree '$selected_worktree' not found"
+            return 1
+        end
+
+        return 0
+    end
+
+    # If we still don't have an issue number, something went wrong
+    if test -z "$issue_number"
+        __flo_error "No issue number or worktree selected"
         return 1
     end
 

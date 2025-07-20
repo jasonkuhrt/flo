@@ -4,34 +4,49 @@ This document contains information for developers working on the flo project.
 
 ## Development Installation
 
-Flo uses Fisher for both development and production installations. This provides a consistent experience and better plugin management.
+Flo provides two installation modes for different use cases:
 
-### Initial Development Setup
+### Development Mode (Recommended for Contributors)
 
-Install flo as a Fisher plugin from your local development directory:
-
-```fish
-# Install flo for development
-fisher install ~/projects/jasonkuhrt/flo
-```
-
-### Development Workflow
-
-After making changes to the code, update the Fisher installation to reflect your changes:
+For active development with instant feedback:
 
 ```fish
-# After making changes, update the Fisher installation
-fisher update ~/projects/jasonkuhrt/flo
+# Install with symlinks for instant updates
+make install-dev
 ```
 
-This copies the latest files from your development directory to the Fisher installation, making your changes immediately available.
+**Benefits:**
 
-### Why Fisher for Development?
+- **Instant feedback**: Changes to source files are immediately reflected
+- **No update commands**: Edit code and test immediately
+- **Same file structure**: Identical to Fisher installation
 
-- **Consistent with production**: Same installation method for dev and prod
-- **Proper file organization**: Maintains the Fisher-compatible directory structure
-- **Easy updates**: Simple `fisher update` command to refresh changes
-- **Clean uninstall**: `fisher remove` cleans up completely
+### Production Mode
+
+For production use or testing Fisher compatibility:
+
+```fish
+# Install using Fisher
+make install
+```
+
+**Benefits:**
+
+- **Proper Fisher experience**: Same as end users get
+- **Easy updates**: `fisher update jasonkuhrt/flo`
+- **Clean uninstall**: `fisher remove jasonkuhrt/flo`
+
+### Switching Between Modes
+
+```fish
+# Switch to development mode
+make install-dev
+
+# Switch back to Fisher mode  
+make install
+```
+
+The development symlinks are automatically replaced when switching to Fisher mode.
 
 ## Command Naming Convention
 
@@ -45,6 +60,7 @@ This allows us to have a command like `rm` without conflicting with the system's
 ### Example
 
 File: `functions/status.fish`
+
 ```fish
 function flo_status --description "Show repository status"
     # Implementation
@@ -71,11 +87,13 @@ The project includes several development tasks managed through the Makefile:
 ### Documentation Generation
 
 Regenerate documentation from help text:
+
 ```fish
 make docs
 ```
 
 Clean generated documentation:
+
 ```fish
 make docs-clean
 ```
@@ -83,52 +101,57 @@ make docs-clean
 ### Code Formatting
 
 Format all Fish files:
+
 ```fish
 make format
 ```
 
 Check if Fish files are properly formatted:
+
 ```fish
 make check-format
 ```
 
 ### Installation Tasks
 
-Install flo for development:
+Install flo for development (symlinks):
+
 ```fish
-fisher install ~/projects/jasonkuhrt/flo
+make install-dev
 ```
 
-Update flo after making changes:
+Install flo using Fisher (production mode):
+
 ```fish
-fisher update ~/projects/jasonkuhrt/flo
+make install
 ```
 
-Uninstall flo:
-```fish
-fisher remove ~/projects/jasonkuhrt/flo
-```
+Switch between modes as needed - Fisher will automatically replace symlinks when switching to production mode.
 
 ### Pre-commit Hooks
 
 Flo uses pre-commit hooks to automatically format code before commits. The configuration is in `.pre-commit-config.yaml`.
 
 Install pre-commit hooks:
+
 ```fish
 make pre-commit
 ```
 
 **How it works:**
+
 - When you commit, pre-commit automatically runs the hooks defined in `.pre-commit-config.yaml`
 - Currently configured to run `fish_indent` to format all `.fish` files
 - If files are reformatted, they're automatically staged and the commit proceeds
 - **Changes to `.pre-commit-config.yaml` are automatically applied** - no need to reinstall
 
 **Current hooks:**
+
 - `fish-format`: Automatically formats Fish files using `fish_indent`
 
 **Manual formatting:**
 You can also format files manually without committing:
+
 ```fish
 make format
 ```
@@ -245,6 +268,7 @@ __cli_register_deps mycommand git jq
 ```
 
 That's it! The CLI framework automatically:
+
 - Discovers your command
 - Adds it to the help system
 - Handles dispatch
@@ -359,12 +383,13 @@ end
 
 ## Testing Your Command
 
-1. **Update Fisher installation**: `fisher update ~/projects/jasonkuhrt/flo`
+1. **Install in development mode**: `make install-dev` (changes are instantly available)
 2. **Test all flag combinations**: Verify parsing works correctly
 3. **Test error cases**: Ensure proper error messages
 4. **Test help output**: Ensure help is clear and complete
 5. **Test tab completion**: Verify completions work as expected
-6. **Update documentation**: Run `make docs` to regenerate
+6. **Test Fisher compatibility**: `make install` to verify production mode works
+7. **Update documentation**: Run `make docs` to regenerate
 
 ## Debugging
 

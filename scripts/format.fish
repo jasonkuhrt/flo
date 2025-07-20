@@ -4,7 +4,7 @@
 set -l script_dir (dirname (status --current-filename))
 set -l project_root (dirname $script_dir)
 
-echo "🎨 Formatting Fish files..."
+echo "Formatting Fish files..."
 
 set -l files_formatted 0
 set -l files_total 0
@@ -21,7 +21,7 @@ for file in $project_root/**/*.fish
 end
 
 if test $files_formatted -eq 0
-    echo "✅ All $files_total Fish files are already properly formatted"
+    echo "All $files_total Fish files are already properly formatted"
 else
-    echo "✅ Formatted $files_formatted out of $files_total Fish files"
+    echo "Formatted $files_formatted out of $files_total Fish files"
 end

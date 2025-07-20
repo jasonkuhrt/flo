@@ -5,9 +5,10 @@ Usage: flo rm [issue-number] [options]
 
 Remove issue, pull request, and/or worktree.
 By default, deletes the worktree but leaves issue and PR open.
+If no issue number provided, shows interactive selection of removable items.
 
 Arguments:
-  issue-number    Issue number to remove (default: current worktree's issue)
+  issue-number    Issue number to remove (optional: shows selection if omitted)
 
 Options:
   --close-issue         Close the GitHub issue (default: no)
@@ -17,7 +18,7 @@ Options:
   -h, --help            Show this help
 
 Examples:
-  flo rm                    Delete current worktree, keep issue/PR open
+  flo rm                    Show interactive selection of items to remove
   flo rm 123                Delete worktree for issue #123
   flo rm --close-issue      Delete worktree and close issue
   flo rm --close-pr --close-issue  Delete worktree, close PR and issue

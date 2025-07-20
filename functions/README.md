@@ -5,7 +5,7 @@ This directory contains the refactored flo implementation, organized by domain.
 ## Structure
 
 - `main.fish` - Main entry point with command dispatcher
-- `help.fish` - All help documentation  
+- `help.fish` - All help documentation
 - `helpers.fish` - Shared utility functions
 - `worktree.fish` - Git worktree management
 - `issue.fish` - GitHub issue workflow
@@ -18,11 +18,13 @@ This directory contains the refactored flo implementation, organized by domain.
 ## Usage
 
 To use this refactored version, source the loader:
+
 ```fish
 source ~/.config/fish/functions/flo/loader.fish
 ```
 
 All the code uses modern Fish features discovered from the documentation analysis:
+
 - `string` builtin instead of sed/grep
 - `argparse` for argument handling
 - `set -q` for existence checks

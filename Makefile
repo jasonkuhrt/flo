@@ -1,6 +1,6 @@
 # Makefile for flo project
 
-.PHONY: docs docs-clean tool-docs install install-dev uninstall format check-format pre-commit help
+.PHONY: docs docs-clean tool-docs install install-dev format check-format pre-commit help
 
 # Generate documentation from help output
 docs:
@@ -15,25 +15,21 @@ docs-clean:
 tool-docs:
 	@./scripts/generate-tool-docs.fish
 
-# Install flo (copies files)
+# Install flo using Fisher
 install:
-	@echo "Installing flo..."
-	@./install.fish
+	@echo "Installing flo with Fisher..."
+	@fisher install jasonkuhrt/flo
 
 # Install flo for development (symlinks)
 install-dev:
 	@echo "Installing flo for development..."
-	@./install-dev.fish
+	@./scripts/install-dev.fish
 
-# Uninstall flo
-uninstall:
-	@echo "Uninstalling flo..."
-	@./uninstall.fish
-
-# Format all Fish files
+# Format all files (Fish and Markdown)
 format:
-	@echo "Formatting Fish files..."
+	@echo "Formatting all files..."
 	@./scripts/format.fish
+	@./scripts/format-md.fish
 
 # Check formatting of Fish files
 check-format:
@@ -52,10 +48,9 @@ help:
 	@echo "  docs         Generate documentation from --help output"
 	@echo "  docs-clean   Remove generated documentation"
 	@echo "  tool-docs    Generate tool documentation for external tools (gitignored)"
-	@echo "  install      Install flo (copies files)"
+	@echo "  install      Install flo using Fisher"
 	@echo "  install-dev  Install flo for development (symlinks)"
-	@echo "  uninstall    Remove flo from system"
-	@echo "  format       Format all Fish files with fish_indent"
+	@echo "  format       Format all files (Fish and Markdown)"
 	@echo "  check-format Check if Fish files are properly formatted"
 	@echo "  pre-commit   Install pre-commit hooks for formatting"
 	@echo "  help         Show this help message"

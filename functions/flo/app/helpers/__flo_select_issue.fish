@@ -19,18 +19,51 @@ function __flo_select_issue --description "Let user select from open issues"
         set use_filter 0
     else
         # Auto-decide based on count
-        set -l issue_count (gh issue list --limit 200 --json number --jq 'length' 2>/dev/null)
-        if test "$issue_count" -gt 10
+        set -l issue_count (gh issue list $FLO_GH_DEFAULT_LIMIT --json number --jq 'length' 2>/dev/null)
+        if test -n "$issue_count" -a "$issue_count" -gt 10
             set use_filter 1
         end
     end
 
     # Get formatted issues using gh template for better performance
-    set -l formatted_issues (gh issue list --limit $limit --template '{{range .}}#{{.number}} - {{.title}}{{"\n"}}{{end}}' 2>/dev/null)
+    set -l formatted_issues (gh issue list -L $limit --template '{{range .}}#{{.number}} - {{.title}}{{"\n"}}{{end}}' 2>/dev/null)
 
     if test -z "$formatted_issues"
-        echo "No open issues found" >&2
-        return 1
+        # No issues found - offer option to continue without issue
+        set -l choice (gum choose \
+            --header $FLO_HEADER_NO_ISSUES \
+            $FLO_CHOICE_CONTINUE_WITHOUT_ISSUE \
+            $FLO_CHOICE_CANCEL)
+
+        if test "$choice" = $FLO_CHOICE_CONTINUE_WITHOUT_ISSUE
+            # Show default pattern and prompt for optional custom suffix
+            set -l default_name (date $FLO_TIMESTAMP_FORMAT)
+            set -l default_preview "$FLO_NO_ISSUE_PREFIX$default_name"
+
+            set -l custom_name (gum input \
+                --placeholder $FLO_PLACEHOLDER_SUFFIX \
+                --header "Will create: $default_preview (or no-issue/YOUR-INPUT if you type below)" \
+                --width $FLO_INPUT_WIDTH)
+
+            # Check if user pressed Ctrl+C
+            if test $status -eq $FLO_CTRL_C_EXIT_CODE
+                echo Cancelled $FLO_TO_STDERR
+                return 1
+            end
+
+            if test -n "$custom_name"
+                # Slugify the custom name and output the full identifier
+                set -l slugified (__flo_slugify "$custom_name")
+                echo "$FLO_NO_ISSUE:$slugified"
+            else
+                # Use default
+                echo $FLO_NO_ISSUE
+            end
+            return 0
+        else
+            echo "No issue selected" $FLO_TO_STDERR
+            return 1
+        end
     end
 
     # Use appropriate UI based on decision

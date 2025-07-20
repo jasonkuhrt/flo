@@ -11,11 +11,13 @@ fisher install jorgebucaran/fishtape
 ## Running Tests
 
 Run all tests:
+
 ```fish
 fishtape tests/*.fish
 ```
 
 Run specific test file:
+
 ```fish
 fishtape tests/test_helpers.fish
 ```

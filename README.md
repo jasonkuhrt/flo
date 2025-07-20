@@ -15,6 +15,7 @@ A GitHub issue-driven development workflow tool for Fish shell that integrates w
 ## Requirements
 
 ### Required
+
 - **Fish shell** (3.0+)
 - **git** and **GitHub CLI** (`gh`)
 - **gum** - for interactive UI components ([github.com/charmbracelet/gum](https://github.com/charmbracelet/gum))
@@ -22,6 +23,7 @@ A GitHub issue-driven development workflow tool for Fish shell that integrates w
   - Other platforms: See [installation guide](https://github.com/charmbracelet/gum#installation)
 
 ### Optional (Recommended)
+
 These tools enhance the flo experience but will fall back to standard alternatives if not installed:
 
 - **fd** - Fast and user-friendly alternative to `find` ([github.com/sharkdp/fd](https://github.com/sharkdp/fd))
@@ -35,6 +37,7 @@ These tools enhance the flo experience but will fall back to standard alternativ
   - Provides: Beautiful, side-by-side diffs with syntax highlighting
 
 Install all optional tools on macOS:
+
 ```bash
 brew install fd bat git-delta
 ```
@@ -50,6 +53,7 @@ fisher install jasonkuhrt/flo
 ```
 
 **Why Fisher?**
+
 - Clean installation and removal
 - Automatic updates with `fisher update`
 - Proper Fish shell integration
@@ -94,6 +98,7 @@ Only use this if you cannot use Fisher:
    ```
 
 **To uninstall manually:**
+
 ```fish
 cd ~/projects/jasonkuhrt/flo && make uninstall
 ```
@@ -105,6 +110,7 @@ cd ~/projects/jasonkuhrt/flo && make uninstall
 ### Worktree Management
 
 Flo organizes all worktrees in a consistent structure:
+
 ```
 ~/worktrees/
   └── <project-name>/
@@ -116,6 +122,7 @@ Flo organizes all worktrees in a consistent structure:
 **Important**: Flo only manages worktrees within its designated structure (`~/worktrees/` by default). It does not detect or manage worktrees created manually in other locations. This design keeps your worktrees organized and prevents conflicts.
 
 If you have existing worktrees in other locations, you can:
+
 - Continue using them alongside flo
 - Manually recreate them within flo's structure using `flo create`
 - Keep project repositories and flo worktrees separate
@@ -164,14 +171,12 @@ set -gx FLO_ISSUE_PREFIX bug/
 set -gx FLO_EDITOR code
 ```
 
-
 ## Documentation
 
 Complete command documentation is available in the [docs/](docs/) directory, automatically generated from flo's internal help system.
 
 - **[Main Documentation](docs/README.md)** - Architecture and overview
 - **[Command Reference](docs/ref/commands/)** - Complete command documentation
-
 
 ## Development
 

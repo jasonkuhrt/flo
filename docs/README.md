@@ -57,6 +57,7 @@ end
 ```
 
 **Key conventions:**
+
 - Commands are in `functions/<command>.fish` (or `functions/<command>/` for subcommands)
 - All commands use `argparse --name="flo <command>"`
 - All commands support `-h/--help` flag
@@ -74,9 +75,9 @@ Usage: flo <command> [options]
 Commands:
   claude          Generate Claude context files for current or all worktrees.
   issue           Start work on a GitHub issue by creating a worktree and branch.
-  next            Context-aware next issue command: - In worktree: transition workflow (delete → sync → create → claude) - In main project: regular issue workflow (create → claude)
+  next            Context-aware next workflow command: - In worktree: transition workflow (delete → sync → create → claude) - In main project: regular workflow (create → claude) - When no issues available: option to continue without issue
   pr              Create a pull request for the current branch.
-  rm              Remove issue, pull request, and/or worktree. By default, deletes the worktree but leaves issue and PR open.
+  rm              Remove issue, pull request, and/or worktree. By default, deletes the worktree but leaves issue and PR open. If no issue number provided, shows interactive selection of removable items.
 
 Options:
   -h, --help     Show this help message
@@ -93,4 +94,3 @@ For detailed command documentation, see the [Command Reference](ref/commands/).
 2. **Implement proper subcommands**: `flo claude clean` instead of `flo claude --clean`
 3. **Organize subcommands**: Move related commands into subdirectories
 4. **Consistent naming**: Use subcommand structure instead of hyphenated commands
-

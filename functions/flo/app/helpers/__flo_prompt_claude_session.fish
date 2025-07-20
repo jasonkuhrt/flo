@@ -10,13 +10,13 @@ function __flo_prompt_claude_session --description "Prompt user for Claude sessi
         --width 50)
 
     # If user pressed Ctrl+C, gum returns status 130
-    if test $status -eq 130
+    if test $status -eq $FLO_CTRL_C_EXIT_CODE
         return 1
     end
 
     if test -n "$session_id"
         # Basic validation - should be UUID format
-        if string match -qr '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' $session_id
+        if string match -qr $FLO_UUID_PATTERN $session_id
             echo $session_id
         else
             echo "Invalid session ID format (should be UUID like: bbf041be-3b3c-4913-9b13-211921ef0048)" >&2

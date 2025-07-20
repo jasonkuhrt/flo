@@ -11,7 +11,7 @@ function __flo_select_worktree --description "Let user select from available wor
     set -l worktrees (git worktree list --porcelain | grep "^worktree" | cut -d' ' -f2 | while read -l path
         set -l name (basename $path)
         # Skip main/master and optionally current
-        if test "$name" != "main" -a "$name" != "master"
+        if test "$name" != "$FLO_MAIN_BRANCH" -a "$name" != "$FLO_FALLBACK_BRANCH"
             if test -z "$current_worktree" -o "$name" != "$current_worktree"
                 echo $name
             end

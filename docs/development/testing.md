@@ -36,9 +36,12 @@ Example test file structure:
 ```fish
 #!/usr/bin/env fish
 
-# Load flo functions
+# Load specific flo functions to test
 set -l flo_root (dirname (dirname (status -f)))
-source $flo_root/functions/helpers.fish
+set -l helpers_dir $flo_root/functions/flo/app/helpers
+
+# Source the helpers you need
+source $helpers_dir/__flo_validate_issue_number.fish
 
 # Write tests
 @test "validates issue numbers" (__flo_validate_issue_number 123) $status -eq 0

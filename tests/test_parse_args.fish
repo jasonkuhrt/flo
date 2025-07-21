@@ -3,9 +3,12 @@
 # Test __flo_parse_args helpers
 # Run with: fishtape tests/*.fish
 
-# Load all flo functions
+# Load flo functions by sourcing specific helpers
 set -l flo_root (dirname (dirname (status -f)))
-source $flo_root/functions/helpers.fish
+set -l helpers_dir $flo_root/functions/flo/app/helpers
+
+# Source the specific helpers we're testing
+source $helpers_dir/__flo_parse_args.fish
 
 # Test __flo_validate_required
 @test "__flo_validate_required accepts non-empty value" \

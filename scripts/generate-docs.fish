@@ -17,16 +17,14 @@ mkdir -p $reference_dir
 set -l script_dir (dirname (status --current-filename))
 set -l flo_dir "$script_dir/../functions"
 
-# Source the CLI framework first
+# Source the CLI framework and all app code
 source "$script_dir/../functions/flo/lib/cli/\$.fish"
 
-# Source helpers
-source "$flo_dir/helpers.fish"
-# Load all helper functions
-set -l helpers_dir "$flo_dir/flo/app/helpers"
-for helper_file in $helpers_dir/*.fish
-    if test -f "$helper_file"
-        source "$helper_file"
+# Load all helper functions and commands
+set -l app_dir "$flo_dir/flo/app"
+for file in $app_dir/**/*.fish
+    if test -f "$file"
+        source "$file"
     end
 end
 
@@ -37,23 +35,7 @@ set -g __cli_dir $flo_dir
 set -g __cli_description "Git workflow automation tool"
 set -g __cli_version "1.0.0"
 
-# Load commands from the new structure
-set -l commands_dir "$flo_dir/flo/app/commands"
-for cmd_file in $commands_dir/*.fish
-    if test -f "$cmd_file"
-        source "$cmd_file"
-    end
-end
-
-# Also load the top-level files needed for the CLI framework
-for cmd_file in $flo_dir/*.fish
-    if test -f "$cmd_file"
-        set -l cmd_name (basename "$cmd_file" .fish)
-        if test "$cmd_name" != flo && test "$cmd_name" != helpers && test "$cmd_name" != completions
-            source "$cmd_file"
-        end
-    end
-end
+# Commands are already loaded from the app directory above
 
 # Helper function to convert help output to markdown
 function help_to_markdown --description "Convert help output to markdown format"

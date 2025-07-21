@@ -3,9 +3,14 @@
 # Test helpers for flo
 # Run with: fishtape tests/*.fish
 
-# Load all flo functions
+# Load flo functions by sourcing individual helper files
 set -l flo_root (dirname (dirname (status -f)))
-source $flo_root/functions/helpers.fish
+set -l helpers_dir $flo_root/functions/flo/app/helpers
+
+# Source the specific helpers we're testing
+source $helpers_dir/__flo_validate_issue_number.fish
+source $helpers_dir/__flo_is_main_branch.fish
+source $helpers_dir/__flo_generate_branch_name.fish
 
 # Test __flo_validate_issue_number
 @test "__flo_validate_issue_number accepts valid numbers" (__flo_validate_issue_number 123) $status -eq 0

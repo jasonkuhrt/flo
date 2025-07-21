@@ -176,10 +176,6 @@ functions/                       # Fisher-compatible structure
 │           ├── discovery.fish  # Command discovery
 │           ├── help.fish       # Help system
 │           └── ...             # Other framework files
-├── completions.fish            # Top-level completions loader
-├── errors.fish                 # Error handling
-├── help.fish                   # Help system loader
-└── helpers.fish                # Helper loader
 
 completions/                    # Tab completions
 └── flo.fish                   # Flo completions

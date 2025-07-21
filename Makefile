@@ -5,6 +5,7 @@
 # Generate documentation from help output
 docs:
 	@./scripts/generate-docs.fish
+	@$(MAKE) format
 
 # Clean generated documentation
 docs-clean:

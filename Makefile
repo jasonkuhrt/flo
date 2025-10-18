@@ -1,59 +1,57 @@
-# Makefile for flo project
+# Makefile for flo
 
-.PHONY: docs docs-clean tool-docs install install-dev format check-format pre-commit help
+.PHONY: install uninstall test help
 
-# Generate documentation from help output
-docs:
-	@./scripts/generate-docs.fish
-	@$(MAKE) format
-
-# Clean generated documentation
-docs-clean:
-	@echo "Cleaning generated documentation..."
-	@rm -rf docs/
-
-# Generate tool documentation for external tools (gitignored)
-tool-docs:
-	@./scripts/generate-tool-docs.fish
-
-# Install flo using Fisher
+# Install flo functions to Fish config
 install:
-	@echo "Installing flo with Fisher..."
-	@fisher install jasonkuhrt/flo
+	@echo "Installing flo..."
+	@mkdir -p ~/.config/fish/functions
+	@mkdir -p ~/.config/fish/lib
+	@cp functions/*.fish ~/.config/fish/functions/
+	@cp functions/*.md ~/.config/fish/functions/
+	@cp -r lib/cli ~/.config/fish/lib/
+	@echo "✓ Installed flo and commands to ~/.config/fish/functions/"
+	@echo "✓ Installed CLI framework to ~/.config/fish/lib/cli/"
+	@echo "✓ Installed documentation to ~/.config/fish/functions/"
+	@echo ""
+	@echo "Run 'flo --help' to get started (or just 'flo 123' for an issue)"
 
-# Install flo for development (symlinks)
-install-dev:
-	@echo "Installing flo for development..."
-	@./scripts/install-dev.fish
+# Uninstall flo functions from Fish config
+uninstall:
+	@echo "Uninstalling flo..."
+	@rm -f ~/.config/fish/functions/flo.fish
+	@rm -f ~/.config/fish/functions/flo_*.fish
+	@rm -f ~/.config/fish/functions/list.fish
+	@rm -f ~/.config/fish/functions/rm.fish
+	@rm -f ~/.config/fish/functions/prune.fish
+	@rm -f ~/.config/fish/functions/flo-*.fish
+	@rm -f ~/.config/fish/functions/*.md
+	@rm -f ~/.config/fish/functions/gwt.fish
+	@rm -f ~/.config/fish/functions/gwt-*.fish
+	@rm -rf ~/.config/fish/lib/cli
+	@rm -rf ~/.config/fish/flo-docs
+	@echo "✓ Uninstalled flo from ~/.config/fish/functions/"
+	@echo "✓ Removed CLI framework from ~/.config/fish/lib/cli/"
+	@echo "✓ Removed old flo-* and gwt files"
+	@echo "✓ Removed documentation"
 
-# Format all files (Fish and Markdown)
-format:
-	@echo "Formatting all files..."
-	@./scripts/format.fish
-	@./scripts/format-md.fish
+# Run tests
+test:
+	@lib/test/cli $(ARGS)
 
-# Check formatting of Fish files
-check-format:
-	@echo "Checking Fish formatting..."
-	@./scripts/check-format.fish
-
-# Install pre-commit hooks
-pre-commit:
-	@echo "Installing pre-commit hooks..."
-	@pre-commit install
+# Allow passing arguments like: make test ARGS="--update"
+.PHONY: $(MAKECMDGOALS)
+%:
+	@:
 
 # Show help
 help:
-	@echo "flo project tasks:"
+	@echo "flo installation tasks:"
 	@echo ""
-	@echo "  docs         Generate documentation from --help output"
-	@echo "  docs-clean   Remove generated documentation"
-	@echo "  tool-docs    Generate tool documentation for external tools (gitignored)"
-	@echo "  install      Install flo using Fisher"
-	@echo "  install-dev  Install flo for development (symlinks)"
-	@echo "  format       Format all files (Fish and Markdown)"
-	@echo "  check-format Check if Fish files are properly formatted"
-	@echo "  pre-commit   Install pre-commit hooks for formatting"
-	@echo "  help         Show this help message"
+	@echo "  make install     Install flo functions to ~/.config/fish/functions/"
+	@echo "  make uninstall   Remove flo functions from ~/.config/fish/functions/"
+	@echo "  make test        Run tests"
+	@echo "  make help        Show this help message"
 	@echo ""
-	@echo "Generated documentation will be in docs/"
+	@echo "Recommended: Use Fisher instead"
+	@echo "  fisher install jasonkuhrt/flo"

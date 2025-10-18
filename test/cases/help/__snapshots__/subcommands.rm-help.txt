@@ -1,0 +1,21 @@
+
+[36mflo rm
+(B[m
+Safely remove a git worktree by branch name
+
+[2m[30mPOSITIONAL PARAMETERS
+(B[m  <branch-name>    Name of the branch whose worktree to remove
+
+
+[2m[30mABOUT
+(B[m
+  Safely removes a worktree by branch name. Calculates
+  the path automatically and uses Git to properly delete
+  it. Always prefer this over 'rm -rf' to keep Git state
+  clean.
+
+
+[2m[30mEXAMPLES
+(B[m
+  flo rm feat/123-add-auth
+  flo rm fix/memory-leak

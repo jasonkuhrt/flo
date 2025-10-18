@@ -1,0 +1,9 @@
+
+[36mflo prune
+(B[m
+Clean up Git metadata for manually deleted worktrees
+
+
+[2m[30mABOUT
+(B[m
+  Use this if you deleted with `rm -rf` instead of `flo rm`.

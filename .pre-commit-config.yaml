@@ -8,14 +8,3 @@ repos:
         files: \.fish$
         pass_filenames: false
         verbose: true
-        always_run: false
-        stages: [manual]
-      - id: markdown-format
-        name: Format Markdown files
-        entry: ./scripts/format-md.fish
-        language: system
-        files: \.md$
-        pass_filenames: false
-        verbose: true
-        always_run: false
-        stages: [manual]

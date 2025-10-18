@@ -1,0 +1,93 @@
+#!/bin/bash
+
+# Test Framework CLI
+# Discovers and runs tests automatically
+
+# Parse flags
+UPDATE_SNAPSHOTS=false
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        -u|--update)
+            UPDATE_SNAPSHOTS=true
+            shift
+            ;;
+        *)
+            echo "Unknown option: $1"
+            echo "Usage: lib/test/cli [--update|-u]"
+            exit 1
+            ;;
+    esac
+done
+
+export UPDATE_SNAPSHOTS
+
+# Find project root by looking for test/ or tests/ directory
+find_test_dir() {
+    local current_dir="$(pwd)"
+    while [[ "$current_dir" != "/" ]]; do
+        if [[ -d "$current_dir/test" ]]; then
+            echo "$current_dir/test"
+            return 0
+        elif [[ -d "$current_dir/tests" ]]; then
+            echo "$current_dir/tests"
+            return 0
+        fi
+        current_dir="$(dirname "$current_dir")"
+    done
+
+    echo "Error: No test/ or tests/ directory found" >&2
+    return 1
+}
+
+# Get framework directory
+FRAMEWORK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Find test directory
+TEST_DIR=$(find_test_dir)
+if [[ $? -ne 0 ]]; then
+    exit 1
+fi
+
+# Export for use in framework
+export TEST_DIR
+export PROJECT_ROOT="$(dirname "$TEST_DIR")"
+
+# Load framework modules
+source "$FRAMEWORK_DIR/assertions.sh"
+source "$FRAMEWORK_DIR/runner.sh"
+
+# Load helpers if exists
+if [[ -f "$TEST_DIR/helpers.sh" ]]; then
+    source "$TEST_DIR/helpers.sh"
+fi
+
+# Load hooks if exists
+if [[ -f "$TEST_DIR/hooks.sh" ]]; then
+    source "$TEST_DIR/hooks.sh"
+
+    # Register after_each if defined
+    if declare -f after_each >/dev/null 2>&1; then
+        register_test_cleanup after_each
+    fi
+
+    # Register after_all if defined
+    if declare -f after_all >/dev/null 2>&1; then
+        __test_cleanup_all() {
+            after_all
+        }
+    fi
+else
+    # Fall back to individual hook files
+    if [[ -f "$TEST_DIR/after_each.sh" ]]; then
+        register_test_cleanup "bash $TEST_DIR/after_each.sh"
+    fi
+
+    if [[ -f "$TEST_DIR/after_all.sh" ]]; then
+        __test_cleanup_all() {
+            bash "$TEST_DIR/after_all.sh"
+        }
+    fi
+fi
+
+# Run tests
+run_tests "$TEST_DIR/cases"

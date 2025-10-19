@@ -64,4 +64,5 @@ If you're using Serena MCP (github.com/oraios/serena) for semantic code analysis
 # EXAMPLES
 
 flo 123                    Create from GitHub issue
+flo #123                   Create from GitHub issue (# is optional)
 flo feat/new-feature       Create from branch name

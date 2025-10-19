@@ -24,5 +24,6 @@ When given an issue number, finds the worktree created with
 # EXAMPLES
 
 flo rm 1320                  # Remove by issue number
+flo rm #1320                 # Remove by issue number (# is optional)
 flo rm feat/123-add-auth     # Remove by branch name
 flo rm fix/memory-leak       # Remove by branch name

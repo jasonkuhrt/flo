@@ -42,6 +42,9 @@ function flo_flo
     set current_dir (basename (pwd))
     set arg $argv[1]
 
+    # Strip leading # if present (e.g., #123 -> 123)
+    set arg (string replace -r '^#' '' -- $arg)
+
     # Check if argument is an issue number (integer)
     if string match -qr '^\d+$' -- $arg
         # --- Issue Mode: Fetch from GitHub ---

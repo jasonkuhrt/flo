@@ -25,6 +25,13 @@ function __flo_indent
     end
 end
 
+# Helper to generate branch slug from issue title
+function __flo_slugify_title --description "Convert issue title to branch slug"
+    set -l title $argv[1]
+    # Slugify: lowercase, replace non-alphanumeric with hyphens, limit to 30 chars
+    echo $title | string lower | string replace -ra '[^a-z0-9]+' - | string trim -c - | string sub -l 30 | string trim -c -
+end
+
 # Main command - create worktree from branch name or GitHub issue number
 function flo_flo
     # Colors for output
@@ -94,8 +101,8 @@ function flo_flo
             set branch_prefix chore
         end
 
-        # Slugify title: lowercase, replace non-alphanumeric with hyphens, limit to 30 chars
-        set title_slug (echo $issue_title | string lower | string replace -ra '[^a-z0-9]+' '-' | string trim -c '-' | string sub -l 30 | string trim -c '-')
+        # Slugify title
+        set title_slug (__flo_slugify_title $issue_title)
 
         # Build branch name: prefix/number-slug (e.g., feat/123-add-user-auth)
         set branch_name "$branch_prefix/$issue_number-$title_slug"

@@ -7,11 +7,14 @@ Create worktree from branch or GitHub issue
 (B[m  flo        Create worktree from branch or GitHub issue
   list       List all git worktrees with branches and paths
   prune      Clean up Git metadata for manually deleted worktrees
-  rm         Safely remove a git worktree by branch name
+  rm         Safely remove a git worktree by branch name or issue number
 
 [2m[30mOPTIONS
 (B[m  -h, --help       Show this help message
   -v, --version    Show version information
+
+[2m[30mPOSITIONAL PARAMETERS
+(B[m  <issue-or-branch>    GitHub issue number or branch name
 
 [2m[30mWORKTREE ORGANIZATION
 (B[m
@@ -70,4 +73,5 @@ Create worktree from branch or GitHub issue
 [2m[30mEXAMPLES
 (B[m
   flo 123                    Create from GitHub issue
+  flo #123                   Create from GitHub issue (# is optional)
   flo feat/new-feature       Create from branch name

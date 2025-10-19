@@ -4,23 +4,20 @@ GitHub issues → Git worktrees → Claude context
 
 Create worktrees from GitHub issues with automatic Claude setup.
 
-**Before:**
+**Without Flo:**
+
 ```fish
-# Check GitHub issue → Copy title → Create worktree manually
 git worktree add ../proj_feat-123-title -b feat/123-title
 cd ../proj_feat-123-title
+cp -r ../proj/.serena/cache ./serena/cache  # Copy Serena cache (if present)
 pnpm install
-# Manually tell Claude about the issue
+# Tell Claude about the issue manually upon your next session.
 ```
 
 **With flo:**
+
 ```fish
 flo 123
-# → Fetches & assigns issue
-# → Creates branch & worktree
-# → Copies Serena cache (if present)
-# → Sets up Claude context (.claude/CLAUDE.local.md)
-# → Installs deps & CDs → Ready!
 ```
 
 ## Installation

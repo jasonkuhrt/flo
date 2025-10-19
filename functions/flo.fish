@@ -18,6 +18,13 @@ __cli_register_deps list git
 __cli_register_deps rm git
 __cli_register_deps prune git
 
+# Helper to indent output lines (for git/gh commands)
+function __flo_indent
+    while read -l line
+        echo "    $line"
+    end
+end
+
 # Main command - create worktree from branch name or GitHub issue number
 function flo_flo
     # Colors for output
@@ -29,6 +36,9 @@ function flo_flo
     set -l dim (set_color brblack)
     set -l reset (set_color normal)
 
+    # Print newline after command name
+    echo ""
+
     set current_dir (basename (pwd))
     set arg $argv[1]
 
@@ -38,19 +48,19 @@ function flo_flo
 
         # Validate gh CLI is installed
         if not command -v gh >/dev/null 2>&1
-            echo "$red✗ Error:$reset gh CLI not installed"
-            echo "$dim  Install with: brew install gh$reset"
-            echo "$dim  Or visit: https://cli.github.com$reset"
+            echo "  $red✗ Error:$reset gh CLI not installed"
+            echo "    Install with: brew install gh"
+            echo "    Or visit: https://cli.github.com"
             return 1
         end
 
-        echo "$blue•$reset Fetching issue $cyan#$arg$reset..."
+        echo "  $blue•$reset Fetching issue $cyan#$arg$reset..."
 
         # Fetch issue data as JSON using gh CLI (including comments)
         set issue_json (gh issue view $arg --json number,title,body,labels,url,comments 2>/dev/null)
 
         if test $status -ne 0
-            echo "$red✗ Error:$reset Could not fetch issue $cyan#$arg$reset"
+            echo "  $red✗ Error:$reset Could not fetch issue $cyan#$arg$reset"
             return 1
         end
 
@@ -87,15 +97,15 @@ function flo_flo
         # Build branch name: prefix/number-slug (e.g., feat/123-add-user-auth)
         set branch_name "$branch_prefix/$issue_number-$title_slug"
 
-        echo "$blue•$reset Creating branch: $cyan$branch_name$reset"
+        echo "  $blue•$reset Creating branch: $cyan$branch_name$reset"
 
         # Auto-assign issue to current GitHub user
-        echo "$blue•$reset Assigning issue to you..."
-        gh issue edit $arg --add-assignee @me 2>/dev/null
+        echo "  $blue•$reset Assigning issue to you..."
+        gh issue edit $arg --add-assignee @me 2>&1 | __flo_indent
         if test $status -eq 0
-            echo "$green✓$reset Issue assigned"
+            echo "  $green✓$reset Issue assigned"
         else
-            echo "$yellow⚠$reset $dim Could not auto-assign (continuing anyway)$reset"
+            echo "  $yellow⚠$reset Could not auto-assign (continuing anyway)"
         end
 
         set is_issue true
@@ -112,15 +122,15 @@ function flo_flo
 
     # Check if worktree already exists
     if test -d $worktree_path
-        echo "$blue•$reset Worktree already exists: $cyan$worktree_path$reset"
+        echo "  $blue•$reset Worktree already exists: $cyan$worktree_path$reset"
         set worktree_existed true
     else
         # Create the worktree (try existing branch first, create new if needed)
-        git worktree add $worktree_path $branch_name 2>/dev/null
-        or git worktree add -b $branch_name $worktree_path
+        git worktree add $worktree_path $branch_name 2>&1 | __flo_indent
+        or git worktree add -b $branch_name $worktree_path 2>&1 | __flo_indent
 
         if test $status -ne 0
-            echo "$red✗ Error:$reset Could not create worktree"
+            echo "  $red✗ Error:$reset Could not create worktree"
             return 1
         end
         set worktree_existed false
@@ -129,20 +139,20 @@ function flo_flo
     # Copy Serena cache if it exists in the source repository (only for new worktrees)
     if test "$worktree_existed" = false
         if test -d .serena/cache
-            echo "$blue•$reset Copying Serena cache..."
+            echo "  $blue•$reset Copying Serena cache..."
             mkdir -p "$worktree_path/.serena"
             cp -r .serena/cache "$worktree_path/.serena/cache"
             if test $status -eq 0
-                echo "$green✓$reset Serena cache copied $dim(speeds up symbol indexing)$reset"
+                echo "  $green✓$reset Serena cache copied $dim(speeds up symbol indexing)$reset"
             else
-                echo "$yellow⚠$reset $dim Could not copy Serena cache (continuing anyway)$reset"
+                echo "  $yellow⚠$reset Could not copy Serena cache (continuing anyway)"
             end
         end
     end
 
     # If created from issue, generate Claude context file
     if test "$is_issue" = true
-        echo "$blue•$reset Creating Claude context..."
+        echo "  $blue•$reset Creating Claude context..."
 
         mkdir -p "$worktree_path/.claude"
 
@@ -156,7 +166,7 @@ function flo_flo
                 '<!-- flo: local extension enabled -->' \
                 '' \
                 '**CRITICAL**: If a file named `.claude/CLAUDE.local.md` exists in this project, read it immediately and follow its instructions. This file contains context-specific information for the current work (e.g., GitHub issue details).' >"$claude_md"
-            echo "$green✓$reset Created $cyan.claude/CLAUDE.md$reset $dim(local extension support)$reset"
+            echo "  $green✓$reset Created $cyan.claude/CLAUDE.md$reset $dim(local extension support)$reset"
         else if not grep -q "$extension_marker" "$claude_md"
             # CLAUDE.md exists but doesn't have the extension instruction - prepend it
             set -l temp_file (mktemp)
@@ -169,7 +179,7 @@ function flo_flo
                 '' >"$temp_file"
             cat "$claude_md" >>"$temp_file"
             mv "$temp_file" "$claude_md"
-            echo "$green✓$reset Added local extension support to $cyan.claude/CLAUDE.md$reset"
+            echo "  $green✓$reset Added local extension support to $cyan.claude/CLAUDE.md$reset"
         end
 
         # Write issue details to .claude/CLAUDE.local.md for Claude Code to read
@@ -223,13 +233,13 @@ function flo_flo
             "6. When done, ensure the PR description references this issue with \"Closes #$issue_number\"" \
             '' >>"$worktree_path/.claude/CLAUDE.local.md"
 
-        echo "$green✓$reset Created $cyan.claude/CLAUDE.local.md$reset $dim(issue context)$reset"
+        echo "  $green✓$reset Created $cyan.claude/CLAUDE.local.md$reset $dim(issue context)$reset"
 
         # Add .claude/*.local.md to .gitignore if not already present
         if test -f "$worktree_path/.gitignore"
             if not grep -q '\.claude/.*\.local\.md' "$worktree_path/.gitignore"
                 echo ".claude/*.local.md" >>"$worktree_path/.gitignore"
-                echo "$green✓$reset Added $cyan.claude/*.local.md$reset to .gitignore"
+                echo "  $green✓$reset Added $cyan.claude/*.local.md$reset to .gitignore"
             end
         end
     end
@@ -237,13 +247,13 @@ function flo_flo
     # Auto-install npm dependencies if package.json exists (skip if worktree existed)
     if not set -q worktree_existed; or test "$worktree_existed" = false
         if test -f "$worktree_path/package.json"
-            echo "$blue•$reset Installing dependencies..."
+            echo "  $blue•$reset Installing dependencies..."
             cd $worktree_path
             pnpm install --silent
             if test $status -eq 0
-                echo "$green✓$reset Dependencies installed"
+                echo "  $green✓$reset Dependencies installed"
             else
-                echo "$yellow⚠$reset $dim pnpm install failed (continuing anyway)$reset"
+                echo "  $yellow⚠$reset pnpm install failed (continuing anyway)"
             end
         else
             # No package.json, just cd into worktree
@@ -256,10 +266,10 @@ function flo_flo
 
     # Success message
     echo ""
-    echo "$green✓ Ready to work!$reset"
+    echo "  $green✓ Ready to work!$reset"
     if test "$is_issue" = true
-        echo "$dim•$reset Issue $cyan#$issue_number$reset assigned to you"
-        echo "$dim•$reset Issue context available in $cyan.claude/CLAUDE.local.md$reset"
-        echo "$dim•$reset Tip: Claude will read this context automatically"
+        echo "  $dim•$reset Issue $cyan#$issue_number$reset assigned to you"
+        echo "  $dim•$reset Issue context available in $cyan.claude/CLAUDE.local.md$reset"
+        echo "  $dim•$reset Tip: Claude will read this context automatically"
     end
 end

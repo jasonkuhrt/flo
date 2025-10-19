@@ -2,16 +2,17 @@
 
 ## Documentation
 
-The README reference section is generated from `--help` output. After updating `.md` files in `functions/`, regenerate the README:
+The README reference section is generated from `.md` files in `functions/`. After updating these files, regenerate the README:
 
-```fish
-flo --help
-flo list --help
-flo rm --help
-flo prune --help
+```bash
+make docs
 ```
 
-Copy the output to README.md to keep docs in sync.
+Or directly:
+
+```fish
+./scripts/generate-readme-reference.fish
+```
 
 ## Running Tests
 

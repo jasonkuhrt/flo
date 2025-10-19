@@ -1,6 +1,6 @@
 # Makefile for flo
 
-.PHONY: install uninstall test help
+.PHONY: install uninstall test help docs
 
 # Install flo functions to Fish config
 install:
@@ -39,6 +39,10 @@ uninstall:
 test:
 	@lib/test/cli $(ARGS)
 
+# Generate README reference section from markdown files
+docs:
+	@./scripts/generate-readme-reference.fish
+
 # Allow passing arguments like: make test ARGS="--update"
 .PHONY: $(MAKECMDGOALS)
 %:
@@ -51,6 +55,7 @@ help:
 	@echo "  make install     Install flo functions to ~/.config/fish/functions/"
 	@echo "  make uninstall   Remove flo functions from ~/.config/fish/functions/"
 	@echo "  make test        Run tests"
+	@echo "  make docs        Generate README reference section"
 	@echo "  make help        Show this help message"
 	@echo ""
 	@echo "Recommended: Use Fisher instead"

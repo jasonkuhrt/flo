@@ -50,108 +50,144 @@ make install
 
 </details>
 
+<!-- REFERENCE_START -->
 ## Reference
 
-Run any command with `--help` for detailed help.
+Run any command with \`--help\` for detailed help.
 
 ### `flo`
 
+```
+
+flo
+
 Create worktree from branch or GitHub issue
 
-**Commands:**
-- `list` - List all git worktrees with branches and paths
-- `prune` - Clean up Git metadata for manually deleted worktrees
-- `rm` - Safely remove a git worktree by branch name
+COMMANDS
+  flo        Create worktree from branch or GitHub issue
+  list       List all git worktrees with branches and paths
+  prune      Clean up Git metadata for manually deleted worktrees
+  rm         Safely remove a git worktree by branch name or issue number
 
-**Options:**
-- `-h, --help` - Show help message
-- `-v, --version` - Show version information
+OPTIONS
+  -h, --help       Show this help message
+  -v, --version    Show version information
 
-**Worktree Organization:**
+WORKTREE ORGANIZATION
 
-Flo creates worktrees as siblings to your main project:
-```
-~/projects/myproject/                      (main repo on main branch)
-~/projects/myproject_feat-123-add-auth/    (worktree for feat/123-add-auth)
-~/projects/myproject_fix-456-bug-fix/      (worktree for fix/456-bug-fix)
-```
+  Flo creates worktrees as siblings to your main project:
+    ~/projects/myproject/                      (main repo on main branch)
+    ~/projects/myproject_feat-123-add-auth/    (worktree for feat/123-add-auth)
+    ~/projects/myproject_fix-456-bug-fix/      (worktree for fix/456-bug-fix)
 
-Running flo multiple times for the same branch is safe - it updates Claude context without recreating the worktree.
+  Running flo multiple times for the same branch is safe - it updates Claude context without recreating the worktree.
 
-**Issue Mode:**
 
-When you run `flo 123`:
-1. Fetches issue #123 from GitHub
-2. Auto-assigns issue to you
-3. Creates branch with smart prefix:
-   - `feat/123-<title>` for features
-   - `fix/123-<title>` for bugs
-   - `docs/123-<title>` for documentation
-   - `refactor/123-<title>` for refactoring
-   - `chore/123-<title>` for chores
-4. Creates worktree: `../<project>_<branch>/`
-5. Copies Serena MCP cache if present (speeds up symbol indexing)
-6. Sets up .claude/CLAUDE.md (one-time)
-7. Generates .claude/CLAUDE.local.md with issue context
-8. Runs pnpm install
-9. Ready to code!
+ISSUE MODE
 
-**Claude Integration:**
+  When you run 'flo 123':
+    1. Fetches issue #123 from GitHub
+    2. Auto-assigns issue to you
+    3. Creates branch with smart prefix:
+         feat/123-<title> for features
+         fix/123-<title> for bugs
+         docs/123-<title> for documentation
+         refactor/123-<title> for refactoring
+         chore/123-<title> for chores
+    4. Creates worktree: ../<project>_<branch>/
+    5. Copies Serena MCP cache if present (speeds up symbol indexing)
+    6. Sets up .claude/CLAUDE.md (one-time)
+    7. Generates .claude/CLAUDE.local.md with issue context
+    8. Runs pnpm install
+    9. Ready to code!
 
-When you create a worktree from an issue, flo uses a two-file system:
 
-`.claude/CLAUDE.md` (one-time):
-- Instructs Claude to read .claude/CLAUDE.local.md
-- Prepended to existing CLAUDE.md if present
-- Committed to your repo
+CLAUDE INTEGRATION
 
-`.claude/CLAUDE.local.md` (per-issue):
-- Overwritten each run with issue context
-- Gitignored - never committed
-- Worktree-specific
+  When you create a worktree from an issue, flo uses a two-file system:
 
-**Serena MCP Integration:**
+  .claude/CLAUDE.md (one-time):
+    - Instructs Claude to read .claude/CLAUDE.local.md
+    - Prepended to existing CLAUDE.md if present
+    - Committed to your repo
 
-If you're using [Serena MCP](https://github.com/oraios/serena) for semantic code analysis:
-- Flo automatically copies `.serena/cache/` to new worktrees
-- Avoids re-indexing symbols (can save minutes on large projects)
-- Only happens when creating new worktrees (not when reusing)
-- Requires `.serena/cache/` to exist in your main project
-- Pre-index your project once: `uvx --from git+https://github.com/oraios/serena serena project index`
+  .claude/CLAUDE.local.md (per-issue):
+    - Overwritten each run with issue context
+    - Gitignored - never committed
+    - Worktree-specific
 
-**Examples:**
-```fish
-flo 123                    # Create from GitHub issue
-flo feat/new-feature       # Create from branch name
+
+SERENA MCP INTEGRATION
+
+  If you're using Serena MCP (github.com/oraios/serena) for semantic code analysis:
+    - Flo automatically copies .serena/cache/ to new worktrees
+    - Avoids re-indexing symbols (can save minutes on large projects)
+    - Only happens when creating new worktrees (not when reusing)
+    - Requires .serena/cache/ to exist in your main project
+    - Pre-index once: uvx --from git+https://github.com/oraios/serena serena project index
+
+
+EXAMPLES
+
+  flo 123                    Create from GitHub issue
+  flo feat/new-feature       Create from branch name
 ```
 
 ### `flo list`
 
+```
+
+flo list
+
 List all git worktrees with branches and paths
 
 Shows all worktrees with their paths, branches, and commits.
+```
 
-### `flo rm <branch-name>`
+### `flo rm`
 
-Safely remove a git worktree by branch name
+```
 
-**Positional Parameters:**
-- `<branch-name>` - Name of the branch whose worktree to remove
+flo rm
 
-Safely removes a worktree by branch name. Calculates the path automatically and uses Git to properly delete it. Always prefer this over `rm -rf` to keep Git state clean.
+Safely remove a git worktree by branch name or issue number
 
-**Examples:**
-```fish
-flo rm feat/123-add-auth
-flo rm fix/memory-leak
+POSITIONAL PARAMETERS
+  <branch-name-or-issue>    Branch name or issue number of the worktree to remove
+
+
+ABOUT
+
+  Safely removes a worktree by branch name or issue number.
+  Calculates the path automatically and uses Git to properly
+  delete it. Always prefer this over 'rm -rf' to keep Git
+  state clean.
+
+  When given an issue number, finds the worktree created with
+  'flo <issue-number>' and removes it.
+
+
+EXAMPLES
+
+  flo rm 1320                  # Remove by issue number
+  flo rm feat/123-add-auth     # Remove by branch name
+  flo rm fix/memory-leak       # Remove by branch name
 ```
 
 ### `flo prune`
 
+```
+
+flo prune
+
 Clean up Git metadata for manually deleted worktrees
 
-Cleans up Git metadata for manually deleted worktrees. Use this if you deleted with `rm -rf` instead of `flo rm`.
 
+ABOUT
+
+  Use this if you deleted with `rm -rf` instead of `flo rm`.
+```
+<!-- REFERENCE_END -->
 ## Development
 
 See [DEVELOPMENT.md](DEVELOPMENT.md) for development instructions.

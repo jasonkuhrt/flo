@@ -20,6 +20,15 @@ __cli_register_deps prune git
 
 # Main command - create worktree from branch name or GitHub issue number
 function flo_flo
+    # Colors for output
+    set -l blue (set_color brblue)
+    set -l green (set_color brgreen)
+    set -l yellow (set_color bryellow)
+    set -l red (set_color brred)
+    set -l cyan (set_color brcyan)
+    set -l dim (set_color brblack)
+    set -l reset (set_color normal)
+
     set current_dir (basename (pwd))
     set arg $argv[1]
 
@@ -29,19 +38,19 @@ function flo_flo
 
         # Validate gh CLI is installed
         if not command -v gh >/dev/null 2>&1
-            echo "✗ Error: gh CLI not installed"
-            echo "Install with: brew install gh"
-            echo "Or visit: https://cli.github.com"
+            echo "$red✗ Error:$reset gh CLI not installed"
+            echo "$dim  Install with: brew install gh$reset"
+            echo "$dim  Or visit: https://cli.github.com$reset"
             return 1
         end
 
-        echo "• Fetching issue #$arg..."
+        echo "$blue•$reset Fetching issue $cyan#$arg$reset..."
 
         # Fetch issue data as JSON using gh CLI (including comments)
         set issue_json (gh issue view $arg --json number,title,body,labels,url,comments 2>/dev/null)
 
         if test $status -ne 0
-            echo "✗ Error: Could not fetch issue #$arg"
+            echo "$red✗ Error:$reset Could not fetch issue $cyan#$arg$reset"
             return 1
         end
 
@@ -78,15 +87,15 @@ function flo_flo
         # Build branch name: prefix/number-slug (e.g., feat/123-add-user-auth)
         set branch_name "$branch_prefix/$issue_number-$title_slug"
 
-        echo "• Creating branch: $branch_name"
+        echo "$blue•$reset Creating branch: $cyan$branch_name$reset"
 
         # Auto-assign issue to current GitHub user
-        echo "• Assigning issue to you..."
+        echo "$blue•$reset Assigning issue to you..."
         gh issue edit $arg --add-assignee @me 2>/dev/null
         if test $status -eq 0
-            echo "✓ Issue assigned"
+            echo "$green✓$reset Issue assigned"
         else
-            echo "⚠ Could not auto-assign (continuing anyway)"
+            echo "$yellow⚠$reset $dim Could not auto-assign (continuing anyway)$reset"
         end
 
         set is_issue true
@@ -103,7 +112,7 @@ function flo_flo
 
     # Check if worktree already exists
     if test -d $worktree_path
-        echo "• Worktree already exists: $worktree_path"
+        echo "$blue•$reset Worktree already exists: $cyan$worktree_path$reset"
         set worktree_existed true
     else
         # Create the worktree (try existing branch first, create new if needed)
@@ -111,7 +120,7 @@ function flo_flo
         or git worktree add -b $branch_name $worktree_path
 
         if test $status -ne 0
-            echo "✗ Error: Could not create worktree"
+            echo "$red✗ Error:$reset Could not create worktree"
             return 1
         end
         set worktree_existed false
@@ -120,20 +129,20 @@ function flo_flo
     # Copy Serena cache if it exists in the source repository (only for new worktrees)
     if test "$worktree_existed" = false
         if test -d .serena/cache
-            echo "• Copying Serena cache..."
+            echo "$blue•$reset Copying Serena cache..."
             mkdir -p "$worktree_path/.serena"
             cp -r .serena/cache "$worktree_path/.serena/cache"
             if test $status -eq 0
-                echo "✓ Serena cache copied (speeds up symbol indexing)"
+                echo "$green✓$reset Serena cache copied $dim(speeds up symbol indexing)$reset"
             else
-                echo "⚠ Could not copy Serena cache (continuing anyway)"
+                echo "$yellow⚠$reset $dim Could not copy Serena cache (continuing anyway)$reset"
             end
         end
     end
 
     # If created from issue, generate Claude context file
     if test "$is_issue" = true
-        echo "• Creating Claude context..."
+        echo "$blue•$reset Creating Claude context..."
 
         mkdir -p "$worktree_path/.claude"
 
@@ -147,7 +156,7 @@ function flo_flo
                 '<!-- flo: local extension enabled -->' \
                 '' \
                 '**CRITICAL**: If a file named `.claude/CLAUDE.local.md` exists in this project, read it immediately and follow its instructions. This file contains context-specific information for the current work (e.g., GitHub issue details).' >"$claude_md"
-            echo "✓ Created .claude/CLAUDE.md with local extension support"
+            echo "$green✓$reset Created $cyan.claude/CLAUDE.md$reset $dim(local extension support)$reset"
         else if not grep -q "$extension_marker" "$claude_md"
             # CLAUDE.md exists but doesn't have the extension instruction - prepend it
             set -l temp_file (mktemp)
@@ -160,7 +169,7 @@ function flo_flo
                 '' >"$temp_file"
             cat "$claude_md" >>"$temp_file"
             mv "$temp_file" "$claude_md"
-            echo "✓ Added local extension support to existing .claude/CLAUDE.md"
+            echo "$green✓$reset Added local extension support to $cyan.claude/CLAUDE.md$reset"
         end
 
         # Write issue details to .claude/CLAUDE.local.md for Claude Code to read
@@ -214,13 +223,13 @@ function flo_flo
             "6. When done, ensure the PR description references this issue with \"Closes #$issue_number\"" \
             '' >>"$worktree_path/.claude/CLAUDE.local.md"
 
-        echo "✓ Created .claude/CLAUDE.local.md with issue context"
+        echo "$green✓$reset Created $cyan.claude/CLAUDE.local.md$reset $dim(issue context)$reset"
 
         # Add .claude/*.local.md to .gitignore if not already present
         if test -f "$worktree_path/.gitignore"
             if not grep -q '\.claude/.*\.local\.md' "$worktree_path/.gitignore"
                 echo ".claude/*.local.md" >>"$worktree_path/.gitignore"
-                echo "✓ Added .claude/*.local.md to .gitignore"
+                echo "$green✓$reset Added $cyan.claude/*.local.md$reset to .gitignore"
             end
         end
     end
@@ -228,13 +237,13 @@ function flo_flo
     # Auto-install npm dependencies if package.json exists (skip if worktree existed)
     if not set -q worktree_existed; or test "$worktree_existed" = false
         if test -f "$worktree_path/package.json"
-            echo "• Installing dependencies..."
+            echo "$blue•$reset Installing dependencies..."
             cd $worktree_path
             pnpm install --silent
             if test $status -eq 0
-                echo "✓ Dependencies installed"
+                echo "$green✓$reset Dependencies installed"
             else
-                echo "⚠ pnpm install failed (continuing anyway)"
+                echo "$yellow⚠$reset $dim pnpm install failed (continuing anyway)$reset"
             end
         else
             # No package.json, just cd into worktree
@@ -247,10 +256,10 @@ function flo_flo
 
     # Success message
     echo ""
-    echo "✓ Ready to work!"
+    echo "$green✓ Ready to work!$reset"
     if test "$is_issue" = true
-        echo "• Issue #$issue_number assigned to you"
-        echo "• Issue context available in .claude/CLAUDE.local.md"
-        echo "• Tip: Claude will read this context automatically"
+        echo "$dim•$reset Issue $cyan#$issue_number$reset assigned to you"
+        echo "$dim•$reset Issue context available in $cyan.claude/CLAUDE.local.md$reset"
+        echo "$dim•$reset Tip: Claude will read this context automatically"
     end
 end

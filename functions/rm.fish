@@ -10,7 +10,7 @@ function flo_rm
         # Find worktree matching the issue number pattern
         # Issue worktrees are named: <project>_<prefix>-<number>-<slug>
         # e.g., myproject_feat-1320-some-title
-        set pattern "../$current_dir"_"*-$arg-*"
+        set pattern ../$current_dir\_*-$arg-*
         set matching_worktrees (ls -d $pattern 2>/dev/null)
 
         if test (count $matching_worktrees) -eq 0

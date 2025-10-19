@@ -104,8 +104,10 @@ function flo_flo
 
         # Auto-assign issue to current GitHub user
         echo "  $blue•$reset Assigning issue to you..."
-        gh issue edit $arg --add-assignee @me 2>&1 | __flo_indent
-        if test $status -eq 0
+        set -l output (gh issue edit $arg --add-assignee @me 2>&1)
+        set -l exit_code $status
+        echo "$output" | __flo_indent
+        if test $exit_code -eq 0
             echo "  $green✓$reset Issue assigned"
         else
             echo "  $yellow⚠$reset Could not auto-assign (continuing anyway)"
@@ -129,19 +131,23 @@ function flo_flo
         set worktree_existed true
     else
         # Create the worktree (try existing branch first, create new if needed)
-        # Try checking out existing branch first
-        if git worktree add $worktree_path $branch_name 2>&1 | __flo_indent
-            # Success - branch existed
-            set worktree_existed false
-        else
+        # Capture output and status separately to allow indentation
+        set -l output (git worktree add $worktree_path $branch_name 2>&1)
+        set -l exit_code $status
+        echo "$output" | __flo_indent
+
+        if test $exit_code -ne 0
             # Branch doesn't exist, create it
-            if git worktree add -b $branch_name $worktree_path 2>&1 | __flo_indent
-                set worktree_existed false
-            else
+            set output (git worktree add -b $branch_name $worktree_path 2>&1)
+            set exit_code $status
+            echo "$output" | __flo_indent
+
+            if test $exit_code -ne 0
                 echo "  $red✗ Error:$reset Could not create worktree"
                 return 1
             end
         end
+        set worktree_existed false
     end
 
     # Copy Serena cache if it exists in the source repository (only for new worktrees)

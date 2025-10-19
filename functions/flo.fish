@@ -94,8 +94,8 @@ function flo_flo
             set branch_prefix chore
         end
 
-        # Slugify title: lowercase, replace non-alphanumeric with hyphens, limit to 50 chars
-        set title_slug (echo $issue_title | string lower | string replace -ra '[^a-z0-9]+' '-' | string trim -c '-' | string sub -l 50 | string trim -c '-')
+        # Slugify title: lowercase, replace non-alphanumeric with hyphens, limit to 30 chars
+        set title_slug (echo $issue_title | string lower | string replace -ra '[^a-z0-9]+' '-' | string trim -c '-' | string sub -l 30 | string trim -c '-')
 
         # Build branch name: prefix/number-slug (e.g., feat/123-add-user-auth)
         set branch_name "$branch_prefix/$issue_number-$title_slug"

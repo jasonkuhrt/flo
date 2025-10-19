@@ -117,6 +117,20 @@ function flo_flo
         set worktree_existed false
     end
 
+    # Copy Serena cache if it exists in the source repository (only for new worktrees)
+    if test "$worktree_existed" = false
+        if test -d .serena/cache
+            echo "• Copying Serena cache..."
+            mkdir -p "$worktree_path/.serena"
+            cp -r .serena/cache "$worktree_path/.serena/cache"
+            if test $status -eq 0
+                echo "✓ Serena cache copied (speeds up symbol indexing)"
+            else
+                echo "⚠ Could not copy Serena cache (continuing anyway)"
+            end
+        end
+    end
+
     # If created from issue, generate Claude context file
     if test "$is_issue" = true
         echo "• Creating Claude context..."

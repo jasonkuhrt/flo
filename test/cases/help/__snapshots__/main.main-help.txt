@@ -35,10 +35,11 @@ Create worktree from branch or GitHub issue
          refactor/123-<title> for refactoring
          chore/123-<title> for chores
     4. Creates worktree: ../<project>_<branch>/
-    5. Sets up .claude/CLAUDE.md (one-time)
-    6. Generates .claude/CLAUDE.local.md with issue context
-    7. Runs pnpm install
-    8. Ready to code!
+    5. Copies Serena MCP cache if present (speeds up symbol indexing)
+    6. Sets up .claude/CLAUDE.md (one-time)
+    7. Generates .claude/CLAUDE.local.md with issue context
+    8. Runs pnpm install
+    9. Ready to code!
 
 
 [2m[30mCLAUDE INTEGRATION
@@ -54,6 +55,16 @@ Create worktree from branch or GitHub issue
     - Overwritten each run with issue context
     - Gitignored - never committed
     - Worktree-specific
+
+
+[2m[30mSERENA MCP INTEGRATION
+(B[m
+  If you're using Serena MCP (github.com/oraios/serena) for semantic code analysis:
+    - Flo automatically copies .serena/cache/ to new worktrees
+    - Avoids re-indexing symbols (can save minutes on large projects)
+    - Only happens when creating new worktrees (not when reusing)
+    - Requires .serena/cache/ to exist in your main project
+    - Pre-index once: uvx --from git+https://github.com/oraios/serena serena project index
 
 
 [2m[30mEXAMPLES

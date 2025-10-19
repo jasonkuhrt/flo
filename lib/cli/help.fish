@@ -46,9 +46,22 @@ function __cli_show_help --description "Show main help for the CLI"
     echo "  -h, --help       Show this help message"
     echo "  -v, --version    Show version information"
 
-    # Render guide content if documentation exists for main command
+    # Render positional parameters if they exist in the main command doc
     set -l doc_file (__cli_find_command_doc $__cli_name)
     if test -n "$doc_file"
+        set -l json (__cli_parse_frontmatter "$doc_file")
+        if test -n "$json"
+            set -l param_count (echo "$json" | jq -r '.namedParameters | length' 2>/dev/null)
+            if test "$param_count" -gt 0
+                echo ""
+                set_color --dim black
+                echo "POSITIONAL PARAMETERS"
+                set_color normal
+                echo "$json" | jq -r '.namedParameters[] | "  <\(.name)>    \(.description)"' 2>/dev/null
+            end
+        end
+
+        # Render guide content
         set -l guide_content (__cli_get_markdown_content "$doc_file")
         if test (count $guide_content) -gt 0
             __cli_render_markdown_sections $guide_content

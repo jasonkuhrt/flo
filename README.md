@@ -73,6 +73,9 @@ OPTIONS
   -h, --help       Show this help message
   -v, --version    Show version information
 
+POSITIONAL PARAMETERS
+  <issue-or-branch>    GitHub issue number or branch name
+
 WORKTREE ORGANIZATION
 
   Flo creates worktrees as siblings to your main project:

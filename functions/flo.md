@@ -1,7 +1,13 @@
 ---
 {
   "description": "Create worktree from branch or GitHub issue",
-  "positionParameters": true
+  "namedParameters": [
+    {
+      "name": "issue-or-branch",
+      "description": "GitHub issue number or branch name",
+      "required": true
+    }
+  ]
 }
 ---
 

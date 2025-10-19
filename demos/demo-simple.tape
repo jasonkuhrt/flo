@@ -3,23 +3,47 @@
 
 Output build/flo-simple.png
 
+# All Set directives must come first
 Set Shell fish
 Set FontSize 18
-Set Width 1400
-Set Height 900
-Set Theme "Catppuccin Mocha"
+Set Width 1000
+Set Height 600
+Set Theme "TokyoNight"
 Set Padding 20
+Set BorderRadius 10
+Set WindowBar Rings
+Set WindowBarSize 40
+Set Margin 40
+Set MarginFill "#2A2E3A"
 
-# Navigate to the flo repo (assuming we're running from demos/)
-Type "cd .."
+# Environment variables
+Env VHS_DEMO "1"
+
+# Wait for shell to load
+Sleep 500ms
+Hide
+
+# Navigate to flo directory
+Type "cd /Users/jasonkuhrt/projects/jasonkuhrt/flo"
+Enter
+
+# Source flo (already installed in system)
+Type "source ~/.config/fish/functions/flo.fish"
+Enter
+
+# Clear screen to start fresh
+Type "clear"
 Enter
 Sleep 500ms
 
-# Run flo with issue number
+# Show the terminal again
+Show
+
+# Run flo command
 Type "flo 17"
 Enter
-Sleep 4s
+Sleep 5s
 
-# Hide prompt and take screenshot
+# Hide the trailing prompt and take screenshot
 Hide
 Screenshot build/flo-simple.png

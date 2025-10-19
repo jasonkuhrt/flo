@@ -28,7 +28,8 @@ flo 123
 fisher install jasonkuhrt/flo
 ```
 
-### Manual
+<details>
+<summary>Manual</summary>
 
 ```fish
 git clone https://github.com/jasonkuhrt/flo.git ~/projects/flo
@@ -36,13 +37,18 @@ cd ~/projects/flo
 make install
 ```
 
-### Requirements
+</details>
+
+<details>
+<summary>Requirements</summary>
 
 - **Fish shell** (3.0+)
 - **git** and **GitHub CLI** (`gh`) - must be authenticated (`gh auth login`)
 - **jq** - JSON parser
   - macOS: `brew install jq`
 - **pnpm** - for auto-installing dependencies (optional but recommended)
+
+</details>
 
 ## Reference
 

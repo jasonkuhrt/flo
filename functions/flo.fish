@@ -126,14 +126,19 @@ function flo_flo
         set worktree_existed true
     else
         # Create the worktree (try existing branch first, create new if needed)
-        git worktree add $worktree_path $branch_name 2>&1 | __flo_indent
-        or git worktree add -b $branch_name $worktree_path 2>&1 | __flo_indent
-
-        if test $status -ne 0
-            echo "  $red✗ Error:$reset Could not create worktree"
-            return 1
+        # Try checking out existing branch first
+        if git worktree add $worktree_path $branch_name 2>&1 | __flo_indent
+            # Success - branch existed
+            set worktree_existed false
+        else
+            # Branch doesn't exist, create it
+            if git worktree add -b $branch_name $worktree_path 2>&1 | __flo_indent
+                set worktree_existed false
+            else
+                echo "  $red✗ Error:$reset Could not create worktree"
+                return 1
+            end
         end
-        set worktree_existed false
     end
 
     # Copy Serena cache if it exists in the source repository (only for new worktrees)

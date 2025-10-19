@@ -1,6 +1,6 @@
 # Makefile for flo
 
-.PHONY: install uninstall test help docs
+.PHONY: install uninstall test help docs demos
 
 # Install flo functions to Fish config
 install:
@@ -10,8 +10,10 @@ install:
 	@cp functions/*.fish ~/.config/fish/functions/
 	@cp functions/*.md ~/.config/fish/functions/
 	@cp -r lib/cli ~/.config/fish/lib/
+	@cp lib/internals.fish ~/.config/fish/lib/
 	@echo "✓ Installed flo and commands to ~/.config/fish/functions/"
 	@echo "✓ Installed CLI framework to ~/.config/fish/lib/cli/"
+	@echo "✓ Installed internals to ~/.config/fish/lib/"
 	@echo "✓ Installed documentation to ~/.config/fish/functions/"
 	@echo ""
 	@echo "Run 'flo --help' to get started (or just 'flo 123' for an issue)"
@@ -29,9 +31,11 @@ uninstall:
 	@rm -f ~/.config/fish/functions/gwt.fish
 	@rm -f ~/.config/fish/functions/gwt-*.fish
 	@rm -rf ~/.config/fish/lib/cli
+	@rm -f ~/.config/fish/lib/internals.fish
 	@rm -rf ~/.config/fish/flo-docs
 	@echo "✓ Uninstalled flo from ~/.config/fish/functions/"
 	@echo "✓ Removed CLI framework from ~/.config/fish/lib/cli/"
+	@echo "✓ Removed internals from ~/.config/fish/lib/"
 	@echo "✓ Removed old flo-* and gwt files"
 	@echo "✓ Removed documentation"
 
@@ -42,6 +46,10 @@ test:
 # Generate README reference section from markdown files
 docs:
 	@./scripts/generate-readme-reference.fish
+
+# Generate demo screenshots and animations
+demos:
+	@cd demos && ./generate.sh
 
 # Allow passing arguments like: make test ARGS="--update"
 .PHONY: $(MAKECMDGOALS)
@@ -56,6 +64,7 @@ help:
 	@echo "  make uninstall   Remove flo functions from ~/.config/fish/functions/"
 	@echo "  make test        Run tests"
 	@echo "  make docs        Generate README reference section"
+	@echo "  make demos       Generate demo screenshots (requires: brew install vhs)"
 	@echo "  make help        Show this help message"
 	@echo ""
 	@echo "Recommended: Use Fisher instead"

@@ -3,8 +3,9 @@
 
 set -l flo_dir (dirname (status -f))
 
-# Source the CLI framework
+# Source the CLI framework and internals
 source "$flo_dir/../lib/cli/\$.fish"
+source "$flo_dir/../lib/internals.fish"
 
 # Initialize flo with the CLI framework
 __cli_init \
@@ -171,8 +172,12 @@ function flo_flo
         end
     end
 
-    # If created from issue, generate Claude context file
+    # If created from issue, store issue metadata and generate Claude context
     if test "$is_issue" = true
+        # Store issue number in global tracking file
+        set -l full_path (realpath $worktree_path)
+        __flo_internal_config_set "$full_path" "$issue_number" "$branch_name"
+
         echo "  $blue•$reset Creating Claude context..."
 
         mkdir -p "$worktree_path/.claude"

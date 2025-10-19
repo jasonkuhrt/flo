@@ -157,12 +157,12 @@ flo rm
 Safely remove a git worktree by branch name or issue number
 
 POSITIONAL PARAMETERS
-  <branch-name-or-issue>    Branch name or issue number of the worktree to remove
+  <branch-name-or-issue>    Branch name, issue number, or worktree directory name to remove
 
 
 ABOUT
 
-  Safely removes a worktree by branch name or issue number.
+  Safely removes a worktree by branch name, issue number, or worktree directory name.
   Calculates the path automatically and uses Git to properly
   delete it. Always prefer this over 'rm -rf' to keep Git
   state clean.
@@ -170,13 +170,19 @@ ABOUT
   When given an issue number, finds the worktree created with
   'flo <issue-number>' and removes it.
 
+  ## FLAGS
+
+  --force, -f    Force removal even with uncommitted changes
+
 
 EXAMPLES
 
-  flo rm 1320                  # Remove by issue number
-  flo rm #1320                 # Remove by issue number (# is optional)
-  flo rm feat/123-add-auth     # Remove by branch name
-  flo rm fix/memory-leak       # Remove by branch name
+  flo rm 1320                              # Remove by issue number
+  flo rm #1320                             # Remove by issue number (# is optional)
+  flo rm feat/123-add-auth                 # Remove by branch name
+  flo rm fix/memory-leak                   # Remove by branch name
+  flo rm myproject_feat-123-add-auth       # Remove by worktree directory name
+  flo rm 1320 --force                      # Force removal with uncommitted changes
 ```
 
 ### `flo prune`

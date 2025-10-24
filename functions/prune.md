@@ -1,6 +1,16 @@
 ---
 {
-  "description": "Clean up Git metadata for manually deleted worktrees"
+  "description": "Clean up Git metadata for manually deleted worktrees",
+  "examples": [
+    {
+      "command": "flo prune",
+      "description": "Clean up metadata for manually deleted worktrees"
+    }
+  ],
+  "related": ["list", "rm"],
+  "exitCodes": {
+    "0": "Success"
+  }
 }
 ---
 

@@ -4,3 +4,12 @@
 List all git worktrees with branches and paths
 
 Shows all worktrees with their paths, branches, and commits.
+[2m[30mEXAMPLES
+(B[m  flo list    # Show all worktrees with branches and paths
+
+[2m[30mSEE ALSO
+(B[m  flo rm
+  flo prune
+
+[2m[30mEXIT CODES
+(B[m  0    Success

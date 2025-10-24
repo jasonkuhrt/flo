@@ -7,3 +7,12 @@ Clean up Git metadata for manually deleted worktrees
 [2m[30mABOUT
 (B[m
   Use this if you deleted with `rm -rf` instead of `flo rm`.
+[2m[30mEXAMPLES
+(B[m  flo prune    # Clean up metadata for manually deleted worktrees
+
+[2m[30mSEE ALSO
+(B[m  flo list
+  flo rm
+
+[2m[30mEXIT CODES
+(B[m  0    Success

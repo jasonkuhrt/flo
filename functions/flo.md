@@ -7,7 +7,26 @@
       "description": "GitHub issue number or branch name",
       "required": true
     }
-  ]
+  ],
+  "examples": [
+    {
+      "command": "flo 123",
+      "description": "Create from GitHub issue"
+    },
+    {
+      "command": "flo #123",
+      "description": "Create from GitHub issue (# is optional)"
+    },
+    {
+      "command": "flo feat/new-feature",
+      "description": "Create from branch name"
+    }
+  ],
+  "related": ["list", "rm", "prune"],
+  "exitCodes": {
+    "0": "Success",
+    "1": "Error - GitHub API failure, worktree creation failed, or missing dependencies"
+  }
 }
 ---
 
@@ -60,9 +79,3 @@ If you're using Serena MCP (github.com/oraios/serena) for semantic code analysis
   - Only happens when creating new worktrees (not when reusing)
   - Requires .serena/cache/ to exist in your main project
   - Pre-index once: uvx --from git+https://github.com/oraios/serena serena project index
-
-# EXAMPLES
-
-flo 123                    Create from GitHub issue
-flo #123                   Create from GitHub issue (# is optional)
-flo feat/new-feature       Create from branch name

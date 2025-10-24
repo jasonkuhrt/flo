@@ -36,3 +36,24 @@ find_worktree() {
 flo() {
     fish -c "source $PROJECT_ROOT/functions/flo.fish; flo $*"
 }
+
+# Setup worktree for a GitHub issue and cd into it
+# Usage: setup_issue_worktree [issue_number] [search_pattern]
+# Defaults: issue_number=17, search_pattern="17-test-fixture"
+# Fails the test if worktree creation fails
+# Changes current directory to the worktree (use $PWD to get path)
+setup_issue_worktree() {
+    local issue_number="${1:-17}"
+    local search_pattern="${2:-17-test-fixture}"
+
+    flo "$issue_number" >/dev/null 2>&1
+
+    local worktree_path=$(find_worktree "$search_pattern")
+
+    if [[ -z "$worktree_path" ]]; then
+        fail "Worktree not created for issue $issue_number"
+        exit 1
+    fi
+
+    cd "$worktree_path"
+}

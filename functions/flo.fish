@@ -269,7 +269,7 @@ function flo_flo
 
         # Add .claude/*.local.md to .gitignore if not already present
         if test -f "$worktree_path/.gitignore"
-            if not grep -q '\.claude/.*\.local\.md' "$worktree_path/.gitignore"
+            if not grep -Fxq '.claude/*.local.md' "$worktree_path/.gitignore"
                 echo ".claude/*.local.md" >>"$worktree_path/.gitignore"
                 echo "  $green✓$reset Added $cyan.claude/*.local.md$reset to .gitignore"
             end

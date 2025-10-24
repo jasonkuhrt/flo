@@ -10,7 +10,24 @@ function __cli_create_dispatcher --description "Create the main CLI dispatcher"
 
         # Handle empty command or help
         switch $cmd
-            case '' help --help -h
+            case ''
+                # Try interactive issue selection if available
+                set -l main_func "$__cli_prefix"_"$__cli_prefix" # e.g., flo_flo
+                set -l select_func "__"$__cli_prefix"_select_issue" # e.g., __flo_select_issue
+
+                if functions -q $select_func
+                    set -l selected_issue ($select_func)
+                    if test $status -eq 0; and test -n "$selected_issue"
+                        # Call main function with selected issue
+                        $main_func $selected_issue
+                        return $status
+                    end
+                end
+
+                # Fallback to help if selection failed or not available
+                __cli_show_help
+                return 0
+            case help --help -h
                 __cli_show_help
                 return 0
             case version --version -v

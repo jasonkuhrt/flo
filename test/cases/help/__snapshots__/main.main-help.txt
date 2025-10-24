@@ -14,7 +14,7 @@ Create worktree from branch or GitHub issue
   -v, --version    Show version information
 
 [2m[30mPOSITIONAL PARAMETERS
-(B[m  <issue-or-branch>    GitHub issue number or branch name
+(B[m  <issue-or-branch>    GitHub issue number or branch name (optional - shows interactive picker if omitted)
 
 [2m[30mWORKTREE ORGANIZATION
 (B[m
@@ -24,6 +24,22 @@ Create worktree from branch or GitHub issue
     ~/projects/myproject_fix-456-bug-fix/      (worktree for fix/456-bug-fix)
 
   Running flo multiple times for the same branch is safe - it updates Claude context without recreating the worktree.
+
+
+[2m[30mINTERACTIVE SELECTION
+(B[m
+  When you run 'flo' with no arguments:
+    1. Fetches up to 100 open issues from GitHub
+    2. Shows interactive picker:
+         - Uses 'gum filter' (fuzzy search) for >10 issues
+         - Uses 'gum choose' (simple list) for ≤10 issues
+    3. Creates worktree for selected issue
+
+  Requirements:
+    - gum: https://github.com/charmbracelet/gum (install with: brew install gum)
+    - gh CLI: https://cli.github.com (install with: brew install gh)
+
+  Fallback: If gum or gh are not installed, shows help message instead.
 
 
 [2m[30mISSUE MODE

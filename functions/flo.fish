@@ -33,6 +33,53 @@ function __flo_slugify_title --description "Convert issue title to branch slug"
     echo $title | string lower | string replace -ra '[^a-z0-9]+' - | string trim -c - | string sub -l 30 | string trim -c -
 end
 
+# Interactive issue selection with gum
+function __flo_select_issue --description "Interactively select an issue with gum"
+    # Check if gum is installed
+    if not command -v gum >/dev/null 2>&1
+        return 1
+    end
+
+    # Check if gh is installed
+    if not command -v gh >/dev/null 2>&1
+        return 1
+    end
+
+    # Fetch open issues
+    set -l issues_json (gh issue list --state open --json number,title --limit 100 2>/dev/null)
+    if test $status -ne 0; or test -z "$issues_json"
+        return 1
+    end
+
+    # Count issues
+    set -l issue_count (echo "$issues_json" | jq '. | length' 2>/dev/null)
+    if test -z "$issue_count"; or test "$issue_count" -eq 0
+        return 1
+    end
+
+    # Format issues for selection
+    set -l formatted_issues (echo "$issues_json" | jq -r '.[] | "#\(.number) - \(.title)"' 2>/dev/null)
+    if test -z "$formatted_issues"
+        return 1
+    end
+
+    # Use gum filter for >10 issues, choose for <=10
+    set -l selected
+    if test "$issue_count" -gt 10
+        set selected (echo "$formatted_issues" | gum filter --placeholder "Search issues..." --height 15)
+    else
+        set selected (echo "$formatted_issues" | gum choose --header "Select an issue:")
+    end
+
+    # Extract issue number from selection (format: #123 - Title)
+    if test -n "$selected"
+        echo "$selected" | string replace -r '^#(\d+).*' '$1'
+        return 0
+    else
+        return 1
+    end
+end
+
 # Issue handling helpers
 function __flo_fetch_issue --description "Fetch GitHub issue as JSON"
     set -l issue_number $argv[1]

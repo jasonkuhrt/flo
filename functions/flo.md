@@ -4,11 +4,15 @@
   "parametersPositional": [
     {
       "name": "issue-or-branch",
-      "description": "GitHub issue number or branch name",
-      "required": true
+      "description": "GitHub issue number or branch name (optional - shows interactive picker if omitted)",
+      "required": false
     }
   ],
   "examples": [
+    {
+      "command": "flo",
+      "description": "Interactive issue selection (requires gum)"
+    },
     {
       "command": "flo 123",
       "description": "Create from GitHub issue"
@@ -38,6 +42,21 @@ Flo creates worktrees as siblings to your main project:
   ~/projects/myproject_fix-456-bug-fix/      (worktree for fix/456-bug-fix)
 
 Running flo multiple times for the same branch is safe - it updates Claude context without recreating the worktree.
+
+# INTERACTIVE SELECTION
+
+When you run 'flo' with no arguments:
+  1. Fetches up to 100 open issues from GitHub
+  2. Shows interactive picker:
+       - Uses 'gum filter' (fuzzy search) for >10 issues
+       - Uses 'gum choose' (simple list) for ≤10 issues
+  3. Creates worktree for selected issue
+
+Requirements:
+  - gum: https://github.com/charmbracelet/gum (install with: brew install gum)
+  - gh CLI: https://cli.github.com (install with: brew install gh)
+
+Fallback: If gum or gh are not installed, shows help message instead.
 
 # ISSUE MODE
 

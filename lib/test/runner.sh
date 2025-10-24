@@ -22,6 +22,10 @@ __test_cleanup_all() {
     :  # No-op by default
 }
 
+__test_setup_all() {
+    :  # No-op by default
+}
+
 # Allow projects to register custom cleanup (imperative API for advanced use)
 register_test_cleanup() {
     __test_cleanup() {
@@ -52,8 +56,21 @@ if [[ -n "$TEST_DIR" ]]; then
                 after_all
             }
         fi
+
+        # Register before_all if defined
+        if declare -f before_all >/dev/null 2>&1; then
+            __test_setup_all() {
+                before_all
+            }
+        fi
     else
         # Option 2: Individual hook files (executed as scripts, not sourced)
+        if [[ -f "$TEST_DIR/before_all.sh" ]]; then
+            __test_setup_all() {
+                bash "$TEST_DIR/before_all.sh"
+            }
+        fi
+
         if [[ -f "$TEST_DIR/after_each.sh" ]]; then
             register_test_cleanup "bash $TEST_DIR/after_each.sh"
         fi
@@ -74,6 +91,9 @@ run_tests() {
         echo "Error: Test cases directory not found: $cases_dir"
         exit 1
     fi
+
+    # Run before-all setup
+    __test_setup_all
 
     echo -e "${YELLOW}Running tests...${NC}\n"
 

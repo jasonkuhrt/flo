@@ -1,7 +1,16 @@
 #!/bin/bash
 
 # Test hooks for flo
-# Define special functions: after_each, after_all
+# Define special functions: before_all, after_each, after_all
+
+before_all() {
+    # Clean up stale worktrees from previous test runs
+    # This prevents flaky tests caused by leftover worktrees in /tmp
+    # macOS mktemp creates dirs in /var/folders/xx/yyy/T/, need maxdepth 5
+    find /var/folders -maxdepth 5 -name "tmp.*_feat-*" -type d 2>/dev/null | while read -r dir; do
+        rm -rf "$dir" 2>/dev/null
+    done
+}
 
 after_each() {
     # Clean up worktrees created by tests

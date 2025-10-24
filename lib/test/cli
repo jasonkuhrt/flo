@@ -65,6 +65,13 @@ fi
 if [[ -f "$TEST_DIR/hooks.sh" ]]; then
     source "$TEST_DIR/hooks.sh"
 
+    # Register before_all if defined
+    if declare -f before_all >/dev/null 2>&1; then
+        __test_setup_all() {
+            before_all
+        }
+    fi
+
     # Register after_each if defined
     if declare -f after_each >/dev/null 2>&1; then
         register_test_cleanup after_each
@@ -78,6 +85,12 @@ if [[ -f "$TEST_DIR/hooks.sh" ]]; then
     fi
 else
     # Fall back to individual hook files
+    if [[ -f "$TEST_DIR/before_all.sh" ]]; then
+        __test_setup_all() {
+            bash "$TEST_DIR/before_all.sh"
+        }
+    fi
+
     if [[ -f "$TEST_DIR/after_each.sh" ]]; then
         register_test_cleanup "bash $TEST_DIR/after_each.sh"
     fi

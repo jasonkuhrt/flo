@@ -54,6 +54,14 @@ assert_file_exists() {
     fi
 }
 
+assert_file_not_exists() {
+    if [[ ! -f "$1" ]]; then
+        pass "$2"
+    else
+        fail "$2"
+    fi
+}
+
 # Content assertions
 
 assert_contains() {

@@ -182,30 +182,36 @@ function flo_flo
 
         mkdir -p "$worktree_path/.claude"
 
-        # Ensure CLAUDE.md exists and has the .local extension instruction
-        set -l claude_md "$worktree_path/.claude/CLAUDE.md"
-        set -l extension_marker "<!-- flo: local extension enabled -->"
+        # Check if root CLAUDE.md exists first - if so, skip creating .claude/CLAUDE.md
+        if test -f "$worktree_path/CLAUDE.md"
+            # Root CLAUDE.md exists - skip creating .claude/CLAUDE.md
+            echo "  $blue•$reset Using existing $cyan./CLAUDE.md$reset"
+        else
+            # Root CLAUDE.md doesn't exist - create .claude/CLAUDE.md with extension marker
+            set -l claude_md "$worktree_path/.claude/CLAUDE.md"
+            set -l extension_marker "<!-- flo: local extension enabled -->"
 
-        if not test -f "$claude_md"
-            # Create CLAUDE.md with extension instruction
-            printf '%s\n' \
-                '<!-- flo: local extension enabled -->' \
-                '' \
-                '**CRITICAL**: If a file named `.claude/CLAUDE.local.md` exists in this project, read it immediately and follow its instructions. This file contains context-specific information for the current work (e.g., GitHub issue details).' >"$claude_md"
-            echo "  $green✓$reset Created $cyan.claude/CLAUDE.md$reset $dim(local extension support)$reset"
-        else if not grep -q "$extension_marker" "$claude_md"
-            # CLAUDE.md exists but doesn't have the extension instruction - prepend it
-            set -l temp_file (mktemp)
-            printf '%s\n' \
-                '<!-- flo: local extension enabled -->' \
-                '' \
-                '**CRITICAL**: If a file named `.claude/CLAUDE.local.md` exists in this project, read it immediately and follow its instructions. This file contains context-specific information for the current work (e.g., GitHub issue details).' \
-                '' \
-                --- \
-                '' >"$temp_file"
-            cat "$claude_md" >>"$temp_file"
-            mv "$temp_file" "$claude_md"
-            echo "  $green✓$reset Added local extension support to $cyan.claude/CLAUDE.md$reset"
+            if not test -f "$claude_md"
+                # Create CLAUDE.md with extension instruction
+                printf '%s\n' \
+                    '<!-- flo: local extension enabled -->' \
+                    '' \
+                    '**CRITICAL**: If a file named `.claude/CLAUDE.local.md` exists in this project, read it immediately and follow its instructions. This file contains context-specific information for the current work (e.g., GitHub issue details).' >"$claude_md"
+                echo "  $green✓$reset Created $cyan.claude/CLAUDE.md$reset $dim(local extension support)$reset"
+            else if not grep -q "$extension_marker" "$claude_md"
+                # CLAUDE.md exists but doesn't have the extension instruction - prepend it
+                set -l temp_file (mktemp)
+                printf '%s\n' \
+                    '<!-- flo: local extension enabled -->' \
+                    '' \
+                    '**CRITICAL**: If a file named `.claude/CLAUDE.local.md` exists in this project, read it immediately and follow its instructions. This file contains context-specific information for the current work (e.g., GitHub issue details).' \
+                    '' \
+                    --- \
+                    '' >"$temp_file"
+                cat "$claude_md" >>"$temp_file"
+                mv "$temp_file" "$claude_md"
+                echo "  $green✓$reset Added local extension support to $cyan.claude/CLAUDE.md$reset"
+            end
         end
 
         # Write issue details to .claude/CLAUDE.local.md for Claude Code to read

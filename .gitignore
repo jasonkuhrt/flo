@@ -17,6 +17,7 @@ Thumbs.db
 
 # Testing
 coverage/
+.serena/
 
 # IDE
 .vscode/

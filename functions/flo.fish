@@ -45,30 +45,24 @@ function __flo_select_issue --description "Interactively select an issue with gu
         return 1
     end
 
-    # Fetch open issues
-    set -l issues_json (gh issue list --state open --json number,title --limit 100 2>/dev/null)
-    if test $status -ne 0; or test -z "$issues_json"
+    # Fetch and format open issues using gh template
+    set -l formatted_issues (gh issue list --state open --limit 100 --json number,title --template '{{range .}}#{{.number}} - {{.title}}{{"\n"}}{{end}}' 2>/dev/null)
+    if test $status -ne 0; or test -z "$formatted_issues"
         return 1
     end
 
-    # Count issues
-    set -l issue_count (echo "$issues_json" | jq '. | length' 2>/dev/null)
-    if test -z "$issue_count"; or test "$issue_count" -eq 0
-        return 1
-    end
-
-    # Format issues for selection
-    set -l formatted_issues (echo "$issues_json" | jq -r '.[] | "#\(.number) - \(.title)"' 2>/dev/null)
-    if test -z "$formatted_issues"
+    # Count issues by counting lines (use printf to handle array properly)
+    set -l issue_count (printf '%s\n' $formatted_issues | wc -l | string trim)
+    if test "$issue_count" -eq 0
         return 1
     end
 
     # Use gum filter for >10 issues, choose for <=10
     set -l selected
     if test "$issue_count" -gt 10
-        set selected (echo "$formatted_issues" | gum filter --placeholder "Search issues..." --height 15)
+        set selected (printf '%s\n' $formatted_issues | gum filter --placeholder "Search issues..." --height 15)
     else
-        set selected (echo "$formatted_issues" | gum choose --header "Select an issue:")
+        set selected (printf '%s\n' $formatted_issues | gum choose --header "Select an issue:")
     end
 
     # Extract issue number from selection (format: #123 - Title)

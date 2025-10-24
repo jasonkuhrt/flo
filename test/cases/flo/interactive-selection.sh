@@ -78,10 +78,20 @@ fi
 
 # Test: Verify function uses gum filter for many issues
 USES_FILTER=$(fish -c "
-    # Mock gh to return >10 issues
+    # Mock gh to return >10 issues (formatted with template)
     function gh
         if contains -- list \$argv
-            echo '[{\"number\":1,\"title\":\"A\"},{\"number\":2,\"title\":\"B\"},{\"number\":3,\"title\":\"C\"},{\"number\":4,\"title\":\"D\"},{\"number\":5,\"title\":\"E\"},{\"number\":6,\"title\":\"F\"},{\"number\":7,\"title\":\"G\"},{\"number\":8,\"title\":\"H\"},{\"number\":9,\"title\":\"I\"},{\"number\":10,\"title\":\"J\"},{\"number\":11,\"title\":\"K\"}]'
+            echo '#1 - A'
+            echo '#2 - B'
+            echo '#3 - C'
+            echo '#4 - D'
+            echo '#5 - E'
+            echo '#6 - F'
+            echo '#7 - G'
+            echo '#8 - H'
+            echo '#9 - I'
+            echo '#10 - J'
+            echo '#11 - K'
         end
     end
 
@@ -106,10 +116,11 @@ fi
 
 # Test: Verify function uses gum choose for few issues
 USES_CHOOSE=$(fish -c "
-    # Mock gh to return <=10 issues
+    # Mock gh to return <=10 issues (formatted with template)
     function gh
         if contains -- list \$argv
-            echo '[{\"number\":1,\"title\":\"A\"},{\"number\":2,\"title\":\"B\"}]'
+            echo '#1 - A'
+            echo '#2 - B'
         end
     end
 

@@ -197,13 +197,13 @@ function __cli_render_command_help --description "Render formatted help for a co
     end
 
     # Render POSITIONAL PARAMETERS section if they exist
-    set -l param_count (echo "$json" | jq -r '.namedParameters | length' 2>/dev/null)
+    set -l param_count (echo "$json" | jq -r '.parametersPositional | length' 2>/dev/null)
     if test "$param_count" -gt 0
         set_color --dim black
         echo "POSITIONAL PARAMETERS"
         set_color normal
         # Use jq to format each parameter
-        echo "$json" | jq -r '.namedParameters[] | "  <\(.name)>    \(.description)"' 2>/dev/null
+        echo "$json" | jq -r '.parametersPositional[] | "  <\(.name)>    \(.description)"' 2>/dev/null
         echo ""
     end
 

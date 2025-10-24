@@ -51,13 +51,13 @@ function __cli_show_help --description "Show main help for the CLI"
     if test -n "$doc_file"
         set -l json (__cli_parse_frontmatter "$doc_file")
         if test -n "$json"
-            set -l param_count (echo "$json" | jq -r '.namedParameters | length' 2>/dev/null)
+            set -l param_count (echo "$json" | jq -r '.parametersPositional | length' 2>/dev/null)
             if test "$param_count" -gt 0
                 echo ""
                 set_color --dim black
                 echo "POSITIONAL PARAMETERS"
                 set_color normal
-                echo "$json" | jq -r '.namedParameters[] | "  <\(.name)>    \(.description)"' 2>/dev/null
+                echo "$json" | jq -r '.parametersPositional[] | "  <\(.name)>    \(.description)"' 2>/dev/null
             end
         end
 

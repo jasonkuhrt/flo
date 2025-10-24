@@ -1,7 +1,7 @@
 ---
 {
   "description": "Safely remove a git worktree by branch name or issue number",
-  "namedParameters": [
+  "parametersPositional": [
     {
       "name": "branch-name-or-issue",
       "description": "Branch name, issue number, or worktree directory name to remove",

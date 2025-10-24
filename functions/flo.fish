@@ -33,6 +33,304 @@ function __flo_slugify_title --description "Convert issue title to branch slug"
     echo $title | string lower | string replace -ra '[^a-z0-9]+' - | string trim -c - | string sub -l 30 | string trim -c -
 end
 
+# Issue handling helpers
+function __flo_fetch_issue --description "Fetch GitHub issue as JSON"
+    set -l issue_number $argv[1]
+    gh issue view $issue_number --json number,title,body,labels,url,comments 2>/dev/null
+end
+
+function __flo_get_issue_field --description "Extract field from issue JSON"
+    set -l issue_json $argv[1]
+    set -l field $argv[2]
+    set -l default_value $argv[3]
+
+    if test -n "$default_value"
+        echo $issue_json | jq -r ".$field // \"$default_value\""
+    else
+        echo $issue_json | jq -r ".$field"
+    end
+end
+
+function __flo_get_issue_labels --description "Get comma-separated labels from issue JSON"
+    set -l issue_json $argv[1]
+    echo $issue_json | jq -r '.labels[].name' | string join ', '
+end
+
+function __flo_get_comments_count --description "Get comment count from issue JSON"
+    set -l issue_json $argv[1]
+    echo $issue_json | jq -r '.comments | length'
+end
+
+function __flo_format_comments --description "Format issue comments for output"
+    set -l issue_json $argv[1]
+    echo $issue_json | jq -r '.comments[] | "### Comment by @\(.author.login) (\\(.createdAt))\n\n\(.body)\n"'
+end
+
+# Branch management helpers
+function __flo_determine_branch_prefix --description "Determine branch prefix from issue labels"
+    set -l issue_labels $argv[1]
+
+    if string match -qir '(bug|fix)' -- $issue_labels
+        echo fix
+    else if string match -qir '(docs|documentation)' -- $issue_labels
+        echo docs
+    else if string match -qir refactor -- $issue_labels
+        echo refactor
+    else if string match -qir chore -- $issue_labels
+        echo chore
+    else
+        echo feat # Default to feature
+    end
+end
+
+function __flo_create_branch_name --description "Build branch name from components"
+    set -l branch_prefix $argv[1]
+    set -l issue_number $argv[2]
+    set -l issue_title $argv[3]
+
+    set -l title_slug (__flo_slugify_title $issue_title)
+    echo "$branch_prefix/$issue_number-$title_slug"
+end
+
+function __flo_assign_issue --description "Auto-assign issue to current user"
+    set -l issue_number $argv[1]
+    set -l green $argv[2]
+    set -l yellow $argv[3]
+    set -l reset $argv[4]
+    set -l blue $argv[5]
+
+    echo "  $blue•$reset Assigning issue to you..."
+    set -l output (gh issue edit $issue_number --add-assignee @me 2>&1)
+    set -l exit_code $status
+    echo "$output" | __flo_indent
+    if test $exit_code -eq 0
+        echo "  $green✓$reset Issue assigned"
+    else
+        echo "  $yellow⚠$reset Could not auto-assign (continuing anyway)"
+    end
+end
+
+# Success message helper
+function __flo_print_success_message --description "Print success message with issue details if applicable"
+    set -l is_issue $argv[1]
+    set -l issue_number $argv[2]
+    set -l green $argv[3]
+    set -l reset $argv[4]
+    set -l dim $argv[5]
+    set -l cyan $argv[6]
+
+    echo "" >&2
+    echo "  $green✓ Ready to work!$reset" >&2
+    if test "$is_issue" = true
+        echo "  $dim•$reset Issue $cyan#$issue_number$reset assigned to you" >&2
+        echo "  $dim•$reset Issue context available in $cyan.claude/CLAUDE.local.md$reset" >&2
+        echo "  $dim•$reset Tip: Claude will read this context automatically" >&2
+    end
+end
+
+# Dependency installation helper
+function __flo_install_dependencies --description "Install npm dependencies if package.json exists"
+    set -l worktree_path $argv[1]
+    set -l blue $argv[2]
+    set -l green $argv[3]
+    set -l yellow $argv[4]
+    set -l reset $argv[5]
+
+    if test -f "$worktree_path/package.json"
+        echo "  $blue•$reset Installing dependencies..." >&2
+        cd $worktree_path
+        pnpm install --silent
+        if test $status -eq 0
+            echo "  $green✓$reset Dependencies installed" >&2
+        else
+            echo "  $yellow⚠$reset pnpm install failed (continuing anyway)" >&2
+        end
+    else
+        # No package.json, just cd into worktree
+        cd $worktree_path
+    end
+end
+
+# Claude context helpers
+function __flo_setup_claude_md --description "Setup or detect CLAUDE.md in worktree"
+    set -l worktree_path $argv[1]
+    set -l blue $argv[2]
+    set -l cyan $argv[3]
+    set -l green $argv[4]
+    set -l dim $argv[5]
+    set -l reset $argv[6]
+
+    # Check if root CLAUDE.md exists first - if so, skip creating .claude/CLAUDE.md
+    if test -f "$worktree_path/CLAUDE.md"
+        echo "  $blue•$reset Using existing $cyan./CLAUDE.md$reset" >&2
+    else
+        # Root CLAUDE.md doesn't exist - create .claude/CLAUDE.md with extension marker
+        set -l claude_md "$worktree_path/.claude/CLAUDE.md"
+        set -l extension_marker "<!-- flo: local extension enabled -->"
+
+        if not test -f "$claude_md"
+            # Create CLAUDE.md with extension instruction
+            printf '%s\n' \
+                '<!-- flo: local extension enabled -->' \
+                '' \
+                '**CRITICAL**: If a file named `.claude/CLAUDE.local.md` exists in this project, read it immediately and follow its instructions. This file contains context-specific information for the current work (e.g., GitHub issue details).' >"$claude_md"
+            echo "  $green✓$reset Created $cyan.claude/CLAUDE.md$reset $dim(local extension support)$reset" >&2
+        else if not grep -q "$extension_marker" "$claude_md"
+            # CLAUDE.md exists but doesn't have the extension instruction - prepend it
+            set -l temp_file (mktemp)
+            printf '%s\n' \
+                '<!-- flo: local extension enabled -->' \
+                '' \
+                '**CRITICAL**: If a file named `.claude/CLAUDE.local.md` exists in this project, read it immediately and follow its instructions. This file contains context-specific information for the current work (e.g., GitHub issue details).' \
+                '' \
+                --- \
+                '' >"$temp_file"
+            cat "$claude_md" >>"$temp_file"
+            mv "$temp_file" "$claude_md"
+            echo "  $green✓$reset Added local extension support to $cyan.claude/CLAUDE.md$reset" >&2
+        end
+    end
+end
+
+function __flo_generate_claude_local --description "Generate CLAUDE.local.md with issue context"
+    set -l worktree_path $argv[1]
+    set -l issue_number $argv[2]
+    set -l issue_title $argv[3]
+    set -l issue_url $argv[4]
+    set -l issue_labels $argv[5]
+    set -l branch_name $argv[6]
+    set -l issue_body $argv[7]
+    set -l issue_comments_count $argv[8]
+    set -l issue_comments_formatted $argv[9]
+    set -l green $argv[10]
+    set -l cyan $argv[11]
+    set -l dim $argv[12]
+    set -l reset $argv[13]
+
+    # Write issue details to .claude/CLAUDE.local.md for Claude Code to read
+    printf '%s\n' \
+        '# GitHub Issue Context' \
+        '' \
+        '**CRITICAL: Read this ENTIRE issue including ALL comments below. Later comments take precedence over earlier ones.**' \
+        '' \
+        "## Issue #$issue_number: $issue_title" \
+        '' \
+        "- **URL**: $issue_url" \
+        "- **Labels**: $issue_labels" \
+        "- **Branch**: \`$branch_name\`" \
+        '' \
+        '## Original Description' \
+        '' \
+        "$issue_body" \
+        '' >"$worktree_path/.claude/CLAUDE.local.md"
+
+    # Append comments if any exist
+    if test $issue_comments_count -gt 0
+        printf '%s\n' \
+            '## Comments' \
+            '' \
+            '**Note: Read ALL comments below. If there are contradictions between the original description and comments, or between earlier and later comments, follow the most recent information.**' \
+            '' >>"$worktree_path/.claude/CLAUDE.local.md"
+
+        # Append each comment
+        echo "$issue_comments_formatted" >>"$worktree_path/.claude/CLAUDE.local.md"
+
+        printf '%s\n' \
+            '' \
+            --- \
+            '' >>"$worktree_path/.claude/CLAUDE.local.md"
+    else
+        printf '%s\n' \
+            --- \
+            '' >>"$worktree_path/.claude/CLAUDE.local.md"
+    end
+
+    # Append instructions
+    printf '%s\n' \
+        '## Instructions for Claude' \
+        '' \
+        '1. Read and fully understand the issue requirements above **and all comments**' \
+        '2. If there are comments, they may clarify, modify, or override the original description - follow the latest information' \
+        '3. All changes in this worktree should directly address this issue' \
+        "4. Reference this issue number (#$issue_number) in commit messages" \
+        '5. Consider the labels when determining the scope of changes' \
+        "6. When done, ensure the PR description references this issue with \"Closes #$issue_number\"" \
+        '' >>"$worktree_path/.claude/CLAUDE.local.md"
+
+    echo "  $green✓$reset Created $cyan.claude/CLAUDE.local.md$reset $dim(issue context)$reset" >&2
+end
+
+function __flo_setup_gitignore --description "Add .claude/*.local.md to .gitignore"
+    set -l worktree_path $argv[1]
+    set -l green $argv[2]
+    set -l cyan $argv[3]
+    set -l reset $argv[4]
+
+    if test -f "$worktree_path/.gitignore"
+        if not grep -Fxq '.claude/*.local.md' "$worktree_path/.gitignore"
+            echo ".claude/*.local.md" >>"$worktree_path/.gitignore"
+            echo "  $green✓$reset Added $cyan.claude/*.local.md$reset to .gitignore" >&2
+        end
+    end
+end
+
+# Worktree management helpers
+function __flo_create_or_use_worktree --description "Create worktree or detect existing"
+    set -l worktree_path $argv[1]
+    set -l branch_name $argv[2]
+    set -l blue $argv[3]
+    set -l cyan $argv[4]
+    set -l red $argv[5]
+    set -l reset $argv[6]
+
+    # Check if worktree already exists
+    if test -d $worktree_path
+        echo "  $blue•$reset Worktree already exists: $cyan$worktree_path$reset" >&2
+        echo existed
+        return 0
+    end
+
+    # Create the worktree (try existing branch first, create new if needed)
+    set -l output (git worktree add $worktree_path $branch_name 2>&1)
+    set -l exit_code $status
+    echo "$output" | __flo_indent >&2
+
+    if test $exit_code -ne 0
+        # Branch doesn't exist, create it
+        set output (git worktree add -b $branch_name $worktree_path 2>&1)
+        set exit_code $status
+        echo "$output" | __flo_indent >&2
+
+        if test $exit_code -ne 0
+            echo "  $red✗ Error:$reset Could not create worktree" >&2
+            return 1
+        end
+    end
+
+    echo created
+    return 0
+end
+
+function __flo_copy_serena_cache --description "Copy Serena cache to worktree if exists"
+    set -l worktree_path $argv[1]
+    set -l blue $argv[2]
+    set -l green $argv[3]
+    set -l yellow $argv[4]
+    set -l dim $argv[5]
+    set -l reset $argv[6]
+
+    if test -d .serena/cache
+        echo "  $blue•$reset Copying Serena cache..." >&2
+        mkdir -p "$worktree_path/.serena"
+        cp -r .serena/cache "$worktree_path/.serena/cache"
+        if test $status -eq 0
+            echo "  $green✓$reset Serena cache copied $dim(speeds up symbol indexing)$reset" >&2
+        else
+            echo "  $yellow⚠$reset Could not copy Serena cache (continuing anyway)" >&2
+        end
+    end
+end
+
 # Main command - create worktree from branch name or GitHub issue number
 function flo_flo
     # Colors for output
@@ -68,58 +366,35 @@ function flo_flo
         echo "  $blue•$reset Fetching issue $cyan#$arg$reset..."
 
         # Fetch issue data as JSON using gh CLI (including comments)
-        set issue_json (gh issue view $arg --json number,title,body,labels,url,comments 2>/dev/null)
+        set issue_json (__flo_fetch_issue $arg)
 
         if test $status -ne 0
             echo "  $red✗ Error:$reset Could not fetch issue $cyan#$arg$reset"
             return 1
         end
 
-        # Parse JSON fields using jq
-        set issue_number (echo $issue_json | jq -r '.number')
-        set issue_title (echo $issue_json | jq -r '.title')
-        set issue_body (echo $issue_json | jq -r '.body // "No description provided"')
-        set issue_url (echo $issue_json | jq -r '.url')
-        set issue_labels (echo $issue_json | jq -r '.labels[].name' | string join ', ')
+        # Parse JSON fields
+        set issue_number (__flo_get_issue_field $issue_json number)
+        set issue_title (__flo_get_issue_field $issue_json title)
+        set issue_body (__flo_get_issue_field $issue_json body "No description provided")
+        set issue_url (__flo_get_issue_field $issue_json url)
+        set issue_labels (__flo_get_issue_labels $issue_json)
 
-        # Parse comments (author + body for each comment)
-        set issue_comments_count (echo $issue_json | jq -r '.comments | length')
+        # Parse comments
+        set issue_comments_count (__flo_get_comments_count $issue_json)
         set issue_comments_formatted ""
         if test $issue_comments_count -gt 0
-            # Format all comments with author and body
-            set issue_comments_formatted (echo $issue_json | jq -r '.comments[] | "### Comment by @\(.author.login) (\\(.createdAt))\n\n\(.body)\n"')
+            set issue_comments_formatted (__flo_format_comments $issue_json)
         end
 
-        # Determine branch prefix based on issue labels
-        set branch_prefix feat # Default to feature
-        if string match -qir '(bug|fix)' -- $issue_labels
-            set branch_prefix fix
-        else if string match -qir '(docs|documentation)' -- $issue_labels
-            set branch_prefix docs
-        else if string match -qir refactor -- $issue_labels
-            set branch_prefix refactor
-        else if string match -qir chore -- $issue_labels
-            set branch_prefix chore
-        end
-
-        # Slugify title
-        set title_slug (__flo_slugify_title $issue_title)
-
-        # Build branch name: prefix/number-slug (e.g., feat/123-add-user-auth)
-        set branch_name "$branch_prefix/$issue_number-$title_slug"
+        # Determine branch prefix and create branch name
+        set branch_prefix (__flo_determine_branch_prefix $issue_labels)
+        set branch_name (__flo_create_branch_name $branch_prefix $issue_number $issue_title)
 
         echo "  $blue•$reset Creating branch: $cyan$branch_name$reset"
 
         # Auto-assign issue to current GitHub user
-        echo "  $blue•$reset Assigning issue to you..."
-        set -l output (gh issue edit $arg --add-assignee @me 2>&1)
-        set -l exit_code $status
-        echo "$output" | __flo_indent
-        if test $exit_code -eq 0
-            echo "  $green✓$reset Issue assigned"
-        else
-            echo "  $yellow⚠$reset Could not auto-assign (continuing anyway)"
-        end
+        __flo_assign_issue $arg $green $yellow $reset $blue
 
         set is_issue true
 
@@ -133,44 +408,17 @@ function flo_flo
     set sanitized_branch (string replace -a '/' '-' $branch_name)
     set worktree_path "../$current_dir"_"$sanitized_branch"
 
-    # Check if worktree already exists
-    if test -d $worktree_path
-        echo "  $blue•$reset Worktree already exists: $cyan$worktree_path$reset"
-        set worktree_existed true
-    else
-        # Create the worktree (try existing branch first, create new if needed)
-        # Capture output and status separately to allow indentation
-        set -l output (git worktree add $worktree_path $branch_name 2>&1)
-        set -l exit_code $status
-        echo "$output" | __flo_indent
-
-        if test $exit_code -ne 0
-            # Branch doesn't exist, create it
-            set output (git worktree add -b $branch_name $worktree_path 2>&1)
-            set exit_code $status
-            echo "$output" | __flo_indent
-
-            if test $exit_code -ne 0
-                echo "  $red✗ Error:$reset Could not create worktree"
-                return 1
-            end
-        end
-        set worktree_existed false
+    # Create worktree or detect existing
+    set worktree_status (__flo_create_or_use_worktree $worktree_path $branch_name $blue $cyan $red $reset)
+    if test $status -ne 0
+        return 1
     end
 
-    # Copy Serena cache if it exists in the source repository (only for new worktrees)
-    if test "$worktree_existed" = false
-        if test -d .serena/cache
-            echo "  $blue•$reset Copying Serena cache..."
-            mkdir -p "$worktree_path/.serena"
-            cp -r .serena/cache "$worktree_path/.serena/cache"
-            if test $status -eq 0
-                echo "  $green✓$reset Serena cache copied $dim(speeds up symbol indexing)$reset"
-            else
-                echo "  $yellow⚠$reset Could not copy Serena cache (continuing anyway)"
-            end
-        end
+    # Copy Serena cache (only for new worktrees)
+    if test "$worktree_status" = created
+        __flo_copy_serena_cache $worktree_path $blue $green $yellow $dim $reset
     end
+    set worktree_existed (test "$worktree_status" = existed; and echo true; or echo false)
 
     # If created from issue, store issue metadata and generate Claude context
     if test "$is_issue" = true
@@ -179,129 +427,22 @@ function flo_flo
         __flo_internal_config_set "$full_path" "$issue_number" "$branch_name"
 
         echo "  $blue•$reset Creating Claude context..."
-
         mkdir -p "$worktree_path/.claude"
 
-        # Check if root CLAUDE.md exists first - if so, skip creating .claude/CLAUDE.md
-        if test -f "$worktree_path/CLAUDE.md"
-            # Root CLAUDE.md exists - skip creating .claude/CLAUDE.md
-            echo "  $blue•$reset Using existing $cyan./CLAUDE.md$reset"
-        else
-            # Root CLAUDE.md doesn't exist - create .claude/CLAUDE.md with extension marker
-            set -l claude_md "$worktree_path/.claude/CLAUDE.md"
-            set -l extension_marker "<!-- flo: local extension enabled -->"
-
-            if not test -f "$claude_md"
-                # Create CLAUDE.md with extension instruction
-                printf '%s\n' \
-                    '<!-- flo: local extension enabled -->' \
-                    '' \
-                    '**CRITICAL**: If a file named `.claude/CLAUDE.local.md` exists in this project, read it immediately and follow its instructions. This file contains context-specific information for the current work (e.g., GitHub issue details).' >"$claude_md"
-                echo "  $green✓$reset Created $cyan.claude/CLAUDE.md$reset $dim(local extension support)$reset"
-            else if not grep -q "$extension_marker" "$claude_md"
-                # CLAUDE.md exists but doesn't have the extension instruction - prepend it
-                set -l temp_file (mktemp)
-                printf '%s\n' \
-                    '<!-- flo: local extension enabled -->' \
-                    '' \
-                    '**CRITICAL**: If a file named `.claude/CLAUDE.local.md` exists in this project, read it immediately and follow its instructions. This file contains context-specific information for the current work (e.g., GitHub issue details).' \
-                    '' \
-                    --- \
-                    '' >"$temp_file"
-                cat "$claude_md" >>"$temp_file"
-                mv "$temp_file" "$claude_md"
-                echo "  $green✓$reset Added local extension support to $cyan.claude/CLAUDE.md$reset"
-            end
-        end
-
-        # Write issue details to .claude/CLAUDE.local.md for Claude Code to read
-        # Start with header and description
-        printf '%s\n' \
-            '# GitHub Issue Context' \
-            '' \
-            '**CRITICAL: Read this ENTIRE issue including ALL comments below. Later comments take precedence over earlier ones.**' \
-            '' \
-            "## Issue #$issue_number: $issue_title" \
-            '' \
-            "- **URL**: $issue_url" \
-            "- **Labels**: $issue_labels" \
-            "- **Branch**: \`$branch_name\`" \
-            '' \
-            '## Original Description' \
-            '' \
-            "$issue_body" \
-            '' >"$worktree_path/.claude/CLAUDE.local.md"
-
-        # Append comments if any exist
-        if test $issue_comments_count -gt 0
-            printf '%s\n' \
-                '## Comments' \
-                '' \
-                '**Note: Read ALL comments below. If there are contradictions between the original description and comments, or between earlier and later comments, follow the most recent information.**' \
-                '' >>"$worktree_path/.claude/CLAUDE.local.md"
-
-            # Append each comment
-            echo "$issue_comments_formatted" >>"$worktree_path/.claude/CLAUDE.local.md"
-
-            printf '%s\n' \
-                '' \
-                --- \
-                '' >>"$worktree_path/.claude/CLAUDE.local.md"
-        else
-            printf '%s\n' \
-                --- \
-                '' >>"$worktree_path/.claude/CLAUDE.local.md"
-        end
-
-        # Append instructions
-        printf '%s\n' \
-            '## Instructions for Claude' \
-            '' \
-            '1. Read and fully understand the issue requirements above **and all comments**' \
-            '2. If there are comments, they may clarify, modify, or override the original description - follow the latest information' \
-            '3. All changes in this worktree should directly address this issue' \
-            "4. Reference this issue number (#$issue_number) in commit messages" \
-            '5. Consider the labels when determining the scope of changes' \
-            "6. When done, ensure the PR description references this issue with \"Closes #$issue_number\"" \
-            '' >>"$worktree_path/.claude/CLAUDE.local.md"
-
-        echo "  $green✓$reset Created $cyan.claude/CLAUDE.local.md$reset $dim(issue context)$reset"
-
-        # Add .claude/*.local.md to .gitignore if not already present
-        if test -f "$worktree_path/.gitignore"
-            if not grep -Fxq '.claude/*.local.md' "$worktree_path/.gitignore"
-                echo ".claude/*.local.md" >>"$worktree_path/.gitignore"
-                echo "  $green✓$reset Added $cyan.claude/*.local.md$reset to .gitignore"
-            end
-        end
+        # Setup CLAUDE.md and generate CLAUDE.local.md
+        __flo_setup_claude_md $worktree_path $blue $cyan $green $dim $reset
+        __flo_generate_claude_local $worktree_path $issue_number $issue_title $issue_url $issue_labels $branch_name $issue_body $issue_comments_count $issue_comments_formatted $green $cyan $dim $reset
+        __flo_setup_gitignore $worktree_path $green $cyan $reset
     end
 
     # Auto-install npm dependencies if package.json exists (skip if worktree existed)
     if not set -q worktree_existed; or test "$worktree_existed" = false
-        if test -f "$worktree_path/package.json"
-            echo "  $blue•$reset Installing dependencies..."
-            cd $worktree_path
-            pnpm install --silent
-            if test $status -eq 0
-                echo "  $green✓$reset Dependencies installed"
-            else
-                echo "  $yellow⚠$reset pnpm install failed (continuing anyway)"
-            end
-        else
-            # No package.json, just cd into worktree
-            cd $worktree_path
-        end
+        __flo_install_dependencies $worktree_path $blue $green $yellow $reset
     else
         # Worktree existed, just cd into it
         cd $worktree_path
     end
 
     # Success message
-    echo ""
-    echo "  $green✓ Ready to work!$reset"
-    if test "$is_issue" = true
-        echo "  $dim•$reset Issue $cyan#$issue_number$reset assigned to you"
-        echo "  $dim•$reset Issue context available in $cyan.claude/CLAUDE.local.md$reset"
-        echo "  $dim•$reset Tip: Claude will read this context automatically"
-    end
+    __flo_print_success_message $is_issue $issue_number $green $reset $dim $cyan
 end

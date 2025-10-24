@@ -31,7 +31,7 @@ else
 fi
 
 # Test: Verify issue number extraction from formatted string
-TEST_STRING="#17 - Test Fixture - Do Not Close"
+TEST_STRING="#17 - 🧪 TEST FIXTURE - DO NOT CLOSE 🧪"
 EXTRACTED=$(fish -c "echo '$TEST_STRING' | string replace -r '^#(\d+).*' '\$1'" 2>/dev/null)
 
 if [ "$EXTRACTED" = "17" ]; then
@@ -60,9 +60,9 @@ MOCKED_RESULT=$(fish -c "
     # Mock gum to return a predetermined selection
     function gum
         if contains -- filter \$argv
-            echo '#17 - Test Fixture - Do Not Close'
+            echo '#17 - 🧪 TEST FIXTURE - DO NOT CLOSE 🧪'
         else if contains -- choose \$argv
-            echo '#17 - Test Fixture - Do Not Close'
+            echo '#17 - 🧪 TEST FIXTURE - DO NOT CLOSE 🧪'
         end
     end
 

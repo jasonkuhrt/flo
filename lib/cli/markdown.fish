@@ -106,6 +106,64 @@ function __cli_find_command_doc --description "Find co-located markdown file for
     return 1
 end
 
+function __cli_render_parameters_named --description "Render named parameters (flags/options) section"
+    set -l json $argv[1]
+
+    set -l param_count (echo "$json" | jq -r '.parametersNamed | length' 2>/dev/null)
+    if test "$param_count" -gt 0
+        set_color --dim black
+        echo FLAGS
+        set_color normal
+        # Format: --flag, -f    Description
+        echo "$json" | jq -r '.parametersNamed[] | "  \(.name)\(if .short then ", \(.short)" else "" end)    \(.description)"' 2>/dev/null
+        echo ""
+    end
+end
+
+function __cli_render_examples --description "Render examples section"
+    set -l json $argv[1]
+
+    set -l example_count (echo "$json" | jq -r '.examples | length' 2>/dev/null)
+    if test "$example_count" -gt 0
+        set_color --dim black
+        echo EXAMPLES
+        set_color normal
+        # Format each example with command and optional description
+        echo "$json" | jq -r '.examples[] | "  \(.command)\(if .description then "    # \(.description)" else "" end)"' 2>/dev/null
+        echo ""
+    end
+end
+
+function __cli_render_related --description "Render related commands section"
+    set -l json $argv[1]
+
+    set -l related (echo "$json" | jq -r '.related[]?' 2>/dev/null)
+    if test -n "$related"
+        set_color --dim black
+        echo "SEE ALSO"
+        set_color normal
+        for cmd in $related
+            echo "  flo $cmd"
+        end
+        echo ""
+    end
+end
+
+function __cli_render_exit_codes --description "Render exit codes section"
+    set -l json $argv[1]
+
+    # Check if exitCodes object exists and has keys
+    set -l has_codes (echo "$json" | jq -r '.exitCodes | if . then keys | length else 0 end' 2>/dev/null)
+    if test "$has_codes" -gt 0
+        set_color --dim black
+        echo "EXIT CODES"
+        set_color normal
+        # Sort by exit code number and format
+        echo "$json" | jq -r '.exitCodes | to_entries | sort_by(.key | tonumber) | .[] | "  \(.key)    \(.value)"' 2>/dev/null
+        echo ""
+    end
+end
+
 function __cli_render_command_help --description "Render formatted help for a command from markdown"
     set -l cmd $argv[1]
     set -l doc_file $argv[2]
@@ -149,9 +207,21 @@ function __cli_render_command_help --description "Render formatted help for a co
         echo ""
     end
 
+    # Render FLAGS section
+    __cli_render_parameters_named "$json"
+
     # Get and render guide content with markdown sections
     set -l guide_content (__cli_get_markdown_content "$doc_file")
     if test (count $guide_content) -gt 0
         __cli_render_markdown_sections $guide_content
     end
+
+    # Render EXAMPLES section
+    __cli_render_examples "$json"
+
+    # Render SEE ALSO section
+    __cli_render_related "$json"
+
+    # Render EXIT CODES section
+    __cli_render_exit_codes "$json"
 end

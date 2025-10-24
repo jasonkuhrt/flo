@@ -6,6 +6,9 @@ Safely remove a git worktree by branch name or issue number
 [2m[30mPOSITIONAL PARAMETERS
 (B[m  <branch-name-or-issue>    Branch name, issue number, or worktree directory name to remove
 
+[2m[30mFLAGS
+(B[m  --force, -f    Force removal even with uncommitted changes
+
 
 [2m[30mABOUT
 (B[m
@@ -16,17 +19,18 @@ Safely remove a git worktree by branch name or issue number
 
   When given an issue number, finds the worktree created with
   'flo <issue-number>' and removes it.
-
-  ## FLAGS
-
-  --force, -f    Force removal even with uncommitted changes
-
-
 [2m[30mEXAMPLES
-(B[m
-  flo rm 1320                              # Remove by issue number
-  flo rm #1320                             # Remove by issue number (# is optional)
-  flo rm feat/123-add-auth                 # Remove by branch name
-  flo rm fix/memory-leak                   # Remove by branch name
-  flo rm myproject_feat-123-add-auth       # Remove by worktree directory name
-  flo rm 1320 --force                      # Force removal with uncommitted changes
+(B[m  flo rm 1320    # Remove by issue number
+  flo rm #1320    # Remove by issue number (# is optional)
+  flo rm feat/123-add-auth    # Remove by branch name
+  flo rm fix/memory-leak    # Remove by branch name
+  flo rm myproject_feat-123-add-auth    # Remove by worktree directory name
+  flo rm 1320 --force    # Force removal with uncommitted changes
+
+[2m[30mSEE ALSO
+(B[m  flo list
+  flo prune
+
+[2m[30mEXIT CODES
+(B[m  0    Success
+  1    Error - worktree not found or removal failed

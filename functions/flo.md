@@ -58,6 +58,19 @@ Requirements:
 
 Fallback: If gum or gh are not installed, shows help message instead.
 
+# BRANCH MODE
+
+When you run 'flo <branch-name>':
+  1. Creates worktree with the exact branch name you provide
+  2. No GitHub integration (no issue fetching, no auto-assign)
+  3. No Claude context files generated
+  4. Perfect for: experiments, quick fixes, non-issue work
+
+Examples:
+  flo feat/experiment        # Creates feat/experiment branch
+  flo fix/quick-bug          # Creates fix/quick-bug branch
+  flo spike/new-tech         # Creates spike/new-tech branch
+
 # ISSUE MODE
 
 When you run 'flo 123':

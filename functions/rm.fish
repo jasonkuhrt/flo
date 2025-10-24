@@ -13,6 +13,84 @@ function flo_rm
         end
     end
 
+    # No arguments provided - try to remove current worktree
+    if test -z "$arg"
+        set -l current_path (pwd)
+        # Normalize path (resolve symlinks like /tmp -> /private/tmp on macOS)
+        set current_path (realpath $current_path)
+
+        # Check if current directory looks like a worktree (contains _)
+        if not string match -qr _ -- (basename $current_path)
+            echo "✗ Not in a flo worktree"
+            echo "Tip: Run 'flo rm <branch>' to remove a specific worktree"
+            return 1
+        end
+
+        # Verify it's actually a worktree using git
+        set -l worktree_list (git worktree list --porcelain 2>/dev/null)
+        set -l is_worktree false
+        set -l branch_name ""
+        set -l found_current false
+
+        for line in $worktree_list
+            # Check if this line is a worktree path line
+            if string match -q "worktree *" -- $line
+                set -l wt_path (string replace "worktree " "" -- $line)
+                if test "$wt_path" = "$current_path"
+                    set found_current true
+                    set is_worktree true
+                else
+                    set found_current false
+                end
+                # If we found our worktree, capture the branch name
+            else if test "$found_current" = true; and string match -q "branch *" -- $line
+                set branch_name (string replace "branch refs/heads/" "" -- $line)
+                break
+            end
+        end
+
+        if test "$is_worktree" = false
+            echo "✗ Not in a flo worktree"
+            echo "Tip: Run 'flo rm <branch>' to remove a specific worktree"
+            return 1
+        end
+
+        # Show confirmation prompt
+        echo "Remove current worktree?"
+        echo "  Path: $current_path"
+        if test -n "$branch_name"
+            echo "  Branch: $branch_name"
+        end
+        read -l -P "Remove? [y/N]: " confirm
+
+        if test "$confirm" != y -a "$confirm" != Y
+            echo Cancelled
+            return 0
+        end
+
+        # Get parent directory (main repo)
+        set -l parent_dir (dirname $current_path)
+
+        # Remove worktree
+        if test -n "$force_flag"
+            git worktree remove --force $current_path
+        else
+            git worktree remove $current_path
+        end
+
+        if test $status -eq 0
+            # Change to parent directory
+            cd $parent_dir
+            echo "✓ Removed worktree: $current_path"
+        else
+            echo "✗ Failed to remove worktree"
+            echo "Tip: Use --force to remove worktree with uncommitted changes"
+            return 1
+        end
+
+        return 0
+    end
+
     # Strip leading # if present (e.g., #123 -> 123)
     set arg (string replace -r '^#' '' -- $arg)
 

@@ -15,8 +15,9 @@ __cli_init \
     --version "2.0.0"
 
 # Register command dependencies
+__cli_register_deps start git gh
+__cli_register_deps end git
 __cli_register_deps list git
-__cli_register_deps rm git
 __cli_register_deps prune git
 
 # Helper to indent output lines (for git/gh commands)
@@ -373,7 +374,7 @@ function __flo_copy_serena_cache --description "Copy Serena cache to worktree if
 end
 
 # Main command - create worktree from branch name or GitHub issue number
-function flo_flo
+function flo_start
     # Colors for output
     set -l blue (set_color brblue)
     set -l green (set_color brgreen)

@@ -22,7 +22,7 @@ function flo_end
         # Check if current directory looks like a worktree (contains _)
         if not string match -qr _ -- (basename $current_path)
             echo "✗ Not in a flo worktree"
-            echo "Tip: Run 'flo rm <branch>' to remove a specific worktree"
+            echo "Tip: Run 'flo end <branch>' to remove a specific worktree"
             return 1
         end
 
@@ -51,7 +51,7 @@ function flo_end
 
         if test "$is_worktree" = false
             echo "✗ Not in a flo worktree"
-            echo "Tip: Run 'flo rm <branch>' to remove a specific worktree"
+            echo "Tip: Run 'flo end <branch>' to remove a specific worktree"
             return 1
         end
 

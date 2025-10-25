@@ -1,6 +1,6 @@
 ---
 {
-  "description": "Create worktree from branch or GitHub issue (shorthand for 'flo start')",
+  "description": "Start work by creating a worktree from an issue or branch",
   "parametersPositional": [
     {
       "name": "issue-or-branch",
@@ -10,23 +10,23 @@
   ],
   "examples": [
     {
-      "command": "flo",
+      "command": "flo start",
       "description": "Interactive issue selection (requires gum)"
     },
     {
-      "command": "flo 123",
+      "command": "flo start 123",
       "description": "Create from GitHub issue"
     },
     {
-      "command": "flo #123",
+      "command": "flo start #123",
       "description": "Create from GitHub issue (# is optional)"
     },
     {
-      "command": "flo feat/new-feature",
+      "command": "flo start feat/new-feature",
       "description": "Create from branch name"
     }
   ],
-  "related": ["start", "end", "list", "prune"],
+  "related": ["end", "list", "prune"],
   "exitCodes": {
     "0": "Success",
     "1": "Error - GitHub API failure, worktree creation failed, or missing dependencies"

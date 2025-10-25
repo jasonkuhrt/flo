@@ -12,7 +12,7 @@ function __cli_create_dispatcher --description "Create the main CLI dispatcher"
         switch $cmd
             case ''
                 # Try interactive issue selection if available
-                set -l main_func "$__cli_prefix"_"$__cli_prefix" # e.g., flo_flo
+                set -l main_func "$__cli_prefix"_start # e.g., flo_start
                 set -l select_func "__"$__cli_prefix"_select_issue" # e.g., __flo_select_issue
 
                 if functions -q $select_func
@@ -50,7 +50,7 @@ function __cli_create_dispatcher --description "Create the main CLI dispatcher"
             end
         else
             # Not a subcommand - try calling main command with all args
-            set -l main_func "$__cli_prefix"_"$__cli_prefix" # e.g., flo_flo
+            set -l main_func "$__cli_prefix"_start # e.g., flo_start
             if functions -q $main_func
                 $main_func $argv # Pass all args including first one
             else

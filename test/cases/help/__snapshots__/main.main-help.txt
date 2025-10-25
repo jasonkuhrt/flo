@@ -1,14 +1,14 @@
 
 [36mflo
 (B[m
-Create worktree from branch or GitHub issue
+Create worktree from branch or GitHub issue (shorthand for 'flo start')
 
 [2m[30mCOMMANDS
 (B[m  end        End your work by removing a worktree
 [2m             (alias: rm)
-(B[m  flo        Create worktree from branch or GitHub issue
-  list       List all git worktrees with branches and paths
+(B[m  list       List all git worktrees with branches and paths
   prune      Clean up Git metadata for manually deleted worktrees
+  start      Start work by creating a worktree from an issue or branch
 
 [2m[30mOPTIONS
 (B[m  -h, --help       Show this help message

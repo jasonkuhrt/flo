@@ -10,9 +10,12 @@ setup_temp_repo() {
     git init -q
     git config user.email "test@example.com"
     git config user.name "Test User"
+    git config init.defaultBranch main
     echo "test" > test.txt
     git add test.txt
     git commit -q -m "Initial commit"
+    # Ensure we're on a proper branch (not detached HEAD)
+    git checkout -B main 2>/dev/null || true
 }
 
 # Change to temp repo directory

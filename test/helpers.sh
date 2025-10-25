@@ -31,8 +31,10 @@ get_worktree_path() {
 }
 
 # Find worktree directory by pattern
+# Only finds worktrees belonging to current TEMP_REPO to avoid test pollution
 find_worktree() {
-    find "$(dirname "$TEMP_REPO")" -maxdepth 1 -type d -name "*_*$1*" 2>/dev/null | head -1
+    local repo_prefix=$(basename "$TEMP_REPO")
+    find "$(dirname "$TEMP_REPO")" -maxdepth 1 -type d -name "${repo_prefix}_*$1*" 2>/dev/null | head -1
 }
 
 # Bash wrapper for flo command (handles all subcommands via CLI framework)

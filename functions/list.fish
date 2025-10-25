@@ -13,8 +13,8 @@ function flo_list
     end
 
     # Source internals for config helpers
-    set -l flo_dir (dirname (status -f))
-    source "$flo_dir/../lib/internals.fish"
+    set -l flo_dir (dirname (status --current-filename))
+    source "$flo_dir/__flo_lib_internals.fish"
 
     # Load global tracking data
     set -l tracking_data (__flo_internal_config_load)

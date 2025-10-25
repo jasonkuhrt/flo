@@ -102,6 +102,15 @@ run_tests() {
         # Generate test title from path (e.g., "flo/branch-mode.sh" -> "Flo > Branch Mode")
         relative_path="${test_file#$cases_dir/}"
         test_name=$(echo "$relative_path" | sed 's/\.sh$//' | tr '/' ' > ' | tr '-' ' ' | awk '{for(i=1;i<=NF;i++) if($i!~/>/) $i=toupper(substr($i,1,1)) tolower(substr($i,2)); else $i=$i}1')
+
+        # Filter tests by pattern if TEST_FILE_FILTER is set
+        if [[ -n "$TEST_FILE_FILTER" ]]; then
+            # Case-insensitive substring match
+            if ! echo "$test_name" | grep -qi "$TEST_FILE_FILTER"; then
+                continue
+            fi
+        fi
+
         echo -e "\n${YELLOW}Test: $test_name${NC}"
 
         # Set up common test fixtures (tests can use or override)

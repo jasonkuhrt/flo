@@ -22,20 +22,24 @@ flo 123
 
 ## Installation
 
-### Fisher
+### Fisher (Recommended)
 
 ```fish
 fisher install jasonkuhrt/flo
 ```
 
 <details>
-<summary>Manual</summary>
+<summary>Local Development</summary>
+
+For development, install from your local clone:
 
 ```fish
 git clone https://github.com/jasonkuhrt/flo.git ~/projects/flo
 cd ~/projects/flo
-make install
+make install  # Uses Fisher to install from PWD
 ```
+
+This ensures you test the same installation path as users.
 
 </details>
 

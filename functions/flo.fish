@@ -1,12 +1,13 @@
 # Flo - Git workflow automation tool
 # Main entry point and CLI dispatcher
 
-set -l flo_dir (dirname (status -f))
+# Get the directory where this file lives (same as other lib files in Fisher setup)
+set -l flo_dir (dirname (status --current-filename))
 
 # Source the CLI framework and internals
-source "$flo_dir/../lib/cli/\$.fish"
-source "$flo_dir/../lib/internals.fish"
-source "$flo_dir/../lib/log.fish"
+source "$flo_dir/__flo_lib_cli_main.fish"
+source "$flo_dir/__flo_lib_internals.fish"
+source "$flo_dir/__flo_lib_log.fish"
 
 # Initialize flo with the CLI framework
 __cli_init \

@@ -2,42 +2,30 @@
 
 .PHONY: install uninstall test help docs demos
 
-# Install flo functions to Fish config
+# Install flo using Fisher (recommended - same as users)
 install:
-	@echo "Installing flo..."
-	@mkdir -p ~/.config/fish/functions
-	@mkdir -p ~/.config/fish/lib
-	@cp functions/*.fish ~/.config/fish/functions/
-	@cp functions/*.md ~/.config/fish/functions/
-	@cp -r lib/cli ~/.config/fish/lib/
-	@cp lib/internals.fish ~/.config/fish/lib/
-	@echo "✓ Installed flo and commands to ~/.config/fish/functions/"
-	@echo "✓ Installed CLI framework to ~/.config/fish/lib/cli/"
-	@echo "✓ Installed internals to ~/.config/fish/lib/"
-	@echo "✓ Installed documentation to ~/.config/fish/functions/"
+	@echo "Installing flo via Fisher..."
+	@fish -c "if not type -q fisher; \
+		echo 'Error: Fisher not found. Install it first:'; \
+		echo '  curl -sL https://git.io/fisher | source && fisher install jorgebucaran/fisher'; \
+		exit 1; \
+	end; \
+	fisher install $(PWD)"
+	@echo ""
+	@echo "✓ Installed flo via Fisher"
 	@echo ""
 	@echo "Run 'flo --help' to get started (or just 'flo 123' for an issue)"
 
-# Uninstall flo functions from Fish config
+# Uninstall flo using Fisher
 uninstall:
-	@echo "Uninstalling flo..."
-	@rm -f ~/.config/fish/functions/flo.fish
-	@rm -f ~/.config/fish/functions/flo_*.fish
-	@rm -f ~/.config/fish/functions/list.fish
-	@rm -f ~/.config/fish/functions/rm.fish
-	@rm -f ~/.config/fish/functions/prune.fish
-	@rm -f ~/.config/fish/functions/flo-*.fish
-	@rm -f ~/.config/fish/functions/*.md
-	@rm -f ~/.config/fish/functions/gwt.fish
-	@rm -f ~/.config/fish/functions/gwt-*.fish
-	@rm -rf ~/.config/fish/lib/cli
-	@rm -f ~/.config/fish/lib/internals.fish
-	@rm -rf ~/.config/fish/flo-docs
-	@echo "✓ Uninstalled flo from ~/.config/fish/functions/"
-	@echo "✓ Removed CLI framework from ~/.config/fish/lib/cli/"
-	@echo "✓ Removed internals from ~/.config/fish/lib/"
-	@echo "✓ Removed old flo-* and gwt files"
-	@echo "✓ Removed documentation"
+	@echo "Uninstalling flo via Fisher..."
+	@fish -c "if type -q fisher; \
+		fisher remove jasonkuhrt/flo; \
+	else; \
+		echo 'Fisher not found - cannot uninstall'; \
+		exit 1; \
+	end"
+	@echo "✓ Uninstalled flo via Fisher"
 
 # Run tests
 test:
@@ -58,14 +46,14 @@ demos:
 
 # Show help
 help:
-	@echo "flo installation tasks:"
+	@echo "flo development tasks:"
 	@echo ""
-	@echo "  make install     Install flo functions to ~/.config/fish/functions/"
-	@echo "  make uninstall   Remove flo functions from ~/.config/fish/functions/"
+	@echo "  make install     Install flo via Fisher from local directory"
+	@echo "  make uninstall   Uninstall flo via Fisher"
 	@echo "  make test        Run tests"
 	@echo "  make docs        Generate README reference section"
 	@echo "  make demos       Generate demo screenshots (requires: brew install vhs)"
 	@echo "  make help        Show this help message"
 	@echo ""
-	@echo "Recommended: Use Fisher instead"
-	@echo "  fisher install jasonkuhrt/flo"
+	@echo "Note: 'make install' uses Fisher to ensure we test the same installation"
+	@echo "      path as users. Requires Fisher to be installed first."

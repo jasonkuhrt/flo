@@ -1,6 +1,6 @@
 # Source shared libraries
-set -l flo_dir (dirname (status -f))
-source "$flo_dir/../lib/log.fish"
+set -l flo_dir (dirname (status --current-filename))
+source "$flo_dir/__flo_lib_log.fish"
 
 function flo_prune
     # Parse flags

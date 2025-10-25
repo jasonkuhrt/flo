@@ -5,21 +5,27 @@
 
 # Parse flags
 UPDATE_SNAPSHOTS=false
+TEST_FILE_FILTER=""
 while [[ $# -gt 0 ]]; do
     case $1 in
         -u|--update)
             UPDATE_SNAPSHOTS=true
             shift
             ;;
+        -f|--file)
+            TEST_FILE_FILTER="$2"
+            shift 2
+            ;;
         *)
             echo "Unknown option: $1"
-            echo "Usage: lib/test/cli [--update|-u]"
+            echo "Usage: lib/test/cli [--update|-u] [--file|-f PATTERN]"
             exit 1
             ;;
     esac
 done
 
 export UPDATE_SNAPSHOTS
+export TEST_FILE_FILTER
 
 # Find project root by looking for test/ or tests/ directory
 find_test_dir() {

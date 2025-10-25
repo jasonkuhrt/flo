@@ -1,4 +1,4 @@
-function flo_rm
+function flo_end
     set current_dir (basename (pwd))
 
     # Parse arguments
@@ -146,4 +146,9 @@ function flo_rm
         echo "Tip: Run 'flo list' to see all worktrees"
         return 1
     end
+end
+
+# Backwards compatibility alias
+function flo_rm --description "Alias for flo_end (backwards compatibility)"
+    flo_end $argv
 end

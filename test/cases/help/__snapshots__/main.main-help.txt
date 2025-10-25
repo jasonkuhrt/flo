@@ -4,10 +4,12 @@
 Create worktree from branch or GitHub issue
 
 [2m[30mCOMMANDS
+(B[m  end        End your work by removing a worktree
+[2m             (alias: rm)
 (B[m  flo        Create worktree from branch or GitHub issue
   list       List all git worktrees with branches and paths
   prune      Clean up Git metadata for manually deleted worktrees
-  rm         Safely remove a git worktree by branch name or issue number
+  rm         Alias for flo_end (backwards compatibility)
 
 [2m[30mOPTIONS
 (B[m  -h, --help       Show this help message

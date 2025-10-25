@@ -8,9 +8,9 @@ setup_issue_worktree
 
 WORKTREE_PATH=$(realpath $PWD)
 
-# Test: flo rm --force with 'y' confirmation should remove worktree
+# Test: flo end --force with 'y' confirmation should remove worktree
 # (using --force to bypass uncommitted changes check from CLAUDE.local.md)
-OUTPUT=$(echo "y" | flo rm --force 2>&1)
+OUTPUT=$(echo "y" | flo end --force 2>&1)
 
 if echo "$OUTPUT" | grep -q "✓ Removed worktree"; then
     pass "Worktree removal confirmed in output"

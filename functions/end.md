@@ -1,6 +1,7 @@
 ---
 {
-  "description": "Safely remove a git worktree by branch name or issue number",
+  "description": "End your work by removing a worktree",
+  "aliases": ["rm"],
   "parametersPositional": [
     {
       "name": "branch-name-or-issue",

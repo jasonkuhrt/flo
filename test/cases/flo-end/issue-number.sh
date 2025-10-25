@@ -7,7 +7,7 @@ setup_temp_repo
 flo feat/14-test-issue >/dev/null 2>&1
 
 # Should be able to remove by issue number
-flo rm 14 >/dev/null 2>&1
+flo end 14 >/dev/null 2>&1
 
 WORKTREE_PATH=$(get_worktree_path "feat/14-test-issue")
-assert_dir_not_exists "$WORKTREE_PATH" "flo rm removed worktree by issue number"
+assert_dir_not_exists "$WORKTREE_PATH" "flo end removed worktree by issue number"

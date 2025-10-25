@@ -35,13 +35,16 @@ function __cli_create_dispatcher --description "Create the main CLI dispatcher"
                 return 0
         end
 
+        # Resolve alias to actual command name if applicable
+        set -l actual_cmd (__cli_resolve_alias $cmd)
+
         # Check if command exists
-        if __cli_command_exists $cmd
+        if __cli_command_exists $actual_cmd
             set -e argv[1]
             # Check dependencies if required
-            if __cli_check_deps $cmd
+            if __cli_check_deps $actual_cmd
                 # Call the command function
-                __cli_call_command $cmd $argv
+                __cli_call_command $actual_cmd $argv
             else
                 return 1
             end

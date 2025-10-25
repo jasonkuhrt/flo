@@ -62,3 +62,21 @@ function __cli_get_command_usage --description "Get usage info for a command"
     # and calling a help function with usage info
     echo "$__cli_name $cmd [options]"
 end
+
+function __cli_get_command_aliases --description "Get aliases for a command from frontmatter"
+    set -l cmd $argv[1]
+    set -l doc_file (__cli_find_command_doc $cmd)
+
+    if test -z "$doc_file"
+        return 1
+    end
+
+    # Extract JSON frontmatter
+    set -l json (sed -n '/^---$/,/^---$/p' "$doc_file" | sed '1d;$d' 2>/dev/null)
+    if test -z "$json"
+        return 1
+    end
+
+    # Parse aliases array (returns empty if not present)
+    echo "$json" | jq -r '.aliases[]?' 2>/dev/null
+end

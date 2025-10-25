@@ -33,7 +33,18 @@ function __cli_show_help --description "Show main help for the CLI"
     if test (count $commands) -gt 0
         for cmd in $commands
             set -l desc (__cli_get_command_description $cmd)
-            printf "  %-10s %s\n" $cmd "$desc"
+            set -l aliases (__cli_get_command_aliases $cmd)
+
+            # Format command name with aliases if they exist
+            if test (count $aliases) -gt 0
+                set -l alias_str (string join ", " $aliases)
+                printf "  %-10s %s\n" "$cmd" "$desc"
+                set_color --dim
+                printf "  %-10s (alias: %s)\n" "" "$alias_str"
+                set_color normal
+            else
+                printf "  %-10s %s\n" $cmd "$desc"
+            end
         end
     else
         echo "  No commands available"

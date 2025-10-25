@@ -66,4 +66,7 @@ function __cli_init --description "Initialize a CLI application with the framewo
 
     # Set up help system
     __cli_setup_help $_flag_name $_flag_prefix
+
+    # Build command alias map from frontmatter
+    __cli_build_alias_map
 end

@@ -16,11 +16,6 @@ function flo_list
     set -l flo_dir (dirname (status -f))
     source "$flo_dir/../lib/internals.fish"
 
-    # Colors for output
-    set -l cyan (set_color brcyan)
-    set -l dim (set_color brblack)
-    set -l reset (set_color normal)
-
     # Load global tracking data
     set -l tracking_data (__flo_internal_config_load)
 
@@ -28,7 +23,7 @@ function flo_list
     set -l worktrees (git worktree list --porcelain)
 
     # Print table header
-    printf "%s%-8s %-30s %s%s\n" "$dim" ISSUE BRANCH PATH "$reset"
+    printf "%s%-8s %-30s %s%s\n" "$__flo_c_dim" ISSUE BRANCH PATH "$__flo_c_reset"
 
     # Parse worktree entries (each entry is 3-4 lines in porcelain format)
     set -l path ""

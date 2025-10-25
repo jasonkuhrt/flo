@@ -1,3 +1,7 @@
+# Source shared libraries
+set -l flo_dir (dirname (status -f))
+source "$flo_dir/../lib/log.fish"
+
 function flo_prune
     # Parse flags
     argparse 'project=' -- $argv; or return
@@ -13,7 +17,7 @@ function flo_prune
     end
 
     # Clean up Git metadata for manually deleted worktrees
-    echo "• Pruning deleted worktrees..."
+    __flo_log_info "Pruning deleted worktrees..."
     git worktree prune -v
-    echo "✓ Done"
+    __flo_log_success Done
 end

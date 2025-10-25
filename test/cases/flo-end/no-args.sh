@@ -12,7 +12,10 @@ WORKTREE_PATH=$(realpath $PWD)
 # (using --force to bypass uncommitted changes check from CLAUDE.local.md)
 OUTPUT=$(echo "y" | flo end --force 2>&1)
 
-if echo "$OUTPUT" | grep -q "✓ Removed worktree"; then
+# Strip ANSI color codes for easier matching
+CLEAN_OUTPUT=$(echo "$OUTPUT" | sed 's/\x1b\[[0-9;]*m//g')
+
+if echo "$CLEAN_OUTPUT" | grep -q "Removed worktree"; then
     pass "Worktree removal confirmed in output"
 else
     fail "Worktree removal not confirmed (output: $OUTPUT)"

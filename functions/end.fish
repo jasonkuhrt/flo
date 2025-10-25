@@ -1,3 +1,7 @@
+# Source shared libraries
+set -l flo_dir (dirname (status -f))
+source "$flo_dir/../lib/log.fish"
+
 # Helper to get main worktree directory
 function __flo_get_main_worktree --description "Get path to main repository (shared .git directory)"
     # Uses git-common-dir to reliably find main repository
@@ -73,8 +77,7 @@ function flo_end
 
         # Check if current directory looks like a worktree (contains _)
         if not string match -qr _ -- (basename $current_path)
-            echo "✗ Not in a flo worktree"
-            echo "Tip: Run 'flo end <branch>' to remove a specific worktree"
+            __flo_log_error "Not in a flo worktree" "Run 'flo end <branch>' to remove a specific worktree"
             return 1
         end
 
@@ -102,8 +105,7 @@ function flo_end
         end
 
         if test "$is_worktree" = false
-            echo "✗ Not in a flo worktree"
-            echo "Tip: Run 'flo end <branch>' to remove a specific worktree"
+            __flo_log_error "Not in a flo worktree" "Run 'flo end <branch>' to remove a specific worktree"
             return 1
         end
 
@@ -138,10 +140,9 @@ function flo_end
         if test $status -eq 0
             # Change to main repository directory
             cd $main_worktree
-            echo "✓ Removed worktree: $current_path"
+            __flo_log_success "Removed worktree: $current_path"
         else
-            echo "✗ Failed to remove worktree"
-            echo "Tip: Use --force to remove worktree with uncommitted changes"
+            __flo_log_error "Failed to remove worktree" "Use --force to remove worktree with uncommitted changes"
             return 1
         end
 
@@ -160,15 +161,14 @@ function flo_end
         set matching_worktrees (ls -d $pattern 2>/dev/null)
 
         if test (count $matching_worktrees) -eq 0
-            echo "✗ No worktree found for issue #$arg"
-            echo "Tip: Run 'flo list' to see all worktrees"
+            __flo_log_error "No worktree found for issue #$arg" "Run 'flo list' to see all worktrees"
             return 1
         else if test (count $matching_worktrees) -gt 1
-            echo "✗ Multiple worktrees found for issue #$arg:"
+            __flo_log_error "Multiple worktrees found for issue #$arg:"
             for wt in $matching_worktrees
-                echo "  - $wt"
+                echo "    - $wt" >&2
             end
-            echo "Please specify the full branch name instead"
+            echo "    Please specify the full branch name instead" >&2
             return 1
         else
             set worktree_path $matching_worktrees[1]
@@ -197,15 +197,13 @@ function flo_end
             if test $status -eq 0
                 cd $main_worktree
             end
-            echo "✓ Removed worktree: $worktree_path"
+            __flo_log_success "Removed worktree: $worktree_path"
         else
-            echo "✗ Failed to remove worktree"
-            echo "Tip: Use --force to remove worktree with uncommitted changes"
+            __flo_log_error "Failed to remove worktree" "Use --force to remove worktree with uncommitted changes"
             return 1
         end
     else
-        echo "✗ Worktree not found: $worktree_path"
-        echo "Tip: Run 'flo list' to see all worktrees"
+        __flo_log_error "Worktree not found: $worktree_path" "Run 'flo list' to see all worktrees"
         return 1
     end
 end

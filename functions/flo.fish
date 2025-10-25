@@ -471,19 +471,19 @@ function flo_flo
         mkdir -p "$worktree_path/.claude"
 
         # Setup CLAUDE.md and generate CLAUDE.local.md
-        __flo_setup_claude_md $worktree_path $blue $cyan $green $dim $reset
-        __flo_generate_claude_local $worktree_path $issue_number $issue_title $issue_url $issue_labels $branch_name $issue_body $issue_comments_count $issue_comments_formatted $green $cyan $dim $reset
-        __flo_setup_gitignore $worktree_path $green $cyan $reset
+        __flo_setup_claude_md "$worktree_path" "$blue" "$cyan" "$green" "$dim" "$reset"
+        __flo_generate_claude_local "$worktree_path" "$issue_number" "$issue_title" "$issue_url" "$issue_labels" "$branch_name" "$issue_body" "$issue_comments_count" "$issue_comments_formatted" "$green" "$cyan" "$dim" "$reset"
+        __flo_setup_gitignore "$worktree_path" "$green" "$cyan" "$reset"
     end
 
     # Auto-install npm dependencies if package.json exists (skip if worktree existed)
     if not set -q worktree_existed; or test "$worktree_existed" = false
-        __flo_install_dependencies $worktree_path $blue $green $yellow $reset
+        __flo_install_dependencies "$worktree_path" "$blue" "$green" "$yellow" "$reset"
     else
         # Worktree existed, just cd into it
         cd $worktree_path
     end
 
     # Success message
-    __flo_print_success_message $is_issue $issue_number $green $reset $dim $cyan
+    __flo_print_success_message "$is_issue" "$issue_number" "$green" "$reset" "$dim" "$cyan"
 end

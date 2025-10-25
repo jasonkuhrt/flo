@@ -8,13 +8,13 @@ If `.claude/CLAUDE.local.md` exists, read it immediately. It contains work-speci
 
 ### Logging
 
-**CRITICAL: Always use `lib/log.fish` for user-facing output**
+**CRITICAL: Always use the logging library for user-facing output**
 
 - **NEVER use raw `echo` with emojis/colors** - Use the logging functions instead
 - **Import the logging library** in all command files:
   ```fish
-  set -l flo_dir (dirname (status -f))
-  source "$flo_dir/../lib/log.fish"
+  set -l flo_dir (dirname (status --current-filename))
+  source "$flo_dir/__flo_lib_log.fish"
   ```
 
 **Available logging functions:**

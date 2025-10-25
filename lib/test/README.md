@@ -5,11 +5,18 @@ Reusable test utilities for bash test suites.
 ## Quick Start
 
 ```bash
-lib/test/cli           # Run tests
-lib/test/cli --update  # Update snapshots (on mismatch, overwrites)
+lib/test/cli                       # Run all tests
+lib/test/cli --update              # Update snapshots (on mismatch, overwrites)
+lib/test/cli --file pattern        # Run tests matching pattern (case-insensitive)
 ```
 
-**Makefile**: `test: @lib/test/cli`
+**Examples**:
+```bash
+lib/test/cli --file gitignore      # Run only tests with "gitignore" in name
+lib/test/cli --file "flo end"      # Run all "flo end" tests
+```
+
+**Makefile**: `test: @lib/test/cli $(ARGS)`
 
 **Auto-discovered files**:
 - `test/helpers.sh` - Project helpers (`$TEST_DIR`, `$PROJECT_ROOT` available)

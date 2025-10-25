@@ -1,3 +1,46 @@
+# Helper to get main worktree directory
+function __flo_get_main_worktree --description "Get path to main repository (shared .git directory)"
+    # Uses git-common-dir to reliably find main repository
+    #
+    # Why this works:
+    # - Main repo has actual .git/ directory
+    # - Worktrees have .git file pointing to .git/worktrees/<name>/
+    # - git-common-dir returns the shared .git location (always in main repo)
+    # - Parent of .git-common-dir is the main repository directory
+    #
+    # Why not use "first in git worktree list"?
+    # - While first-in-list is reliable, git-common-dir is more semantic
+    # - Directly asks Git "where is the shared .git?"
+    # - More explicit about what we're looking for
+    # - Works even if worktree list behavior changes
+    #
+    # Example:
+    #   Main:     /projects/kit/.git                    (directory)
+    #   Worktree: /projects/kit_feat/.git               (file pointing to main)
+    #
+    #   From either location:
+    #   git rev-parse --git-common-dir → /projects/kit/.git
+    #   Parent of that → /projects/kit (main repo!)
+
+    set -l git_common_dir (git rev-parse --path-format=absolute --git-common-dir 2>/dev/null)
+
+    if test $status -ne 0; or test -z "$git_common_dir"
+        # Not in a git repo or command failed
+        return 1
+    end
+
+    # Main repo is parent of .git-common-dir
+    set -l main_repo (dirname "$git_common_dir")
+
+    # Verify it's actually a directory
+    if test -d "$main_repo"
+        echo "$main_repo"
+        return 0
+    else
+        return 1
+    end
+end
+
 function flo_end
     # Parse flags
     argparse f/force 'project=' -- $argv; or return
@@ -77,8 +120,13 @@ function flo_end
             return 0
         end
 
-        # Get parent directory (main repo)
-        set -l parent_dir (dirname $current_path)
+        # Get main repository directory
+        set -l main_worktree (__flo_get_main_worktree)
+
+        # Fallback to parent directory if detection failed
+        if test $status -ne 0
+            set main_worktree (dirname $current_path)
+        end
 
         # Remove worktree
         if test -n "$force_flag"
@@ -88,8 +136,8 @@ function flo_end
         end
 
         if test $status -eq 0
-            # Change to parent directory
-            cd $parent_dir
+            # Change to main repository directory
+            cd $main_worktree
             echo "✓ Removed worktree: $current_path"
         else
             echo "✗ Failed to remove worktree"
@@ -144,6 +192,11 @@ function flo_end
         end
 
         if test $status -eq 0
+            # Change to main repository directory for consistency
+            set -l main_worktree (__flo_get_main_worktree)
+            if test $status -eq 0
+                cd $main_worktree
+            end
             echo "✓ Removed worktree: $worktree_path"
         else
             echo "✗ Failed to remove worktree"

@@ -147,8 +147,3 @@ function flo_end
         return 1
     end
 end
-
-# Backwards compatibility alias
-function flo_rm --description "Alias for flo_end (backwards compatibility)"
-    flo_end $argv
-end

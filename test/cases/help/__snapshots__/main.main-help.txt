@@ -9,7 +9,6 @@ Create worktree from branch or GitHub issue
 (B[m  flo        Create worktree from branch or GitHub issue
   list       List all git worktrees with branches and paths
   prune      Clean up Git metadata for manually deleted worktrees
-  rm         Alias for flo_end (backwards compatibility)
 
 [2m[30mOPTIONS
 (B[m  -h, --help       Show this help message

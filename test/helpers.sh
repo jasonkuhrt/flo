@@ -43,12 +43,22 @@ flo() {
 # Setup worktree for a GitHub issue and cd into it
 # Usage: setup_issue_worktree [issue_number] [search_pattern]
 # Defaults: issue_number=17, search_pattern="17-test-fixture"
-# Fails the test if worktree creation fails
-# Changes current directory to the worktree (use $PWD to get path)
+# Guarantees:
+#   - Worktree is created and can be found
+#   - Changes to worktree directory
+#   - .claude directory exists (issue mode creates it)
+#   - .claude/CLAUDE.local.md exists (issue mode creates it)
+#   - If main repo has .gitignore, worktree has it too
+# Fails the test with clear error if guarantees not met
 setup_issue_worktree() {
     local issue_number="${1:-17}"
     local search_pattern="${2:-17-test-fixture}"
 
+    # Clean up any stale worktrees/branches for this issue first
+    git worktree list 2>/dev/null | grep "$search_pattern" | awk '{print $1}' | xargs -I {} git worktree remove --force {} 2>/dev/null || true
+    git branch -D "feat/$search_pattern-do-not-close" 2>/dev/null || true
+
+    # Create worktree
     flo "$issue_number" >/dev/null 2>&1
 
     local worktree_path=$(find_worktree "$search_pattern")
@@ -59,4 +69,25 @@ setup_issue_worktree() {
     fi
 
     cd "$worktree_path"
+
+    # Verify guarantees
+    if [[ ! -d .claude ]]; then
+        fail "Issue mode should create .claude directory (not found in $worktree_path)"
+        exit 1
+    fi
+
+    if [[ ! -f .claude/CLAUDE.local.md ]]; then
+        fail "Issue mode should create .claude/CLAUDE.local.md (not found in $worktree_path)"
+        exit 1
+    fi
+
+    # If main repo has .gitignore, worktree must have it too
+    # (git worktrees share tracked files from the parent commit)
+    local main_repo=$(git worktree list --porcelain | grep "^worktree" | head -1 | awk '{print $2}')
+    if [[ -f "$main_repo/.gitignore" ]]; then
+        if [[ ! -f .gitignore ]]; then
+            fail ".gitignore exists in main repo but missing in worktree (git worktree issue)"
+            exit 1
+        fi
+    fi
 }

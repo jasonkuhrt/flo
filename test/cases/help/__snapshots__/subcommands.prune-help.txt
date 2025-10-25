@@ -3,16 +3,20 @@
 (B[m
 Clean up Git metadata for manually deleted worktrees
 
+[2m[30mFLAGS
+(B[m  --project    Project to prune worktrees for (name or path). Names resolved via ~/.config/flo/settings.json
+
 
 [2m[30mABOUT
 (B[m
   Use this if you deleted with `rm -rf` instead of `flo rm`.
 [2m[30mEXAMPLES
-(B[m  flo prune    # Clean up metadata for manually deleted worktrees
+(B[m  flo prune    # Clean up metadata for current project
+  flo prune --project backend    # Prune worktrees for different project (by name)
 
 [2m[30mSEE ALSO
 (B[m  flo list
-  flo rm
+  flo end
 
 [2m[30mEXIT CODES
 (B[m  0    Success

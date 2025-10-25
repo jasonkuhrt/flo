@@ -3,12 +3,17 @@
 (B[m
 List all git worktrees with branches and paths
 
+[2m[30mFLAGS
+(B[m  --project    Project to list worktrees for (name or path). Names resolved via ~/.config/flo/settings.json
+
 Shows all worktrees with their paths, branches, and commits.
 [2m[30mEXAMPLES
-(B[m  flo list    # Show all worktrees with branches and paths
+(B[m  flo list    # Show all worktrees for current project
+  flo list --project backend    # List worktrees for different project (by name)
+  flo list --project ~/projects/api    # List worktrees for project by path
 
 [2m[30mSEE ALSO
-(B[m  flo rm
+(B[m  flo end
   flo prune
 
 [2m[30mEXIT CODES

@@ -1,8 +1,6 @@
 #!/bin/bash
 
-# NOTE: This test is flaky due to timing/state issues with worktree creation.
-# It verifies that flo adds correct gitignore entry even when broken entry exists.
-# Skipping when setup conditions aren't met is acceptable.
+# Test that flo adds correct .gitignore entry even when broken entry exists
 
 setup_temp_repo
 git remote add origin https://github.com/jasonkuhrt/flo.git
@@ -13,15 +11,9 @@ echo "+.claude/*.local.md" > .gitignore
 git add .gitignore
 git commit -q -m "Add .gitignore with broken entry"
 
-# Create worktree using issue mode (tests the actual use case)
+# Create worktree using issue mode
+# Helper guarantees .gitignore exists (since main repo has it)
 setup_issue_worktree
-
-# Check if .gitignore exists in worktree
-# NOTE: Sometimes missing due to worktree creation timing - skip test if so
-if [[ ! -f .gitignore ]]; then
-    echo "SKIP: .gitignore not in worktree (flaky test setup)" >&2
-    exit 0
-fi
 
 # Verify flo added correct entry (not just the broken one)
 if grep -Fxq '.claude/*.local.md' .gitignore 2>/dev/null; then

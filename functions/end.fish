@@ -47,7 +47,7 @@ end
 
 function flo_end
     # Parse flags
-    argparse f/force 'project=' -- $argv; or return
+    argparse f/force y/yes 'project=' -- $argv; or return
 
     # Resolve project path if --project provided
     set -l project_path (pwd)
@@ -109,17 +109,19 @@ function flo_end
             return 1
         end
 
-        # Show confirmation prompt
-        echo "Remove current worktree?"
-        echo "  Path: $current_path"
-        if test -n "$branch_name"
-            echo "  Branch: $branch_name"
-        end
-        read -l -P "Remove? [y/N]: " confirm
+        # Show confirmation prompt (unless --yes flag provided)
+        if not set -q _flag_yes
+            echo "Remove current worktree?"
+            echo "  Path: $current_path"
+            if test -n "$branch_name"
+                echo "  Branch: $branch_name"
+            end
+            read -l -P "Remove? [y/N]: " confirm
 
-        if test "$confirm" != y -a "$confirm" != Y
-            echo Cancelled
-            return 0
+            if test "$confirm" != y -a "$confirm" != Y
+                echo Cancelled
+                return 0
+            end
         end
 
         # Get main repository directory

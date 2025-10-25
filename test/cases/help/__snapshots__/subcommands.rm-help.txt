@@ -8,6 +8,7 @@ End your work by removing a worktree
 
 [2m[30mFLAGS
 (B[m  --force, -f    Force removal even with uncommitted changes
+  --yes, -y    Skip confirmation prompt (non-interactive mode)
   --project    Project to operate on (name or path). Names resolved via ~/.config/flo/settings.json
 
 
@@ -29,7 +30,10 @@ End your work by removing a worktree
   flo rm feat/123-add-auth    # Remove by branch name
   flo rm fix/memory-leak    # Remove by branch name
   flo rm myproject_feat-123-add-auth    # Remove by worktree directory name
+  flo rm --yes    # Remove current worktree without confirmation
+  flo rm -y    # Short form of --yes
   flo rm --force    # Force remove current worktree
+  flo rm --force --yes    # Force remove without confirmation (for automation)
   flo rm 1320 --force    # Force removal with uncommitted changes
   flo end --project backend    # Remove current worktree from different project
   flo end 123 --project ~/projects/api    # Remove worktree from project by path

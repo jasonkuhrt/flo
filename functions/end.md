@@ -16,6 +16,11 @@
       "description": "Force removal even with uncommitted changes"
     },
     {
+      "name": "--yes",
+      "short": "-y",
+      "description": "Skip confirmation prompt (non-interactive mode)"
+    },
+    {
       "name": "--project",
       "description": "Project to operate on (name or path). Names resolved via ~/.config/flo/settings.json"
     }
@@ -46,8 +51,20 @@
       "description": "Remove by worktree directory name"
     },
     {
+      "command": "flo rm --yes",
+      "description": "Remove current worktree without confirmation"
+    },
+    {
+      "command": "flo rm -y",
+      "description": "Short form of --yes"
+    },
+    {
       "command": "flo rm --force",
       "description": "Force remove current worktree"
+    },
+    {
+      "command": "flo rm --force --yes",
+      "description": "Force remove without confirmation (for automation)"
     },
     {
       "command": "flo rm 1320 --force",

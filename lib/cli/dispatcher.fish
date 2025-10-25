@@ -90,19 +90,18 @@ function __cli_call_command --description "Call a CLI command function"
         # Extract JSON frontmatter
         set -l json (sed -n '/^---$/,/^---$/p' "$doc_file" | sed '1d;$d' 2>/dev/null)
         if test -n "$json"
-            # Count required parameters
-            set -l required_count (echo "$json" | jq -r '[.namedParameters[]? | select(.required == true)] | length' 2>/dev/null)
-            if test -n "$required_count"; and test "$required_count" -gt 0
-                set -l actual_count (count $argv)
-                if test $actual_count -lt $required_count
-                    # Get required parameter names for error message
-                    set -l required_names (echo "$json" | jq -r '.namedParameters[]? | select(.required == true) | .name' 2>/dev/null | string collect)
-                    set -l param_list (string split \n $required_names | string join '> <')
+            # Validate required named parameters (flags)
+            set -l required_flags (echo "$json" | jq -r '.namedParameters[]? | select(.required == true) | .name' 2>/dev/null)
+            for flag in $required_flags
+                # Convert --flag-name to _flag_flag_name variable
+                # e.g., --project-name → _flag_project_name
+                set -l flag_var (string replace -a -- '--' '' -- $flag | string replace -a '-' '_')
+                set -l flag_var "_flag_$flag_var"
 
-                    echo "Error: Missing required parameters"
-                    echo ""
-                    echo "Usage: $__cli_name $cmd <$param_list>"
-                    echo "Run '$__cli_name $cmd --help' for more information"
+                if not set -q $flag_var
+                    echo "Error: Missing required flag: $flag" >&2
+                    echo "" >&2
+                    echo "Run '$__cli_name $cmd --help' for more information" >&2
                     return 1
                 end
             end

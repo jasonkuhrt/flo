@@ -1,16 +1,25 @@
 function flo_end
-    set current_dir (basename (pwd))
+    # Parse flags
+    argparse f/force 'project=' -- $argv; or return
 
-    # Parse arguments
-    set -l force_flag ""
-    set -l arg ""
-
-    for arg_item in $argv
-        if test "$arg_item" = --force -o "$arg_item" = -f
-            set force_flag --force
-        else
-            set arg $arg_item
+    # Resolve project path if --project provided
+    set -l project_path (pwd)
+    if set -q _flag_project
+        set project_path (__flo_resolve_project_path "$_flag_project")
+        if test $status -ne 0
+            # Error already printed by resolver
+            return 1
         end
+        cd "$project_path" || return 1
+    end
+
+    set current_dir (basename $project_path)
+    set -l arg $argv[1]
+
+    # Set force flag if provided
+    set -l force_flag ""
+    if set -q _flag_force
+        set force_flag --force
     end
 
     # No arguments provided - try to remove current worktree

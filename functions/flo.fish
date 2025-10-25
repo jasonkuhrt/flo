@@ -34,6 +34,168 @@ function __flo_slugify_title --description "Convert issue title to branch slug"
     echo $title | string lower | string replace -ra '[^a-z0-9]+' - | string trim -c - | string sub -l 30 | string trim -c -
 end
 
+# Settings management
+function __flo_ensure_settings --description "Create settings file if missing, return path"
+    set -l settings_dir "$HOME/.config/flo"
+    set -l settings_file "$settings_dir/settings.json"
+
+    if not test -f "$settings_file"
+        mkdir -p "$settings_dir"
+        echo '{}' >"$settings_file"
+    end
+
+    echo "$settings_file"
+end
+
+function __flo_get_projects_directories --description "Get project directory patterns from settings"
+    set -l settings_file (__flo_ensure_settings)
+
+    # Parse projectsDirectories array
+    jq -r '.projectsDirectories[]?' "$settings_file" 2>/dev/null
+end
+
+function __flo_resolve_project_name --description "Resolve project name to path using settings"
+    set -l input $argv[1]
+
+    # Get configured patterns
+    set -l patterns (__flo_get_projects_directories)
+
+    if test -z "$patterns"
+        # No settings - cannot resolve names
+        return 1
+    end
+
+    set -l matches
+
+    # Expand each pattern and search for fuzzy match
+    for pattern in $patterns
+        # Expand glob (tilde and wildcards) into array
+        eval "set -l expanded $pattern"
+
+        for dir in $expanded
+            if not test -d "$dir"
+                continue
+            end
+
+            set -l basename (basename "$dir")
+
+            # Fuzzy match: input is case-insensitive substring of basename
+            if string match -qi "*$input*" -- "$basename"
+                set -a matches (realpath "$dir")
+            end
+        end
+    end
+
+    # Handle results
+    set -l match_count (count $matches)
+
+    if test $match_count -eq 0
+        # No matches found
+        return 2
+    else if test $match_count -eq 1
+        # Single match - success!
+        echo $matches[1]
+        return 0
+    else
+        # Multiple matches - try interactive picker if available
+        if command -v gum >/dev/null 2>&1; and test -t 0
+            # Interactive session with gum - show picker
+            set -l selected (printf '%s\n' $matches | gum choose --header "Multiple projects match '$input':")
+            if test -n "$selected"
+                echo "$selected"
+                return 0
+            else
+                # User cancelled picker
+                return 4
+            end
+        else
+            # Non-interactive or no gum - ambiguous error
+            printf '%s\n' $matches >&2
+            return 3
+        end
+    end
+end
+
+function __flo_resolve_project_path --description "Resolve --project argument to absolute path"
+    set -l input $argv[1]
+
+    # Check if input is a path (absolute or explicit relative)
+    if string match -q '/*' -- $input
+        # Absolute path - use as-is
+        if test -d "$input"
+            realpath "$input"
+            return 0
+        else
+            echo "✗ Directory not found: $input" >&2
+            return 1
+        end
+    else if string match -qr '^\.\.?/' -- $input
+        # Explicit relative path (./ or ../)
+        set -l resolved (realpath "$input" 2>/dev/null)
+        if test -n "$resolved"; and test -d "$resolved"
+            echo "$resolved"
+            return 0
+        else
+            echo "✗ Directory not found: $input" >&2
+            return 1
+        end
+    else
+        # Bare name - try name resolution
+        set -l resolved (__flo_resolve_project_name "$input" 2>/dev/null)
+        set -l status_code $status
+
+        if test $status_code -eq 0
+            # Single match found
+            echo "$resolved"
+            return 0
+        else if test $status_code -eq 1
+            # No settings configured
+            echo "✗ Project name '$input' cannot be resolved" >&2
+            echo "" >&2
+            echo "To use project names, configure ~/.config/flo/settings.json:" >&2
+            echo '{' >&2
+            echo '  "projectsDirectories": ["~/projects/*/*"]' >&2
+            echo '}' >&2
+            echo "" >&2
+            echo "Or use explicit path (use ./ for relative):" >&2
+            echo "  --project ~/projects/$input" >&2
+            echo "  --project ./$input" >&2
+            return 1
+        else if test $status_code -eq 2
+            # No matches found
+            set -l patterns (__flo_get_projects_directories)
+            echo "✗ Project '$input' not found" >&2
+            echo "" >&2
+            echo "Searched in:" >&2
+            for pattern in $patterns
+                echo "  $pattern" >&2
+            end
+            echo "" >&2
+            echo "Use explicit path:" >&2
+            echo "  --project ~/other/location/$input" >&2
+            return 1
+        else if test $status_code -eq 3
+            # Multiple matches (non-interactive or no gum)
+            set -l matched_paths (__flo_resolve_project_name "$input" 2>&1 >/dev/null)
+            echo "✗ Ambiguous project name '$input' matches multiple:" >&2
+            echo "" >&2
+            set -l i 1
+            for path in $matched_paths
+                echo "  $i. $path" >&2
+                set i (math $i + 1)
+            end
+            echo "" >&2
+            echo "Use explicit path:" >&2
+            echo "  --project $matched_paths[1]" >&2
+            return 1
+        else if test $status_code -eq 4
+            # User cancelled interactive picker
+            echo Cancelled >&2
+            return 1
+        end
+    end
+end
+
 # Interactive issue selection with gum
 function __flo_select_issue --description "Interactively select an issue with gum"
     # Check if gum is installed
@@ -375,6 +537,20 @@ end
 
 # Main command - create worktree from branch name or GitHub issue number
 function flo_start
+    # Parse flags
+    argparse 'project=' -- $argv; or return
+
+    # Resolve project path if --project provided
+    set -l project_path (pwd)
+    if set -q _flag_project
+        set project_path (__flo_resolve_project_path "$_flag_project")
+        if test $status -ne 0
+            # Error already printed by resolver
+            return 1
+        end
+        cd "$project_path" || return 1
+    end
+
     # Colors for output
     set -l blue (set_color brblue)
     set -l green (set_color brgreen)
@@ -387,7 +563,7 @@ function flo_start
     # Print newline after command name
     echo ""
 
-    set current_dir (basename (pwd))
+    set current_dir (basename $project_path)
     set arg $argv[1]
 
     # Strip leading # if present (e.g., #123 -> 123)

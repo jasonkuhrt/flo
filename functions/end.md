@@ -14,6 +14,10 @@
       "name": "--force",
       "short": "-f",
       "description": "Force removal even with uncommitted changes"
+    },
+    {
+      "name": "--project",
+      "description": "Project to operate on (name or path). Names resolved via ~/.config/flo/settings.json"
     }
   ],
   "examples": [
@@ -48,6 +52,14 @@
     {
       "command": "flo rm 1320 --force",
       "description": "Force removal with uncommitted changes"
+    },
+    {
+      "command": "flo end --project backend",
+      "description": "Remove current worktree from different project"
+    },
+    {
+      "command": "flo end 123 --project ~/projects/api",
+      "description": "Remove worktree from project by path"
     }
   ],
   "related": ["list", "prune"],

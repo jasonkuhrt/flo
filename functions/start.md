@@ -8,6 +8,12 @@
       "required": false
     }
   ],
+  "parametersNamed": [
+    {
+      "name": "--project",
+      "description": "Project to operate on (name or path). Names resolved via ~/.config/flo/settings.json"
+    }
+  ],
   "examples": [
     {
       "command": "flo start",
@@ -16,6 +22,14 @@
     {
       "command": "flo start 123",
       "description": "Create from GitHub issue"
+    },
+    {
+      "command": "flo start 123 --project kit",
+      "description": "Create in different project (by name)"
+    },
+    {
+      "command": "flo start 123 --project ~/projects/backend",
+      "description": "Create in different project (by path)"
     },
     {
       "command": "flo start #123",
@@ -42,6 +56,58 @@ Flo creates worktrees as siblings to your main project:
   ~/projects/myproject_fix-456-bug-fix/      (worktree for fix/456-bug-fix)
 
 Running flo multiple times for the same branch is safe - it updates Claude context without recreating the worktree.
+
+# CROSS-PROJECT MANAGEMENT
+
+Use `--project` to manage worktrees across multiple projects without changing directories.
+
+**Setup** (one-time):
+
+Configure project directories in `~/.config/flo/settings.json`:
+
+```json
+{
+  "projectsDirectories": [
+    "~/projects/*/*",
+    "~/work/*"
+  ]
+}
+```
+
+**Usage:**
+
+```bash
+# From anywhere, create worktree in different project:
+flo start 123 --project kit
+flo start 456 --project backend
+
+# Fuzzy matching:
+flo start 123 --project api
+# Matches: ~/projects/jasonkuhrt/api-server
+
+# Multiple matches → interactive picker (requires gum):
+flo start 123 --project flo
+# Shows picker: [flo, flo-legacy, workflow]
+```
+
+**Path Resolution:**
+
+- **Bare name:** `--project backend` → fuzzy match in configured directories
+- **Absolute path:** `--project ~/projects/backend` → use directly
+- **Relative path:** `--project ./backend` or `--project ../backend` → resolve from pwd
+
+**Without Settings:**
+
+If `projectsDirectories` not configured, bare names fail with helpful message:
+
+```bash
+flo start 123 --project backend
+# ✗ Cannot resolve 'backend'
+#
+# Configure ~/.config/flo/settings.json or use explicit path:
+#   --project ~/projects/backend
+#   --project ./backend
+```
 
 # INTERACTIVE SELECTION
 

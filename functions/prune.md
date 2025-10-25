@@ -1,13 +1,23 @@
 ---
 {
   "description": "Clean up Git metadata for manually deleted worktrees",
+  "parametersNamed": [
+    {
+      "name": "--project",
+      "description": "Project to prune worktrees for (name or path). Names resolved via ~/.config/flo/settings.json"
+    }
+  ],
   "examples": [
     {
       "command": "flo prune",
-      "description": "Clean up metadata for manually deleted worktrees"
+      "description": "Clean up metadata for current project"
+    },
+    {
+      "command": "flo prune --project backend",
+      "description": "Prune worktrees for different project (by name)"
     }
   ],
-  "related": ["list", "rm"],
+  "related": ["list", "end"],
   "exitCodes": {
     "0": "Success"
   }

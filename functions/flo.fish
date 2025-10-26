@@ -487,9 +487,9 @@ function __flo_create_or_use_worktree --description "Create worktree or detect e
     end
 
     # Create the worktree (try existing branch first, create new if needed)
-    set -l output (git worktree add $worktree_path $branch_name 2>&1)
+    # Suppress error from first attempt - it's expected to fail when branch doesn't exist
+    set -l output (git worktree add $worktree_path $branch_name 2>/dev/null)
     set -l exit_code $status
-    echo "$output" | __flo_indent >&2
 
     if test $exit_code -ne 0
         # Branch doesn't exist, create it
@@ -501,6 +501,9 @@ function __flo_create_or_use_worktree --description "Create worktree or detect e
             __flo_log_error "Could not create worktree"
             return 1
         end
+    else
+        # Existing branch checkout succeeded - show output
+        echo "$output" | __flo_indent >&2
     end
 
     echo created

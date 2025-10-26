@@ -80,6 +80,14 @@ assert_output_contains() {
     fi
 }
 
+assert_output_not_contains() {
+    if echo "$1" | grep -q "$2"; then
+        fail "$3"
+    else
+        pass "$3"
+    fi
+}
+
 assert_file_contains() {
     if grep -q "$2" "$1"; then
         pass "$3"

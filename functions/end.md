@@ -13,7 +13,12 @@
     {
       "name": "--force",
       "short": "-f",
-      "description": "Force removal even with uncommitted changes"
+      "description": "Force removal even with uncommitted changes, and force-delete branch (git branch -D)"
+    },
+    {
+      "name": "--keep-branch",
+      "short": "-k",
+      "description": "Keep the branch after removing the worktree (by default, branch is deleted)"
     },
     {
       "name": "--yes",
@@ -68,7 +73,15 @@
     },
     {
       "command": "flo rm 1320 --force",
-      "description": "Force removal with uncommitted changes"
+      "description": "Force removal with uncommitted changes and force-delete branch"
+    },
+    {
+      "command": "flo rm --keep-branch",
+      "description": "Remove worktree but keep the branch"
+    },
+    {
+      "command": "flo rm feat/test --keep-branch",
+      "description": "Remove specific worktree but preserve the branch"
     },
     {
       "command": "flo end --project backend",
@@ -90,11 +103,17 @@
 # ABOUT
 
 Safely removes a worktree by branch name, issue number, or worktree directory name.
-Calculates the path automatically and uses Git to properly
-delete it. Always prefer this over 'rm -rf' to keep Git
-state clean.
+Calculates the path automatically and uses Git to properly delete it.
+**By default, also deletes the associated git branch** to prevent orphaned branches from accumulating.
+
+Always prefer this over 'rm -rf' to keep Git state clean.
 
 When called without arguments, interactively removes the current worktree (if pwd is a worktree).
 
-When given an issue number, finds the worktree created with
-'flo <issue-number>' and removes it.
+When given an issue number, finds the worktree created with 'flo <issue-number>' and removes it.
+
+## Branch Deletion
+
+- **Default behavior**: Deletes the branch after removing the worktree (using `git branch -d`)
+- **--keep-branch**: Preserves the branch after removal
+- **--force**: Force-deletes branches with unmerged changes (using `git branch -D`)

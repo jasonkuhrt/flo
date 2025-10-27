@@ -65,20 +65,22 @@ Run any command with \`--help\` for detailed help.
 
 flo
 
-Create worktree from branch or GitHub issue
+Create worktree from branch or GitHub issue (shorthand for 'flo start')
 
 COMMANDS
-  flo        Create worktree from branch or GitHub issue
+  end        End your work by removing a worktree
+             (alias: rm)
   list       List all git worktrees with branches and paths
   prune      Clean up Git metadata for manually deleted worktrees
   rm         Safely remove a git worktree by branch name or issue number
+  start      Start work by creating a worktree from an issue or branch
 
 OPTIONS
   -h, --help       Show this help message
   -v, --version    Show version information
 
 POSITIONAL PARAMETERS
-  <issue-or-branch>    GitHub issue number or branch name
+  <issue-or-branch>    GitHub issue number or branch name (optional - shows interactive picker if omitted)
 
 WORKTREE ORGANIZATION
 
@@ -88,6 +90,36 @@ WORKTREE ORGANIZATION
     ~/projects/myproject_fix-456-bug-fix/      (worktree for fix/456-bug-fix)
 
   Running flo multiple times for the same branch is safe - it updates Claude context without recreating the worktree.
+
+
+INTERACTIVE SELECTION
+
+  When you run 'flo' with no arguments:
+    1. Fetches up to 100 open issues from GitHub
+    2. Shows interactive picker:
+         - Uses 'gum filter' (fuzzy search) for >10 issues
+         - Uses 'gum choose' (simple list) for ≤10 issues
+    3. Creates worktree for selected issue
+
+  Requirements:
+    - gum: https://github.com/charmbracelet/gum (install with: brew install gum)
+    - gh CLI: https://cli.github.com (install with: brew install gh)
+
+  Fallback: If gum or gh are not installed, shows help message instead.
+
+
+BRANCH MODE
+
+  When you run 'flo <branch-name>':
+    1. Creates worktree with the exact branch name you provide
+    2. No GitHub integration (no issue fetching, no auto-assign)
+    3. No Claude context files generated
+    4. Perfect for: experiments, quick fixes, non-issue work
+
+  Examples:
+    flo feat/experiment        # Creates feat/experiment branch
+    flo fix/quick-bug          # Creates fix/quick-bug branch
+    flo spike/new-tech         # Creates spike/new-tech branch
 
 
 ISSUE MODE
@@ -132,13 +164,6 @@ SERENA MCP INTEGRATION
     - Only happens when creating new worktrees (not when reusing)
     - Requires .serena/cache/ to exist in your main project
     - Pre-index once: uvx --from git+https://github.com/oraios/serena serena project index
-
-
-EXAMPLES
-
-  flo 123                    Create from GitHub issue
-  flo #123                   Create from GitHub issue (# is optional)
-  flo feat/new-feature       Create from branch name
 ```
 
 ### `flo list`
@@ -149,44 +174,84 @@ flo list
 
 List all git worktrees with branches and paths
 
+FLAGS
+  --project    Project to list worktrees for (name or path). Names resolved via ~/.config/flo/settings.json
+
 Shows all worktrees with their paths, branches, and commits.
+EXAMPLES
+  flo list    # Show all worktrees for current project
+  flo list --project backend    # List worktrees for different project (by name)
+  flo list --project ~/projects/api    # List worktrees for project by path
+
+SEE ALSO
+  flo end
+  flo prune
+
+EXIT CODES
+  0    Success
+
 ```
 
 ### `flo rm`
 
 ```
 
-flo rm
+flo end
 
-Safely remove a git worktree by branch name or issue number
+End your work by removing a worktree
 
 POSITIONAL PARAMETERS
-  <branch-name-or-issue>    Branch name, issue number, or worktree directory name to remove
+  <branch-name-or-issue>    Branch name, issue number, or worktree directory name to remove (optional - defaults to current worktree)
+
+FLAGS
+  --force, -f    Force removal even with uncommitted changes, and force-delete branch (git branch -D)
+  --keep-branch, -k    Keep the branch after removing the worktree (by default, branch is deleted)
+  --yes, -y    Skip confirmation prompt (non-interactive mode)
+  --project    Project to operate on (name or path). Names resolved via ~/.config/flo/settings.json
 
 
 ABOUT
 
   Safely removes a worktree by branch name, issue number, or worktree directory name.
-  Calculates the path automatically and uses Git to properly
-  delete it. Always prefer this over 'rm -rf' to keep Git
-  state clean.
+  Calculates the path automatically and uses Git to properly delete it.
+  **By default, also deletes the associated git branch** to prevent orphaned branches from accumulating.
 
-  When given an issue number, finds the worktree created with
-  'flo <issue-number>' and removes it.
+  Always prefer this over 'rm -rf' to keep Git state clean.
 
-  ## FLAGS
+  When called without arguments, interactively removes the current worktree (if pwd is a worktree).
 
-  --force, -f    Force removal even with uncommitted changes
+  When given an issue number, finds the worktree created with 'flo <issue-number>' and removes it.
 
+  ## Branch Deletion
 
+  - **Default behavior**: Deletes the branch after removing the worktree (using `git branch -d`)
+  - **--keep-branch**: Preserves the branch after removal
+  - **--force**: Force-deletes branches with unmerged changes (using `git branch -D`)
 EXAMPLES
+  flo rm    # Remove current worktree (interactive)
+  flo rm 1320    # Remove by issue number
+  flo rm #1320    # Remove by issue number (# is optional)
+  flo rm feat/123-add-auth    # Remove by branch name
+  flo rm fix/memory-leak    # Remove by branch name
+  flo rm myproject_feat-123-add-auth    # Remove by worktree directory name
+  flo rm --yes    # Remove current worktree without confirmation
+  flo rm -y    # Short form of --yes
+  flo rm --force    # Force remove current worktree
+  flo rm --force --yes    # Force remove without confirmation (for automation)
+  flo rm 1320 --force    # Force removal with uncommitted changes and force-delete branch
+  flo rm --keep-branch    # Remove worktree but keep the branch
+  flo rm feat/test --keep-branch    # Remove specific worktree but preserve the branch
+  flo end --project backend    # Remove current worktree from different project
+  flo end 123 --project ~/projects/api    # Remove worktree from project by path
 
-  flo rm 1320                              # Remove by issue number
-  flo rm #1320                             # Remove by issue number (# is optional)
-  flo rm feat/123-add-auth                 # Remove by branch name
-  flo rm fix/memory-leak                   # Remove by branch name
-  flo rm myproject_feat-123-add-auth       # Remove by worktree directory name
-  flo rm 1320 --force                      # Force removal with uncommitted changes
+SEE ALSO
+  flo list
+  flo prune
+
+EXIT CODES
+  0    Success
+  1    Error - worktree not found or removal failed
+
 ```
 
 ### `flo prune`
@@ -197,10 +262,24 @@ flo prune
 
 Clean up Git metadata for manually deleted worktrees
 
+FLAGS
+  --project    Project to prune worktrees for (name or path). Names resolved via ~/.config/flo/settings.json
+
 
 ABOUT
 
   Use this if you deleted with `rm -rf` instead of `flo rm`.
+EXAMPLES
+  flo prune    # Clean up metadata for current project
+  flo prune --project backend    # Prune worktrees for different project (by name)
+
+SEE ALSO
+  flo list
+  flo end
+
+EXIT CODES
+  0    Success
+
 ```
 <!-- REFERENCE_END -->
 ## Development

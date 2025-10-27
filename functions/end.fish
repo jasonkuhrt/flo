@@ -45,9 +45,46 @@ function __flo_get_main_worktree --description "Get path to main repository (sha
     end
 end
 
+# Helper function to delete a branch after removing worktree
+function __flo_delete_branch --description "Delete a git branch with appropriate flags"
+    set -l branch_name $argv[1]
+    set -l force_delete $argv[2] # "true" if --force flag was provided
+    set -l keep_branch $argv[3] # "true" if --keep-branch flag was provided
+
+    if test -z "$branch_name"
+        return 0
+    end
+
+    # Skip if --keep-branch flag is set
+    if test "$keep_branch" = true
+        __flo_log_info_dim "Kept branch: $branch_name"
+        return 0
+    end
+
+    # Choose deletion flag based on force mode
+    set -l delete_flag -d
+    if test "$force_delete" = true
+        set delete_flag -D
+    end
+
+    # Attempt to delete the branch
+    if git branch $delete_flag "$branch_name" 2>/dev/null
+        __flo_log_success "Deleted branch: $branch_name"
+        return 0
+    else
+        # Branch deletion failed
+        if test "$delete_flag" = -d
+            __flo_log_error "Failed to delete branch: $branch_name" "Branch has unmerged changes. Use --force to force delete, or --keep-branch to preserve"
+        else
+            __flo_log_error "Failed to delete branch: $branch_name"
+        end
+        return 1
+    end
+end
+
 function flo_end
     # Parse flags
-    argparse f/force y/yes 'project=' -- $argv; or return
+    argparse f/force y/yes k/keep-branch 'project=' -- $argv; or return
 
     # Resolve project path if --project provided
     set -l project_path (pwd)
@@ -143,6 +180,17 @@ function flo_end
             # Change to main repository directory
             cd $main_worktree
             __flo_log_success "Removed worktree: $current_path"
+
+            # Delete the branch unless --keep-branch is set
+            set -l force_delete false
+            if set -q _flag_force
+                set force_delete true
+            end
+            set -l keep_branch false
+            if set -q _flag_keep_branch
+                set keep_branch true
+            end
+            __flo_delete_branch "$branch_name" "$force_delete" "$keep_branch"
         else
             __flo_log_error "Failed to remove worktree" "Use --force to remove worktree with uncommitted changes"
             return 1
@@ -187,6 +235,26 @@ function flo_end
 
     # Remove worktree if it exists
     if test -d $worktree_path
+        # Get branch name before removing worktree
+        set -l worktree_realpath (realpath $worktree_path)
+        set -l worktree_list (git worktree list --porcelain 2>/dev/null)
+        set -l found_worktree false
+        set -l branch_name ""
+
+        for line in $worktree_list
+            if string match -q "worktree *" -- $line
+                set -l wt_path (string replace "worktree " "" -- $line)
+                if test "$wt_path" = "$worktree_realpath"
+                    set found_worktree true
+                else
+                    set found_worktree false
+                end
+            else if test "$found_worktree" = true; and string match -q "branch *" -- $line
+                set branch_name (string replace "branch refs/heads/" "" -- $line)
+                break
+            end
+        end
+
         if test -n "$force_flag"
             git worktree remove --force $worktree_path
         else
@@ -200,6 +268,17 @@ function flo_end
                 cd $main_worktree
             end
             __flo_log_success "Removed worktree: $worktree_path"
+
+            # Delete the branch unless --keep-branch is set
+            set -l force_delete false
+            if set -q _flag_force
+                set force_delete true
+            end
+            set -l keep_branch false
+            if set -q _flag_keep_branch
+                set keep_branch true
+            end
+            __flo_delete_branch "$branch_name" "$force_delete" "$keep_branch"
         else
             __flo_log_error "Failed to remove worktree" "Use --force to remove worktree with uncommitted changes"
             return 1

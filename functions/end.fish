@@ -148,12 +148,33 @@ function flo_end
 
         # Show confirmation prompt (unless --yes flag provided)
         if not set -q _flag_yes
-            echo "Remove current worktree?"
-            echo "  Path: $current_path"
+            echo ""
+            echo "  $__flo_c_dim Worktree:$__flo_c_reset $__flo_c_cyan$current_path$__flo_c_reset"
             if test -n "$branch_name"
-                echo "  Branch: $branch_name"
+                echo "  $__flo_c_dim Branch:$__flo_c_reset   $__flo_c_cyan$branch_name$__flo_c_reset"
             end
-            read -l -P "Remove? [y/N]: " confirm
+            echo ""
+            echo "  This will:"
+
+            # Show actions based on flags
+            if set -q _flag_force
+                echo "    $__flo_c_yellow•$__flo_c_reset Remove the worktree (force)"
+            else
+                echo "    $__flo_c_blue•$__flo_c_reset Remove the worktree"
+            end
+
+            if set -q _flag_keep_branch
+                echo "    $__flo_c_blue•$__flo_c_reset Keep the branch"
+            else if set -q _flag_force
+                echo "    $__flo_c_yellow•$__flo_c_reset Force-delete the branch"
+            else
+                echo "    $__flo_c_blue•$__flo_c_reset Delete the branch"
+            end
+
+            echo "    $__flo_c_blue•$__flo_c_reset Return to main directory"
+            echo ""
+
+            read -l -P "Continue? [y/N]: " confirm
 
             if test "$confirm" != y -a "$confirm" != Y
                 echo Cancelled

@@ -12,6 +12,10 @@
     {
       "name": "--project",
       "description": "Project to operate on (name or path). Names resolved via ~/.config/flo/settings.json"
+    },
+    {
+      "name": "--claude",
+      "description": "Open Zed and launch 'claude /start' in the current terminal"
     }
   ],
   "examples": [
@@ -38,6 +42,10 @@
     {
       "command": "flo start feat/new-feature",
       "description": "Create from branch name"
+    },
+    {
+      "command": "flo start 123 --claude",
+      "description": "Create from issue, open Zed, and launch Claude session"
     }
   ],
   "related": ["end", "list", "prune"],

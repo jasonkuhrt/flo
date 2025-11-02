@@ -528,7 +528,7 @@ end
 # Main command - create worktree from branch name or GitHub issue number
 function flo_start
     # Parse flags
-    argparse 'project=' -- $argv; or return
+    argparse 'project=' claude -- $argv; or return
 
     # Resolve project path if --project provided
     set -l project_path (pwd)
@@ -662,4 +662,12 @@ function flo_start
 
     # Success message
     __flo_print_success_message "$is_issue" "$issue_number"
+
+    # Open Zed at worktree directory
+    zed $worktree_path
+
+    # Optionally launch Claude in current terminal
+    if set -q _flag_claude
+        claude /start
+    end
 end

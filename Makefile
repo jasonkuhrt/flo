@@ -28,8 +28,9 @@ uninstall:
 	@echo "✓ Uninstalled flo via Fisher"
 
 # Run tests
+# Supports: make test, make test pattern, make test 'multi word', make test ARGS="--update"
 test:
-	@lib/test/cli $(ARGS)
+	@./test.sh $(filter-out test,$(MAKECMDGOALS)) $(ARGS)
 
 # Generate README reference section from markdown files
 docs:
@@ -40,6 +41,7 @@ demos:
 	@cd demos && ./generate.sh
 
 # Allow passing arguments like: make test ARGS="--update"
+# Catch-all rule to silently handle test filter patterns
 .PHONY: $(MAKECMDGOALS)
 %:
 	@:

@@ -97,6 +97,29 @@ function flo_end
         cd "$project_path" || return 1
     end
 
+    # If we're in a flo worktree and removing by branch name, cd to main worktree first
+    # This ensures current_dir is calculated from main repo, not from worktree
+    # (Otherwise path calculation doubles the branch name)
+    set -l current_path (realpath (pwd))
+    set -l current_basename (basename $current_path)
+
+    # Only do this check if an argument is provided (removing by name, not current worktree)
+    if test (count $argv) -gt 0
+        if string match -qr _ -- $current_basename
+            # Looks like a flo worktree - verify with git and get main worktree
+            set -l main_worktree (git worktree list --porcelain 2>/dev/null | grep "^worktree" | head -1 | string replace "worktree " "")
+
+            if test -n "$main_worktree"; and test -d "$main_worktree"
+                # We're in a git worktree and found the main worktree
+                if test "$current_path" != "$main_worktree"
+                    # We're not in the main worktree, cd to it
+                    cd "$main_worktree" || return 1
+                    set project_path "$main_worktree"
+                end
+            end
+        end
+    end
+
     set current_dir (basename $project_path)
     set -l arg $argv[1]
 

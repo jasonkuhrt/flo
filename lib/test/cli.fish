@@ -3,33 +3,58 @@
 # Test Framework CLI
 # Discovers and runs tests automatically
 
-# Parse flags and positional arguments
-set -g UPDATE_SNAPSHOTS false
-set -g TEST_FILE_FILTER ""
-set -l positional_args
+# Set up CLI framework for auto-parsing
+set -l test_dir (dirname (status filename))
+set -l flo_dir (dirname (dirname $test_dir))
 
-set -l i 1
-while test $i -le (count $argv)
-    switch $argv[$i]
-        case -u --update
-            set -g UPDATE_SNAPSHOTS true
-        case -f --file
-            set i (math $i + 1)
-            set -g TEST_FILE_FILTER $argv[$i]
-        case '--*' '-*'
-            echo "Unknown option: $argv[$i]"
-            echo "Usage: lib/test/cli [--update|-u] [PATTERN]"
-            exit 1
-        case '*'
-            # Positional argument - treat as filter pattern
-            set -a positional_args $argv[$i]
-    end
-    set i (math $i + 1)
+# Source CLI framework modules
+source "$flo_dir/functions/__flo_lib_cli_markdown.fish"
+source "$flo_dir/functions/__flo_lib_cli_argparse.fish"
+
+# Set minimal framework state for command discovery
+set -g __cli_dir $test_dir
+set -g __cli_name test
+
+# Parse arguments using framework auto-parsing
+__cli_parse_args test $argv
+or begin
+    echo "Error: Invalid arguments"
+    echo "Usage: lib/test/cli [--update|-u] [--file|-f PATTERN] [--tags TAG...] [--all] [--help|-h] [PATTERN]"
+    exit 1
 end
 
-# Use positional args as filter if provided (and --file wasn't used)
-if test (count $positional_args) -gt 0; and test -z "$TEST_FILE_FILTER"
-    set -g TEST_FILE_FILTER (string join " " $positional_args)
+# Show help if requested
+if set -q _flag_help
+    set -l doc_file "$test_dir/test.md"
+    __cli_render_command_help test "$doc_file"
+    exit 0
+end
+
+# Set global variables from parsed flags
+set -g UPDATE_SNAPSHOTS false
+set -g TEST_FILE_FILTER ""
+set -g TEST_TAG_FILTER
+set -g TEST_RUN_ALL false
+
+if set -q _flag_update
+    set -g UPDATE_SNAPSHOTS true
+end
+
+if set -q _flag_all
+    set -g TEST_RUN_ALL true
+end
+
+if set -q _flag_file
+    set -g TEST_FILE_FILTER $_flag_file
+end
+
+if set -q _flag_tags
+    set -g TEST_TAG_FILTER $_flag_tags
+end
+
+# Use remaining positional args as filter pattern (if --file not used)
+if test (count $argv) -gt 0; and test -z "$TEST_FILE_FILTER"
+    set -g TEST_FILE_FILTER (string join " " $argv)
 end
 
 # Find project root by looking for test/ or tests/ directory

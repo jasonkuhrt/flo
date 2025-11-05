@@ -3,6 +3,7 @@
 
 # Source all framework modules
 set -l cli_framework_dir (dirname (status --current-filename))
+set -g __cli_framework_dir $cli_framework_dir
 
 source $cli_framework_dir/__flo_lib_cli_core.fish
 source $cli_framework_dir/__flo_lib_cli_dispatcher.fish
@@ -11,6 +12,7 @@ source $cli_framework_dir/__flo_lib_cli_loader.fish
 source $cli_framework_dir/__flo_lib_cli_help.fish
 source $cli_framework_dir/__flo_lib_cli_deps.fish
 source $cli_framework_dir/__flo_lib_cli_markdown.fish
+source $cli_framework_dir/__flo_lib_cli_argparse.fish
 
 # Main initialization function
 function __cli_init --description "Initialize a CLI application with the framework"

@@ -130,6 +130,66 @@ function run_tests
             end
         end
 
+        # Extract and filter by tags (unless --all flag is set)
+        if test "$TEST_RUN_ALL" != true
+            set -l test_tags # Empty list by default (untagged)
+
+            # Step 1: Static detection - look for tags declaration
+            set -l tags_line (head -n 20 "$test_file" | grep -E '^tags\s+' | head -n 1)
+
+            if test -n "$tags_line"
+                # Step 2: Validation - ensure no code before tags
+                # Get all lines before (not including) the tags line
+                set -l before_tags (head -n 20 "$test_file" | sed '/^tags\s/Q' | grep -vE '^\s*(#|$)')
+
+                if test (count $before_tags) -gt 0
+                    echo -e "$RED""Error: Code found before 'tags' in $test_file""$NC"
+                    echo "Tags must be the first non-blank, non-comment line"
+                    exit 1
+                end
+
+                # Step 3: Controlled execution - extract tags safely
+                begin
+                    function tags
+                        set -g TEST_CURRENT_TAGS $argv
+                        return 0
+                    end
+
+                    source "$test_file" 2>/dev/null
+                    set test_tags $TEST_CURRENT_TAGS
+                end
+            end
+
+            # Step 4: Apply filtering logic
+            set -l should_run false
+
+            if test (count $TEST_TAG_FILTER) -eq 0
+                # No tag filter: run only untagged tests
+                if test (count $test_tags) -eq 0
+                    set should_run true
+                end
+            else
+                # Tag filter specified: check if test matches
+                if contains untagged $TEST_TAG_FILTER; and test (count $test_tags) -eq 0
+                    # Run untagged test if "untagged" in filter
+                    set should_run true
+                else
+                    # Check if any test tag matches filter
+                    for tag in $test_tags
+                        if contains $tag $TEST_TAG_FILTER
+                            set should_run true
+                            break
+                        end
+                    end
+                end
+            end
+
+            # Skip test if it doesn't match filter
+            if test "$should_run" != true
+                continue
+            end
+        end
+
         echo -e "\n$YELLOW""Test: $test_name""$NC"
 
         # Set up common test fixtures (tests can use or override)
@@ -137,6 +197,11 @@ function run_tests
 
         # Source and run the test (fish functions provide natural isolation)
         begin
+            # Define tags as no-op since we already extracted them
+            function tags
+                # No-op: tags already extracted
+            end
+
             # Run before_each setup
             __test_setup
             source "$test_file"

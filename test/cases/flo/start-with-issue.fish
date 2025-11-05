@@ -1,3 +1,5 @@
+tags slow gh
+
 setup_temp_repo
 git remote add origin https://github.com/jasonkuhrt/flo.git
 

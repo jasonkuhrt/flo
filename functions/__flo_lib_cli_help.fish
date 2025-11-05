@@ -9,74 +9,16 @@ function __cli_setup_help --description "Set up the help system"
 end
 
 function __cli_show_help --description "Show main help for the CLI"
-    # Leading newline for spacing
-    echo ""
-
-    # Title (just command name in cyan)
-    set_color cyan
-    echo "$__cli_name"
-    set_color normal
-    echo ""
-
-    # Description paragraph
-    if test -n "$__cli_description"
-        echo "$__cli_description"
-        echo ""
-    end
-
-    # Commands section
-    set_color --dim black
-    echo COMMANDS
-    set_color normal
-    set -l commands (__cli_get_commands)
-
-    if test (count $commands) -gt 0
-        for cmd in $commands
-            set -l desc (__cli_get_command_description $cmd)
-            set -l aliases (__cli_get_command_aliases $cmd)
-
-            # Format command name with aliases if they exist
-            if test (count $aliases) -gt 0
-                set -l alias_str (string join ", " $aliases)
-                printf "  %-10s %s\n" "$cmd" "$desc"
-                set_color --dim
-                printf "  %-10s (alias: %s)\n" "" "$alias_str"
-                set_color normal
-            else
-                printf "  %-10s %s\n" $cmd "$desc"
-            end
-        end
-    else
-        echo "  No commands available"
-    end
-
-    echo ""
-    set_color --dim black
-    echo OPTIONS
-    set_color normal
-    echo "  -h, --help       Show this help message"
-    echo "  -v, --version    Show version information"
-
-    # Render positional parameters if they exist in the main command doc
     set -l doc_file (__cli_find_command_doc $__cli_name)
-    if test -n "$doc_file"
-        set -l json (__cli_parse_frontmatter "$doc_file")
-        if test -n "$json"
-            set -l param_count (echo "$json" | jq -r '.parametersPositional | length' 2>/dev/null)
-            if test "$param_count" -gt 0
-                echo ""
-                set_color --dim black
-                echo "POSITIONAL PARAMETERS"
-                set_color normal
-                echo "$json" | jq -r '.parametersPositional[] | "  <\(.name)>    \(.description)"' 2>/dev/null
-            end
-        end
 
-        # Render guide content
-        set -l guide_content (__cli_get_markdown_content "$doc_file")
-        if test (count $guide_content) -gt 0
-            __cli_render_markdown_sections $guide_content
-        end
+    if test -n "$doc_file"
+        # Use new glow rendering
+        __cli_render_command_help "$__cli_name" "$doc_file"
+    else
+        # No .md file - show minimal help
+        echo ""
+        echo "No documentation available for $__cli_name"
+        echo "Run: $__cli_name <command> --help"
     end
 end
 

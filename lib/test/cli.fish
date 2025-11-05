@@ -7,9 +7,8 @@
 set -l test_dir (dirname (status filename))
 set -l flo_dir (dirname (dirname $test_dir))
 
-# Source CLI framework modules
-source "$flo_dir/functions/__flo_lib_cli_markdown.fish"
-source "$flo_dir/functions/__flo_lib_cli_argparse.fish"
+# Source CLI framework (single entrypoint)
+source "$flo_dir/functions/__flo_lib_cli_main.fish"
 
 # Set minimal framework state for command discovery
 set -g __cli_dir $test_dir

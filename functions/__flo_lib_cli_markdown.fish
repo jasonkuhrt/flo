@@ -67,47 +67,6 @@ function __cli_get_markdown_content --description "Get markdown content without 
     end <"$file"
 end
 
-function __cli_render_markdown_sections --description "Parse and render markdown content with section headers"
-    # Process the content line by line ($argv contains all lines as separate arguments)
-    set -l current_section ""
-    set -l in_section false
-    set -l started false # Track if we've output any content yet
-
-    for line in $argv
-        # Skip leading blank lines
-        if test "$started" = false -a -z "$line"
-            continue
-        end
-        set started true
-        # Check if line is a markdown heading (# Something)
-        if string match -qr '^# (.+)$' -- $line
-            set -l heading (string replace -r '^# (.+)$' '$1' -- $line | string trim)
-            # Convert to uppercase for section header
-            set heading (string upper -- $heading)
-
-            # Output section header (dimmest with dim black)
-            echo ""
-            set_color --dim black
-            echo "$heading"
-            set_color normal
-            set in_section true
-        else
-            # Regular content - indent if in a section
-            if test "$in_section" = true
-                # Only indent non-empty lines
-                if test -n "$line"
-                    echo "  $line"
-                else
-                    echo ""
-                end
-            else
-                # Before any section, output as-is
-                echo "$line"
-            end
-        end
-    end
-end
-
 function __cli_find_command_doc --description "Find co-located markdown file for a command"
     set -l cmd $argv[1]
 
@@ -133,7 +92,12 @@ function __cli_render_usage --description "Generate usage section from frontmatt
     set -a output '```'
 
     # Build usage line: command [OPTIONS] [ARGUMENTS]
-    set -l usage_line "./$cmd"
+    set -l usage_line
+    if test "$__cli_name" = "$cmd"
+        set usage_line "$cmd"
+    else
+        set usage_line "$__cli_name $cmd"
+    end
 
     # Add [OPTIONS] if there are named parameters
     set -l named_count (echo "$json" | jq -r '.parametersNamed | length' 2>/dev/null)
@@ -160,6 +124,36 @@ function __cli_render_usage --description "Generate usage section from frontmatt
     printf "%s\n" $output
 end
 
+function __cli_render_commands --description "Generate markdown table of available commands"
+    set -l commands (__cli_get_commands)
+
+    if test (count $commands) -eq 0
+        return 0
+    end
+
+    set -l output ""
+    set -a output "## Commands"
+    set -a output ""
+    set -a output "| Name | Description |"
+    set -a output "|------|-------------|"
+
+    for cmd in $commands
+        set -l desc (__cli_get_command_description $cmd)
+        set -l aliases (__cli_get_command_aliases $cmd)
+
+        if test (count $aliases) -gt 0
+            set -l alias_str (string join ", " $aliases)
+            set -a output "| `$cmd` | $desc (alias: $alias_str) |"
+        else
+            set -a output "| `$cmd` | $desc |"
+        end
+        set -a output "| | |"
+    end
+    set -a output ""
+
+    printf "%s\n" $output
+end
+
 function __cli_render_parameters_positional --description "Generate markdown table for positional parameters"
     set -l json $argv[1]
 
@@ -168,14 +162,15 @@ function __cli_render_parameters_positional --description "Generate markdown tab
         set -l output ""
         set -a output "## Positional Parameters"
         set -a output ""
-        set -a output "| Parameter | Description |"
-        set -a output "|-----------|-------------|"
+        set -a output "| Param | Description |"
+        set -a output "|-------|-------------|"
 
         for param_json in (echo "$json" | jq -c '.parametersPositional[]')
             set -l name (echo "$param_json" | jq -r '.name')
             set -l desc (echo "$param_json" | jq -r '.description')
 
             set -a output "| `<$name>` | $desc |"
+            set -a output "| | |"
         end
         set -a output ""
 
@@ -191,8 +186,8 @@ function __cli_render_parameters_named --description "Generate markdown table fo
         set -l output ""
         set -a output "## Named Parameters"
         set -a output ""
-        set -a output "| Flag | Description |"
-        set -a output "|------|-------------|"
+        set -a output "| Param | Description |"
+        set -a output "|-------|-------------|"
 
         for param_json in (echo "$json" | jq -c '.parametersNamed[]')
             set -l name (echo "$param_json" | jq -r '.name')
@@ -208,6 +203,7 @@ function __cli_render_parameters_named --description "Generate markdown table fo
             end
 
             set -a output "| $flag_text | $desc |"
+            set -a output "| | |"
         end
         set -a output ""
 
@@ -236,6 +232,7 @@ function __cli_render_examples --description "Generate markdown for examples sec
             set -a output '```'
             set -a output ""
         end
+        set -a output ""
 
         printf "%s\n" $output
     end
@@ -265,8 +262,8 @@ function __cli_render_exit_codes --description "Generate markdown table for exit
         set -l output ""
         set -a output "## Exit Codes"
         set -a output ""
-        set -a output "| Code | Description |"
-        set -a output "|------|-------------|"
+        set -a output "| # | Description |"
+        set -a output "|---|-------------|"
 
         for code_json in (echo "$json" | jq -c '.exitCodes | to_entries | sort_by(.key | tonumber) | .[]')
             set -l code (echo "$code_json" | jq -r '.key')
@@ -317,6 +314,14 @@ function __cli_generate_help_markdown --description "Generate complete markdown 
         set -a output $usage_md
     end
 
+    # Commands section (only for main command)
+    if test "$__cli_name" = "$cmd"
+        set -l commands_md (__cli_render_commands)
+        if test -n "$commands_md"
+            set -a output $commands_md
+        end
+    end
+
     # Positional parameters table
     set -l positional_md (__cli_render_parameters_positional "$json")
     if test -n "$positional_md"
@@ -365,7 +370,7 @@ function __cli_render_command_help --description "Render formatted help for a co
     # Check if glow is available for full markdown rendering
     if __cli_has_glow
         # Generate complete markdown document and render with glow using local style
-        __cli_generate_help_markdown $cmd $doc_file | glow -s "$__cli_framework_dir/cli_style.json"
+        __cli_generate_help_markdown $cmd $doc_file | glow -s "$__cli_framework_dir/cli_style.json" -w 80
     else
         # Fall back to custom rendering
         # Extract JSON frontmatter

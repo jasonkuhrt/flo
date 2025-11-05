@@ -17,7 +17,9 @@ function __cli_get_commands --description "Get all available CLI commands"
     end
 
     # Sort and return unique commands
-    printf '%s\n' $commands | sort -u
+    if test (count $commands) -gt 0
+        printf '%s\n' $commands | sort -u
+    end
 end
 
 function __cli_command_exists --description "Check if a CLI command exists"

@@ -119,22 +119,22 @@ flo start 123 --project backend
 
 # INTERACTIVE SELECTION
 
-When you run 'flo' with no arguments:
+When you run `flo` with no arguments:
   1. Fetches up to 100 open issues from GitHub
   2. Shows interactive picker:
-       - Uses 'gum filter' (fuzzy search) for >10 issues
-       - Uses 'gum choose' (simple list) for ≤10 issues
+       - Uses `gum filter` (fuzzy search) for >10 issues
+       - Uses `gum choose` (simple list) for ≤10 issues
   3. Creates worktree for selected issue
 
 Requirements:
-  - gum: https://github.com/charmbracelet/gum (install with: brew install gum)
-  - gh CLI: https://cli.github.com (install with: brew install gh)
+  - gum: https://github.com/charmbracelet/gum (install with: `brew install gum`)
+  - gh CLI: https://cli.github.com (install with: `brew install gh`)
 
 Fallback: If gum or gh are not installed, shows help message instead.
 
 # BRANCH MODE
 
-When you run 'flo <branch-name>':
+When you run `flo <branch-name>`:
   1. Creates worktree with the exact branch name you provide
   2. No GitHub integration (no issue fetching, no auto-assign)
   3. No Claude context files generated
@@ -147,7 +147,7 @@ Examples:
 
 # ISSUE MODE
 
-When you run 'flo 123':
+When you run `flo 123`:
   1. Fetches issue #123 from GitHub
   2. Auto-assigns issue to you
   3. Creates branch with smart prefix:

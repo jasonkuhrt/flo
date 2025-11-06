@@ -49,15 +49,8 @@ end
 function __flo_delete_branch --description "Delete a git branch with appropriate flags"
     set -l branch_name $argv[1]
     set -l force_delete $argv[2] # "true" if --force flag was provided
-    set -l keep_branch $argv[3] # "true" if --keep-branch flag was provided
 
     if test -z "$branch_name"
-        return 0
-    end
-
-    # Skip if --keep-branch flag is set
-    if test "$keep_branch" = true
-        __flo_log_info_dim "Kept branch: $branch_name"
         return 0
     end
 
@@ -69,12 +62,12 @@ function __flo_delete_branch --description "Delete a git branch with appropriate
 
     # Attempt to delete the branch
     if git branch $delete_flag "$branch_name" 2>/dev/null
-        __flo_log_success "Deleted branch: $branch_name"
+        __flo_log_success "Deleted local branch: $branch_name"
         return 0
     else
         # Branch deletion failed
         if test "$delete_flag" = -d
-            __flo_log_error "Failed to delete branch: $branch_name" "Branch has unmerged changes. Use --force to force delete, or --keep-branch to preserve"
+            __flo_log_error "Failed to delete branch: $branch_name" "Branch has unmerged changes. Use --force to force delete"
         else
             __flo_log_error "Failed to delete branch: $branch_name"
         end
@@ -82,9 +75,268 @@ function __flo_delete_branch --description "Delete a git branch with appropriate
     end
 end
 
+# Check if gh CLI is available
+function __flo_check_gh --description "Check if gh CLI is installed and authenticated"
+    if not command -q gh
+        __flo_log_error "GitHub CLI (gh) not found" "Install with: brew install gh"
+        return 1
+    end
+
+    if not gh auth status >/dev/null 2>&1
+        __flo_log_error "GitHub CLI not authenticated" "Run: gh auth login"
+        return 1
+    end
+
+    return 0
+end
+
+# Get PR number for a branch
+function __flo_get_pr_number --description "Get PR number for a branch"
+    set -l branch_name $argv[1]
+
+    if test -z "$branch_name"
+        return 1
+    end
+
+    # Try to get PR number from gh
+    set -l pr_number (gh pr view "$branch_name" --json number --jq .number 2>/dev/null)
+
+    if test $status -eq 0; and test -n "$pr_number"
+        echo "$pr_number"
+        return 0
+    else
+        return 1
+    end
+end
+
+# Check if PR checks are passing
+function __flo_check_pr_status --description "Check if PR checks are passing"
+    set -l branch_name $argv[1]
+
+    if test -z "$branch_name"
+        return 1
+    end
+
+    # Get PR status checks
+    set -l check_status (gh pr view "$branch_name" --json statusCheckRollup --jq '.statusCheckRollup[].state' 2>/dev/null)
+
+    if test $status -ne 0
+        # PR not found or gh failed
+        return 1
+    end
+
+    # Check if all checks are SUCCESS
+    for status_line in $check_status
+        if test "$status_line" != SUCCESS
+            return 1
+        end
+    end
+
+    return 0
+end
+
+# Validate worktree is clean
+function __flo_validate_clean_worktree --description "Check if worktree has no uncommitted changes"
+    set -l worktree_path $argv[1]
+
+    # Save current directory
+    set -l prev_dir (pwd)
+
+    # Change to worktree
+    cd "$worktree_path" || return 1
+
+    # Check for uncommitted changes
+    set -l status_output (git status --porcelain 2>/dev/null)
+
+    # Restore directory
+    cd "$prev_dir"
+
+    if test -n "$status_output"
+        return 1
+    end
+
+    return 0
+end
+
+# Validate branch is synced (no unpushed commits)
+function __flo_validate_branch_synced --description "Check if branch has no unpushed commits"
+    set -l worktree_path $argv[1]
+
+    # Save current directory
+    set -l prev_dir (pwd)
+
+    # Change to worktree
+    cd "$worktree_path" || return 1
+
+    # Check for unpushed commits
+    set -l unpushed (git rev-list @{u}..HEAD 2>/dev/null | wc -l | string trim)
+
+    # Restore directory
+    cd "$prev_dir"
+
+    if test $status -ne 0
+        # No upstream branch configured
+        return 0
+    end
+
+    if test "$unpushed" -gt 0
+        return 1
+    end
+
+    return 0
+end
+
+# Merge PR
+function __flo_merge_pr --description "Merge PR and delete remote branch"
+    set -l branch_name $argv[1]
+
+    if test -z "$branch_name"
+        return 1
+    end
+
+    # Check if PR exists
+    set -l pr_number (__flo_get_pr_number "$branch_name")
+
+    if test $status -ne 0
+        # No PR found - not an error, just skip
+        __flo_log_info_dim "No PR found for branch: $branch_name"
+        return 0
+    end
+
+    # Check if PR is already merged
+    set -l pr_state (gh pr view "$branch_name" --json state --jq .state 2>/dev/null)
+
+    if test "$pr_state" = MERGED
+        __flo_log_info_dim "PR #$pr_number already merged (idempotent)"
+        return 0
+    end
+
+    # Merge PR with squash and delete remote branch
+    __flo_log_info "Merging PR #$pr_number..."
+
+    if gh pr merge "$branch_name" --squash --delete-branch 2>&1
+        __flo_log_success "Merged PR #$pr_number"
+        return 0
+    else
+        __flo_log_error "Failed to merge PR #$pr_number" "Check PR status on GitHub"
+        return 1
+    end
+end
+
+# Close PR without merging
+function __flo_close_pr --description "Close PR without merging"
+    set -l branch_name $argv[1]
+
+    if test -z "$branch_name"
+        return 1
+    end
+
+    # Check if PR exists
+    set -l pr_number (__flo_get_pr_number "$branch_name")
+
+    if test $status -ne 0
+        # No PR found - not an error, just skip
+        __flo_log_info_dim "No PR found for branch: $branch_name"
+        return 0
+    end
+
+    # Check if PR is already closed
+    set -l pr_state (gh pr view "$branch_name" --json state --jq .state 2>/dev/null)
+
+    if test "$pr_state" = CLOSED
+        __flo_log_info_dim "PR #$pr_number already closed (idempotent)"
+        return 0
+    end
+
+    # Close PR
+    __flo_log_info "Closing PR #$pr_number..."
+
+    if gh pr close "$branch_name" 2>&1
+        __flo_log_success "Closed PR #$pr_number"
+        return 0
+    else
+        __flo_log_error "Failed to close PR #$pr_number" "Check PR status on GitHub"
+        return 1
+    end
+end
+
+# Sync main branch
+function __flo_sync_main --description "Sync main branch with remote"
+    set -l main_worktree $argv[1]
+
+    if test -z "$main_worktree"; or not test -d "$main_worktree"
+        return 1
+    end
+
+    # Save current directory
+    set -l prev_dir (pwd)
+
+    # Change to main worktree
+    cd "$main_worktree" || return 1
+
+    # Get current branch
+    set -l current_branch (git branch --show-current 2>/dev/null)
+
+    # Checkout main if not already on it
+    if test "$current_branch" != main
+        __flo_log_info "Switching to main branch..."
+        git checkout main >/dev/null 2>&1
+
+        if test $status -ne 0
+            cd "$prev_dir"
+            __flo_log_warn "Failed to switch to main branch"
+            return 1
+        end
+    end
+
+    # Pull latest changes
+    __flo_log_info "Syncing main branch with remote..."
+
+    if git pull origin main >/dev/null 2>&1
+        __flo_log_success "Main branch synced"
+        return 0
+    else
+        cd "$prev_dir"
+        __flo_log_warn "Failed to sync main branch" "You may need to pull manually"
+        return 1
+    end
+end
+
 function flo_end
     # Parse flags
-    argparse f/force y/yes k/keep-branch 'project=' -- $argv; or return
+    argparse f/force y/yes 'resolve=' 'ignore=' 'project=' -- $argv; or return
+
+    # Validate --resolve flag
+    set -l resolve_mode success
+    if set -q _flag_resolve
+        set resolve_mode $_flag_resolve
+        if test "$resolve_mode" != success -a "$resolve_mode" != abort
+            __flo_log_error "Invalid --resolve value: $resolve_mode" "Must be 'success' or 'abort'"
+            return 1
+        end
+    end
+
+    # Parse --ignore flags (can be multiple)
+    set -l ignore_pr false
+    set -l ignore_worktree false
+    if set -q _flag_ignore
+        for ignore_value in $_flag_ignore
+            if test "$ignore_value" = pr
+                set ignore_pr true
+            else if test "$ignore_value" = worktree
+                set ignore_worktree true
+            else
+                __flo_log_error "Invalid --ignore value: $ignore_value" "Must be 'pr' or 'worktree'"
+                return 1
+            end
+        end
+    end
+
+    # Exit early if both operations ignored
+    if test "$ignore_pr" = true -a "$ignore_worktree" = true
+        __flo_log_info "All operations ignored (--ignore pr --ignore worktree)"
+        return 0
+    end
 
     # Resolve project path if --project provided
     set -l project_path (pwd)
@@ -123,17 +375,13 @@ function flo_end
     set current_dir (basename $project_path)
     set -l arg $argv[1]
 
-    # Set force flag if provided
-    set -l force_flag ""
-    if set -q _flag_force
-        set force_flag --force
-    end
+    # Determine worktree path and branch name
+    set -l worktree_path ""
+    set -l branch_name ""
 
     # No arguments provided - try to remove current worktree
     if test -z "$arg"
-        set -l current_path (pwd)
-        # Normalize path (resolve symlinks like /tmp -> /private/tmp on macOS)
-        set current_path (realpath $current_path)
+        set current_path (realpath (pwd))
 
         # Check if current directory looks like a worktree (contains _)
         if not string match -qr _ -- (basename $current_path)
@@ -144,7 +392,6 @@ function flo_end
         # Verify it's actually a worktree using git
         set -l worktree_list (git worktree list --porcelain 2>/dev/null)
         set -l is_worktree false
-        set -l branch_name ""
         set -l found_current false
 
         for line in $worktree_list
@@ -169,121 +416,52 @@ function flo_end
             return 1
         end
 
-        # Show confirmation prompt (unless --yes flag provided)
-        if not set -q _flag_yes
-            echo ""
-            echo "  $__flo_c_dim Worktree:$__flo_c_reset $__flo_c_cyan$current_path$__flo_c_reset"
-            if test -n "$branch_name"
-                echo "  $__flo_c_dim Branch:$__flo_c_reset   $__flo_c_cyan$branch_name$__flo_c_reset"
-            end
-            echo ""
-            echo "  This will:"
-
-            # Show actions based on flags
-            if set -q _flag_force
-                echo "    $__flo_c_yellow•$__flo_c_reset Remove the worktree (force)"
-            else
-                echo "    $__flo_c_blue•$__flo_c_reset Remove the worktree"
-            end
-
-            if set -q _flag_keep_branch
-                echo "    $__flo_c_blue•$__flo_c_reset Keep the branch"
-            else if set -q _flag_force
-                echo "    $__flo_c_yellow•$__flo_c_reset Force-delete the branch"
-            else
-                echo "    $__flo_c_blue•$__flo_c_reset Delete the branch"
-            end
-
-            echo "    $__flo_c_blue•$__flo_c_reset Return to main directory"
-            echo ""
-
-            read -l -P "Continue? [y/N]: " confirm
-
-            if test "$confirm" != y -a "$confirm" != Y
-                echo Cancelled
-                return 0
-            end
-        end
-
-        # Get main repository directory
-        set -l main_worktree (__flo_get_main_worktree)
-
-        # Fallback to parent directory if detection failed
-        if test $status -ne 0
-            set main_worktree (dirname $current_path)
-        end
-
-        # Remove worktree
-        if test -n "$force_flag"
-            git worktree remove --force $current_path
-        else
-            git worktree remove $current_path
-        end
-
-        if test $status -eq 0
-            # Change to main repository directory
-            cd $main_worktree
-            __flo_log_success "Removed worktree: $current_path"
-
-            # Delete the branch unless --keep-branch is set
-            set -l force_delete false
-            if set -q _flag_force
-                set force_delete true
-            end
-            set -l keep_branch false
-            if set -q _flag_keep_branch
-                set keep_branch true
-            end
-            __flo_delete_branch "$branch_name" "$force_delete" "$keep_branch"
-        else
-            __flo_log_error "Failed to remove worktree" "Use --force to remove worktree with uncommitted changes"
-            return 1
-        end
-
-        return 0
-    end
-
-    # Strip leading # if present (e.g., #123 -> 123)
-    set arg (string replace -r '^#' '' -- $arg)
-
-    # Check if argument is an issue number (integer)
-    if string match -qr '^\d+$' -- $arg
-        # Find worktree matching the issue number pattern
-        # Issue worktrees are named: <project>_<prefix>-<number>-<slug>
-        # e.g., myproject_feat-1320-some-title
-        set pattern ../$current_dir\_*-$arg-*
-        set matching_worktrees (ls -d $pattern 2>/dev/null)
-
-        if test (count $matching_worktrees) -eq 0
-            __flo_log_error "No worktree found for issue #$arg" "Run 'flo list' to see all worktrees"
-            return 1
-        else if test (count $matching_worktrees) -gt 1
-            __flo_log_error "Multiple worktrees found for issue #$arg:"
-            for wt in $matching_worktrees
-                echo "    - $wt" >&2
-            end
-            echo "    Please specify the full branch name instead" >&2
-            return 1
-        else
-            set worktree_path $matching_worktrees[1]
-        end
-    else if string match -qr '^[^/]+_' -- $arg
-        # Worktree directory name provided (contains _ but no /)
-        # e.g., graffle_feat-1320-title -> ../graffle_feat-1320-title
-        set worktree_path "../$arg"
+        set worktree_path $current_path
     else
-        # Branch name provided - calculate path from branch name
-        set sanitized_branch (string replace -a '/' '-' $arg)
-        set worktree_path "../$current_dir"_"$sanitized_branch"
-    end
+        # Strip leading # if present (e.g., #123 -> 123)
+        set arg (string replace -r '^#' '' -- $arg)
 
-    # Remove worktree if it exists
-    if test -d $worktree_path
-        # Get branch name before removing worktree
+        # Check if argument is an issue number (integer)
+        if string match -qr '^\d+$' -- $arg
+            # Find worktree matching the issue number pattern
+            # Issue worktrees are named: <project>_<prefix>-<number>-<slug>
+            # e.g., myproject_feat-1320-some-title
+            set pattern ../$current_dir\_*-$arg-*
+            set matching_worktrees (ls -d $pattern 2>/dev/null)
+
+            if test (count $matching_worktrees) -eq 0
+                __flo_log_error "No worktree found for issue #$arg" "Run 'flo list' to see all worktrees"
+                return 1
+            else if test (count $matching_worktrees) -gt 1
+                __flo_log_error "Multiple worktrees found for issue #$arg:"
+                for wt in $matching_worktrees
+                    echo "    - $wt" >&2
+                end
+                echo "    Please specify the full branch name instead" >&2
+                return 1
+            else
+                set worktree_path $matching_worktrees[1]
+            end
+        else if string match -qr '^[^/]+_' -- $arg
+            # Worktree directory name provided (contains _ but no /)
+            # e.g., graffle_feat-1320-title -> ../graffle_feat-1320-title
+            set worktree_path "../$arg"
+        else
+            # Branch name provided - calculate path from branch name
+            set sanitized_branch (string replace -a '/' '-' $arg)
+            set worktree_path "../$current_dir"_"$sanitized_branch"
+        end
+
+        # Verify worktree exists
+        if not test -d $worktree_path
+            __flo_log_error "Worktree not found: $worktree_path" "Run 'flo list' to see all worktrees"
+            return 1
+        end
+
+        # Get branch name for the worktree
         set -l worktree_realpath (realpath $worktree_path)
         set -l worktree_list (git worktree list --porcelain 2>/dev/null)
         set -l found_worktree false
-        set -l branch_name ""
 
         for line in $worktree_list
             if string match -q "worktree *" -- $line
@@ -298,37 +476,175 @@ function flo_end
                 break
             end
         end
+    end
 
-        if test -n "$force_flag"
+    # Show confirmation prompt (unless --yes flag provided)
+    if not set -q _flag_yes
+        echo ""
+        echo "  $__flo_c_dim Worktree:$__flo_c_reset $__flo_c_cyan$worktree_path$__flo_c_reset"
+        if test -n "$branch_name"
+            echo "  $__flo_c_dim Branch:$__flo_c_reset   $__flo_c_cyan$branch_name$__flo_c_reset"
+        end
+        echo ""
+        echo "  This will:"
+
+        # Show PR operations
+        if test "$ignore_pr" = false
+            if test "$resolve_mode" = success
+                echo "    $__flo_c_blue•$__flo_c_reset Merge PR (if exists)"
+            else
+                echo "    $__flo_c_blue•$__flo_c_reset Close PR without merging (if exists)"
+            end
+        end
+
+        # Show worktree operations
+        if test "$ignore_worktree" = false
+            if set -q _flag_force
+                echo "    $__flo_c_yellow•$__flo_c_reset Remove the worktree (force)"
+            else
+                echo "    $__flo_c_blue•$__flo_c_reset Remove the worktree"
+            end
+
+            if set -q _flag_force
+                echo "    $__flo_c_yellow•$__flo_c_reset Force-delete the local branch"
+            else
+                echo "    $__flo_c_blue•$__flo_c_reset Delete the local branch"
+            end
+        end
+
+        # Show main sync
+        if test "$resolve_mode" = success -a "$ignore_pr" = false
+            echo "    $__flo_c_blue•$__flo_c_reset Sync main branch"
+        end
+
+        echo "    $__flo_c_blue•$__flo_c_reset Return to main directory"
+        echo ""
+
+        read -l -P "Continue? [y/N]: " confirm
+
+        if test "$confirm" != y -a "$confirm" != Y
+            echo Cancelled
+            return 0
+        end
+    end
+
+    # Get main repository directory
+    set -l main_worktree (__flo_get_main_worktree)
+
+    # Fallback to parent directory if detection failed
+    if test $status -ne 0
+        set main_worktree (dirname $worktree_path)
+    end
+
+    # VALIDATIONS (success mode only, unless --force)
+    if test "$resolve_mode" = success -a "$ignore_pr" = false
+        if not set -q _flag_force
+            # Check gh availability
+            __flo_check_gh
+            if test $status -ne 0
+                return 1
+            end
+
+            # Check if PR exists
+            set -l pr_number (__flo_get_pr_number "$branch_name")
+
+            if test $status -eq 0
+                # PR exists - validate checks
+                __flo_log_info "Validating PR checks..."
+
+                if not __flo_check_pr_status "$branch_name"
+                    __flo_log_error "PR checks not passing" "Use --force to bypass, or wait for checks to complete"
+                    return 1
+                end
+
+                __flo_log_success "PR checks passing"
+            end
+
+            # Validate worktree is clean
+            __flo_log_info "Validating worktree is clean..."
+
+            if not __flo_validate_clean_worktree "$worktree_path"
+                __flo_log_error "Worktree has uncommitted changes" "Commit or stash changes, or use --force to bypass"
+                return 1
+            end
+
+            __flo_log_success "Worktree clean"
+
+            # Validate branch is synced
+            __flo_log_info "Validating branch is synced..."
+
+            if not __flo_validate_branch_synced "$worktree_path"
+                __flo_log_error "Branch has unpushed commits" "Push commits, or use --force to bypass"
+                return 1
+            end
+
+            __flo_log_success "Branch synced"
+        end
+    end
+
+    # PR OPERATIONS (unless --ignore pr)
+    set -l pr_merged false
+
+    if test "$ignore_pr" = false -a -n "$branch_name"
+        # Check gh availability
+        __flo_check_gh
+        if test $status -ne 0
+            return 1
+        end
+
+        if test "$resolve_mode" = success
+            # Merge PR
+            __flo_merge_pr "$branch_name"
+
+            if test $status -eq 0
+                set pr_merged true
+            else
+                # Merge failed - exit early
+                return 1
+            end
+        else
+            # Close PR without merging
+            __flo_close_pr "$branch_name"
+
+            if test $status -ne 0
+                # Close failed - exit early
+                return 1
+            end
+        end
+    end
+
+    # WORKTREE AND BRANCH CLEANUP (unless --ignore worktree)
+    if test "$ignore_worktree" = false
+        # Remove worktree
+        if set -q _flag_force
             git worktree remove --force $worktree_path
         else
             git worktree remove $worktree_path
         end
 
         if test $status -eq 0
-            # Change to main repository directory for consistency
-            set -l main_worktree (__flo_get_main_worktree)
-            if test $status -eq 0
-                cd $main_worktree
-            end
             __flo_log_success "Removed worktree: $worktree_path"
 
-            # Delete the branch unless --keep-branch is set
+            # Delete the local branch
             set -l force_delete false
             if set -q _flag_force
                 set force_delete true
             end
-            set -l keep_branch false
-            if set -q _flag_keep_branch
-                set keep_branch true
-            end
-            __flo_delete_branch "$branch_name" "$force_delete" "$keep_branch"
+            __flo_delete_branch "$branch_name" "$force_delete"
         else
             __flo_log_error "Failed to remove worktree" "Use --force to remove worktree with uncommitted changes"
             return 1
         end
-    else
-        __flo_log_error "Worktree not found: $worktree_path" "Run 'flo list' to see all worktrees"
-        return 1
     end
+
+    # SYNC MAIN BRANCH (if PR was merged)
+    if test "$pr_merged" = true
+        __flo_sync_main "$main_worktree"
+        # Continue even if sync fails (non-critical)
+    end
+
+    # NAVIGATE TO MAIN REPO
+    cd "$main_worktree"
+
+    return 0
 end

@@ -18,7 +18,7 @@ __cli_init \
 
 # Register command dependencies
 __cli_register_deps start git gh
-__cli_register_deps end git
+__cli_register_deps end git gh
 __cli_register_deps list git
 __cli_register_deps prune git
 

@@ -3,16 +3,29 @@
 # Variables available: $TEST_DIR, $PROJECT_ROOT
 
 # Setup temp repo with git initialized
+# For PR tests, this clones from the real flo repository to share commit history
 function setup_temp_repo
     cd "$TEST_CASE_TEMP_DIR"
-    git init -q
+
+    # Clone from real flo repository to share commit history (required for PRs)
+    # Use --depth 1 for speed (we only need the latest commit for shared history)
+    git clone --depth 1 --quiet git@github.com:jasonkuhrt/flo.git . 2>/dev/null
+
+    if test $status -ne 0
+        # Fallback to init if clone fails (e.g., no network, no auth)
+        git init -q
+        git config init.defaultBranch main
+        git remote add origin git@github.com:jasonkuhrt/flo.git 2>/dev/null; or true
+        echo test >test.txt
+        git add test.txt
+        git commit -q -m "Initial commit"
+    end
+
+    # Configure git user
     git config user.email "test@example.com"
     git config user.name "Test User"
-    git config init.defaultBranch main
-    echo test >test.txt
-    git add test.txt
-    git commit -q -m "Initial commit"
-    # Ensure we're on a proper branch (not detached HEAD)
+
+    # Ensure we're on main branch
     git checkout -B main 2>/dev/null; or true
 end
 

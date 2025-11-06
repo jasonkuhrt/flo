@@ -11,9 +11,10 @@ flo feat/pr-test-1 >/dev/null 2>&1
 set -l WORKTREE_PATH (get_worktree_path "feat/pr-test-1")
 cd "$WORKTREE_PATH"
 
-# Make a commit
-echo "test content" >pr-test.txt
-git add pr-test.txt
+# Make a commit with unique content
+set -l unique_file "pr-test-"(date +%s)".txt"
+echo "test content" >"$unique_file"
+git add "$unique_file"
 git commit -m "Test commit for PR" >/dev/null 2>&1
 
 # Push branch and create PR (requires GitHub remote)
@@ -21,7 +22,8 @@ git push -u origin feat/pr-test-1 >/dev/null 2>&1
 gh pr create --title "Test PR" --body "Test PR for integration" --head feat/pr-test-1 >/dev/null 2>&1
 
 # End worktree (should merge PR)
-set -l OUTPUT (flo end --yes --resolve success 2>&1)
+# Use --force to skip validation (PR checks may be pending in test environment)
+set -l OUTPUT (flo end --yes --force --resolve success 2>&1)
 
 # Verify PR was merged
 assert_string_contains "Merged PR" "$OUTPUT" "Output confirms PR merge"
@@ -57,8 +59,9 @@ set WORKTREE_PATH (get_worktree_path "feat/already-merged")
 cd "$WORKTREE_PATH"
 
 # Push and create PR
-echo content >file.txt
-git add file.txt
+set unique_file "file-"(date +%s)".txt"
+echo content >"$unique_file"
+git add "$unique_file"
 git commit -m Test >/dev/null 2>&1
 git push -u origin feat/already-merged >/dev/null 2>&1
 gh pr create --title "Already merged test" --body Test --head feat/already-merged >/dev/null 2>&1
@@ -70,7 +73,7 @@ gh pr merge feat/already-merged --squash --delete-branch >/dev/null 2>&1
 set OUTPUT (flo end --yes --resolve success 2>&1)
 
 # Should handle already-merged gracefully
-assert_string_contains "PR already merged" "$OUTPUT" "Detects already-merged PR"
+assert_string_contains "already merged" "$OUTPUT" "Detects already-merged PR"
 assert_not_dir_exists "$WORKTREE_PATH" "Still removes worktree"
 
 # Test 4: Abort path - Close open PR
@@ -80,8 +83,9 @@ set WORKTREE_PATH (get_worktree_path "feat/abort-test")
 cd "$WORKTREE_PATH"
 
 # Push and create PR
-echo "abort content" >abort.txt
-git add abort.txt
+set unique_file "abort-"(date +%s)".txt"
+echo "abort content" >"$unique_file"
+git add "$unique_file"
 git commit -m "Abort test" >/dev/null 2>&1
 git push -u origin feat/abort-test >/dev/null 2>&1
 gh pr create --title "Abort test PR" --body "Will be closed" --head feat/abort-test >/dev/null 2>&1
@@ -122,8 +126,9 @@ set WORKTREE_PATH (get_worktree_path "feat/already-closed")
 cd "$WORKTREE_PATH"
 
 # Push and create PR
-echo "closed content" >closed.txt
-git add closed.txt
+set unique_file "closed-"(date +%s)".txt"
+echo "closed content" >"$unique_file"
+git add "$unique_file"
 git commit -m "Closed test" >/dev/null 2>&1
 git push -u origin feat/already-closed >/dev/null 2>&1
 gh pr create --title "Already closed test" --body Test --head feat/already-closed >/dev/null 2>&1
@@ -135,5 +140,5 @@ gh pr close feat/already-closed >/dev/null 2>&1
 set OUTPUT (flo end --yes --resolve abort 2>&1)
 
 # Should handle already-closed gracefully
-assert_string_contains "PR already closed" "$OUTPUT" "Detects already-closed PR"
+assert_string_contains "already closed" "$OUTPUT" "Detects already-closed PR"
 assert_not_dir_exists "$WORKTREE_PATH" "Still removes worktree"

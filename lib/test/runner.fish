@@ -120,12 +120,29 @@ function run_tests
     for test_file in (find "$cases_dir" -name "*.fish" -type f | sort)
         # Generate test title from path (e.g., "flo/branch-mode.fish" -> "Flo > Branch Mode")
         set -l relative_path (string replace "$cases_dir/" "" "$test_file")
-        set -l test_name (echo "$relative_path" | sed 's/\.fish$//' | tr '/' ' > ' | tr '-' ' ' | awk '{for(i=1;i<=NF;i++) if($i!~/>/) $i=toupper(substr($i,1,1)) tolower(substr($i,2)); else $i=$i}1')
+        # Use Fish string functions for portability (BSD awk doesn't handle the original awk)
+        set -l test_name_parts (string replace '.fish' '' $relative_path | string split '/')
+        set -l test_name_formatted
+        for part in $test_name_parts
+            # Split on hyphens and title case each word
+            set -l words (string split '-' $part)
+            set -l titled_words
+            for word in $words
+                set -l first (string sub -l 1 $word | string upper)
+                set -l rest (string sub -s 2 $word)
+                set -a titled_words "$first$rest"
+            end
+            set -a test_name_formatted (string join ' ' $titled_words)
+        end
+        set -l test_name (string join ' > ' $test_name_formatted)
 
         # Filter tests by pattern if TEST_FILE_FILTER is set
         if test -n "$TEST_FILE_FILTER"
+            # Normalize both for matching: lowercase, replace hyphens with spaces
+            set -l norm_test_name (string lower (string replace -a '-' ' ' $test_name))
+            set -l norm_filter (string lower (string replace -a '-' ' ' $TEST_FILE_FILTER))
             # Case-insensitive substring match
-            if not echo "$test_name" | grep -qi "$TEST_FILE_FILTER"
+            if not string match -q "*$norm_filter*" $norm_test_name
                 continue
             end
         end
@@ -139,8 +156,11 @@ function run_tests
 
             if test -n "$tags_line"
                 # Step 2: Validation - ensure no code before tags
-                # Get all lines before (not including) the tags line
-                set -l before_tags (head -n 20 "$test_file" | sed '/^tags\s/Q' | grep -vE '^\s*(#|$)')
+                # Get line number where tags appears
+                set -l tags_line_num (grep -n '^tags\s' "$test_file" | head -1 | cut -d: -f1)
+                # Get all lines before (not including) the tags line, filter out comments/blank
+                set -l before_line (math $tags_line_num - 1)
+                set -l before_tags (head -n $before_line "$test_file" | grep -vE '^\s*(#|$)')
 
                 if test (count $before_tags) -gt 0
                     echo -e "$RED""Error: Code found before 'tags' in $test_file""$NC"
@@ -149,14 +169,17 @@ function run_tests
                 end
 
                 # Step 3: Controlled execution - extract tags safely
-                begin
+                # Source file in subprocess where tags() can exit to stop execution
+                set -l tags_output (fish -c "
                     function tags
-                        set -g TEST_CURRENT_TAGS $argv
-                        return 0
+                        echo \$argv
+                        exit 0  # Exit subprocess when tags called
                     end
-
-                    source "$test_file" 2>/dev/null
-                    set test_tags $TEST_CURRENT_TAGS
+                    source '$test_file' 2>/dev/null
+                ")
+                # Split the output into array
+                if test -n "$tags_output"
+                    set test_tags (string split ' ' -- $tags_output)
                 end
             end
 

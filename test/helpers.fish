@@ -5,11 +5,14 @@
 # Setup temp repo with git initialized
 # For PR tests, this clones from the real flo repository to share commit history
 function setup_temp_repo
+    # Clean temp dir first (before_each hook may have created spy directories)
+    rm -rf "$TEST_CASE_TEMP_DIR"
+    mkdir -p "$TEST_CASE_TEMP_DIR"
     cd "$TEST_CASE_TEMP_DIR"
 
     # Clone from real flo repository to share commit history (required for PRs)
-    # Use --depth 1 for speed (we only need the latest commit for shared history)
-    git clone --depth 1 --quiet git@github.com:jasonkuhrt/flo.git . 2>/dev/null
+    # MUST use full clone (not --depth 1) so feature branches share ancestry with remote main
+    git clone --quiet git@github.com:jasonkuhrt/flo.git . 2>/dev/null
 
     if test $status -ne 0
         # Fallback to init if clone fails (e.g., no network, no auth)
@@ -26,7 +29,15 @@ function setup_temp_repo
     git config user.name "Test User"
 
     # Ensure we're on main branch
-    git checkout -B main 2>/dev/null; or true
+    # IMPORTANT: Use plain checkout (not -B) to preserve cloned branch history
+    # -B would reset main and destroy shared ancestry with origin/main
+    git checkout main 2>/dev/null; or git checkout -b main 2>/dev/null; or true
+
+    # CRITICAL: Checkout a test branch (not main) to avoid Git worktree conflicts
+    # When gh pr merge runs, it needs to checkout main internally.
+    # Git won't allow main to be checked out in multiple worktrees simultaneously.
+    # By staying on test-runner branch, we free up main for gh pr merge.
+    git checkout -B test-runner 2>/dev/null; or true
 end
 
 # Change to temp repo directory
@@ -47,6 +58,14 @@ function find_worktree
     set -l pattern $argv[1]
     set -l repo_prefix (basename "$TEST_CASE_TEMP_DIR")
     find (dirname "$TEST_CASE_TEMP_DIR") -maxdepth 1 -type d -name "$repo_prefix"_"*$pattern*" 2>/dev/null | head -1
+end
+
+# Strip ANSI escape codes from string
+# Usage: strip_ansi "$string"
+function strip_ansi
+    set -l input $argv[1]
+    # Remove ANSI escape sequences (colors, formatting)
+    string replace -ra '\x1b\[[0-9;]*[mGKHF]' '' "$input"
 end
 
 # Load flo CLI framework once - defines the flo function

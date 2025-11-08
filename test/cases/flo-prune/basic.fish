@@ -1,4 +1,4 @@
 setup_temp_repo
 
-flo prune >/dev/null 2>&1
+run flo prune
 assert_success "flo prune executed without error"

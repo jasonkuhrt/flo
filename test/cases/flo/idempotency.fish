@@ -9,4 +9,4 @@ cd_temp_repo
 set -g OUTPUT (flo feat/idempotent 2>&1)
 
 # Idempotency check - running flo again should succeed without error
-assert_not_string_contains Error "$OUTPUT" "No error on existing worktree"
+assert_not_string_contains Error "$RUN_OUTPUT" "No error on existing worktree"

@@ -10,26 +10,27 @@ set -l WORKTREE_PATH (get_worktree_path "feat/pending-checks")
 cd "$WORKTREE_PATH"
 
 # Push and create PR
-echo content >test.txt
-git add test.txt
+set -l unique_file "pending-checks-"(date +%s)".txt"
+echo content >"$unique_file"
+git add "$unique_file"
 git commit -m "Test with pending checks" >/dev/null 2>&1
-git push -u origin feat/pending-checks >/dev/null 2>&1
+git push -u origin feat/pending-checks --force >/dev/null 2>&1
 gh pr create --title "Pending checks test" --body Test --head feat/pending-checks >/dev/null 2>&1
 
 # Try to end immediately (checks likely pending, not SUCCESS)
-set -l OUTPUT (flo end --yes --resolve success 2>&1)
+run flo end --yes --resolve success
 set -l EXIT_CODE $status
 
 # Should block on pending checks (same as failing checks)
 test $EXIT_CODE -ne 0
 assert_success "Command blocks on pending checks"
-assert_string_contains checks "$OUTPUT" "Shows message about PR checks"
+assert_string_contains checks "$RUN_OUTPUT" "Shows message about PR checks"
 
 # Worktree should NOT be removed
 assert_dir_exists "$WORKTREE_PATH" "Worktree preserved when checks pending"
 
 # Can bypass with --force
-set OUTPUT (flo end --yes --force --resolve success 2>&1)
+run flo end --yes --force --resolve success
 set EXIT_CODE $status
 
 test $EXIT_CODE -eq 0
@@ -37,15 +38,16 @@ assert_success "Can bypass pending checks with --force"
 
 # Test 2: PR has merge conflicts
 cd_temp_repo
-flo feat/merge-conflict >/dev/null 2>&1
+run flo feat/merge-conflict
 set WORKTREE_PATH (get_worktree_path "feat/merge-conflict")
 cd "$WORKTREE_PATH"
 
 # Create a commit
-echo "feature content" >conflict.txt
-git add conflict.txt
+set -l unique_file "merge-conflict-"(date +%s)".txt"
+echo "feature content" >"$unique_file"
+git add "$unique_file"
 git commit -m "Feature commit" >/dev/null 2>&1
-git push -u origin feat/merge-conflict >/dev/null 2>&1
+git push -u origin feat/merge-conflict --force >/dev/null 2>&1
 
 # Create PR
 gh pr create --title "Conflict test" --body Test --head feat/merge-conflict >/dev/null 2>&1
@@ -60,13 +62,13 @@ git push origin main >/dev/null 2>&1
 
 # Try to merge (gh will handle the conflict error)
 cd "$WORKTREE_PATH"
-set OUTPUT (flo end --yes --force --resolve success 2>&1)
+run flo end --yes --force --resolve success
 set EXIT_CODE $status
 
 # Should fail with merge conflict error from gh
 test $EXIT_CODE -ne 0
 assert_success "Command fails when PR has merge conflicts"
-assert_string_contains conflict "$OUTPUT" "Shows merge conflict error"
+assert_string_contains conflict "$RUN_OUTPUT" "Shows merge conflict error"
 
 # Worktree should NOT be removed (operation failed)
 assert_dir_exists "$WORKTREE_PATH" "Worktree preserved when merge fails"
@@ -74,6 +76,7 @@ assert_dir_exists "$WORKTREE_PATH" "Worktree preserved when merge fails"
 # Cleanup
 cd_temp_repo
 git reset --hard HEAD~1 >/dev/null 2>&1
+git push origin main --force >/dev/null 2>&1 # CRITICAL: Reset remote to undo polluting push
 gh pr close feat/merge-conflict >/dev/null 2>&1
 git worktree remove --force "$WORKTREE_PATH" 2>/dev/null
 
@@ -84,16 +87,17 @@ set WORKTREE_PATH (get_worktree_path "feat/remote-deleted")
 cd "$WORKTREE_PATH"
 
 # Push branch
-echo content >test.txt
-git add test.txt
+set -l unique_file "remote-deleted-"(date +%s)".txt"
+echo content >"$unique_file"
+git add "$unique_file"
 git commit -m Test >/dev/null 2>&1
-git push -u origin feat/remote-deleted >/dev/null 2>&1
+git push -u origin feat/remote-deleted --force >/dev/null 2>&1
 
 # Manually delete remote branch
 git push origin --delete feat/remote-deleted >/dev/null 2>&1
 
 # End worktree (should handle gracefully)
-set OUTPUT (flo end --yes --resolve success 2>&1)
+run flo end --yes --resolve success
 set EXIT_CODE $status
 
 # Should succeed (local cleanup works even if remote already gone)
@@ -117,13 +121,14 @@ if test -n "$WORKTREE_PATH"; and test -d "$WORKTREE_PATH"
     cd "$WORKTREE_PATH"
 
     # Make a commit
-    echo content >test.txt
-    git add test.txt
+    set -l unique_file "issue-42-"(date +%s)".txt"
+    echo content >"$unique_file"
+    git add "$unique_file"
     git commit -m Test >/dev/null 2>&1
 
     # Remove by issue number
     cd_temp_repo
-    set OUTPUT (flo end 42 --yes --ignore pr 2>&1)
+    run flo end 42 --yes --ignore pr
 
     # Should remove the worktree
     assert_not_dir_exists "$WORKTREE_PATH" "Can remove worktree by issue number"
@@ -136,7 +141,7 @@ set WORKTREE_PATH (get_worktree_path "feat/remove-by-name")
 
 # Remove by branch name from main repo
 cd_temp_repo
-set OUTPUT (flo end feat/remove-by-name --yes --ignore pr 2>&1)
+run flo end feat/remove-by-name --yes --ignore pr
 
 # Should remove the worktree
 assert_not_dir_exists "$WORKTREE_PATH" "Can remove worktree by branch name"
@@ -151,18 +156,18 @@ set -l WORKTREE_DIR (basename "$WORKTREE_PATH")
 
 # Remove by directory name
 cd_temp_repo
-set OUTPUT (flo end "$WORKTREE_DIR" --yes --ignore pr 2>&1)
+run flo end "$WORKTREE_DIR" --yes --ignore pr
 
 # Should remove the worktree
 assert_not_dir_exists "$WORKTREE_PATH" "Can remove worktree by directory name"
 
 # Test 7: Multiple worktrees for same feature (edge case)
 cd_temp_repo
-flo feat/multi-1 >/dev/null 2>&1
+run flo feat/multi-1
 set -l WORKTREE_1 (get_worktree_path "feat/multi-1")
 
 # Create another worktree with similar name
-flo feat/multi-1-variant >/dev/null 2>&1
+run flo feat/multi-1-variant
 set -l WORKTREE_2 (get_worktree_path "feat/multi-1-variant")
 
 # Both should exist
@@ -178,7 +183,7 @@ assert_not_dir_exists "$WORKTREE_1" "First worktree removed"
 assert_dir_exists "$WORKTREE_2" "Second worktree unaffected"
 
 # Cleanup
-flo end feat/multi-1-variant --yes --ignore pr >/dev/null 2>&1
+run flo end feat/multi-1-variant --yes --ignore pr
 
 # Test 8: No GitHub remote configured
 cd_temp_repo
@@ -187,20 +192,20 @@ cd_temp_repo
 set -l ORIGIN_URL (git remote get-url origin 2>/dev/null)
 git remote remove origin 2>/dev/null
 
-flo feat/no-remote >/dev/null 2>&1
+run flo feat/no-remote
 set WORKTREE_PATH (get_worktree_path "feat/no-remote")
 cd "$WORKTREE_PATH"
 
 # Try to end (should handle missing remote gracefully)
-set OUTPUT (flo end --yes --resolve success 2>&1)
+run flo end --yes --resolve success
 set EXIT_CODE $status
 
 # Should either skip PR operations or show clear error
 if test $EXIT_CODE -ne 0
-    assert_string_contains remote "$OUTPUT" "Shows error about missing remote"
+    assert_string_contains remote "$RUN_OUTPUT" "Shows error about missing remote"
 else
     # If it succeeds, it should skip PR operations
-    assert_not_string_contains "Merged PR" "$OUTPUT" "Skips PR operations without remote"
+    assert_not_string_contains "Merged PR" "$RUN_OUTPUT" "Skips PR operations without remote"
 end
 
 # Restore origin remote
@@ -215,17 +220,18 @@ git worktree remove --force "$WORKTREE_PATH" 2>/dev/null
 # Test 9: gh CLI not authenticated
 # Note: This test might fail if gh is authenticated, but we can test the error path
 cd_temp_repo
-flo feat/no-auth >/dev/null 2>&1
+run flo feat/no-auth
 set WORKTREE_PATH (get_worktree_path "feat/no-auth")
 cd "$WORKTREE_PATH"
 
-echo content >test.txt
-git add test.txt
+set -l unique_file "no-auth-"(date +%s)".txt"
+echo content >"$unique_file"
+git add "$unique_file"
 git commit -m Test >/dev/null 2>&1
 
 # Try to end (might fail if gh not authed)
 # We can't actually test this reliably, so just verify the error handling exists
-set OUTPUT (flo end --yes --resolve success 2>&1)
+run flo end --yes --resolve success
 
 # If it fails, should show helpful error about gh auth
 # If it succeeds, gh is authenticated and working
@@ -244,7 +250,7 @@ git worktree add --detach /tmp/flo-detached-test "$COMMIT" >/dev/null 2>&1
 cd /tmp/flo-detached-test
 
 # Try to remove (should handle gracefully)
-set OUTPUT (flo end --yes --ignore pr 2>&1)
+run flo end --yes --ignore pr
 
 # Should remove worktree but skip branch deletion (no branch)
 assert_not_dir_exists /tmp/flo-detached-test "Removes detached HEAD worktree"

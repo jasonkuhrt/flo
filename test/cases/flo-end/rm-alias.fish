@@ -2,7 +2,7 @@
 
 setup_temp_repo
 
-flo feat/rm-alias-test >/dev/null 2>&1
+run flo feat/rm-alias-test
 
 # Use rm alias (not end) to remove worktree
 flo rm feat/rm-alias-test >/dev/null 2>&1

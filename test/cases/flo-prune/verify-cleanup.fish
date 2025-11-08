@@ -1,7 +1,7 @@
 setup_temp_repo
 
 # Create a worktree
-flo feat/prune-test >/dev/null 2>&1
+run flo feat/prune-test
 set -l WORKTREE_PATH (get_worktree_path "feat/prune-test")
 
 # Verify it exists in git metadata
@@ -14,11 +14,11 @@ rm -rf "$WORKTREE_PATH"
 
 # Verify git still thinks it exists (orphaned metadata)
 set -g OUTPUT (git worktree list 2>&1; or true)
-assert_string_contains prune-test "$OUTPUT" "Git metadata still exists after manual deletion"
+assert_string_contains prune-test "$RUN_OUTPUT" "Git metadata still exists after manual deletion"
 
 # Run flo prune to clean up
 flo prune >/dev/null 2>&1
 
 # Verify git metadata is cleaned up
 set -g OUTPUT (git worktree list 2>&1; or true)
-assert_not_string_contains prune-test "$OUTPUT" "Git metadata cleaned up by prune"
+assert_not_string_contains prune-test "$RUN_OUTPUT" "Git metadata cleaned up by prune"

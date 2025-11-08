@@ -187,11 +187,17 @@ function __flo_validate_branch_synced --description "Check if branch has no unpu
 end
 
 # Merge PR
-function __flo_merge_pr --description "Merge PR and delete remote branch"
+function __flo_merge_pr --description "Merge PR and optionally delete remote branch"
     set -l branch_name $argv[1]
+    set -l delete_branch $argv[2] # "true" or "false"
 
     if test -z "$branch_name"
         return 1
+    end
+
+    # Default to deleting branch if not specified
+    if test -z "$delete_branch"
+        set delete_branch true
     end
 
     # Check if PR exists
@@ -211,10 +217,16 @@ function __flo_merge_pr --description "Merge PR and delete remote branch"
         return 0
     end
 
-    # Merge PR with squash and delete remote branch
+    # Merge PR with squash, optionally delete remote branch
     __flo_log_info "Merging PR #$pr_number..."
 
-    if gh pr merge "$branch_name" --squash --delete-branch 2>&1
+    if test "$delete_branch" = true
+        gh pr merge "$branch_name" --squash --delete-branch 2>&1
+    else
+        gh pr merge "$branch_name" --squash 2>&1
+    end
+
+    if test $status -eq 0
         __flo_log_success "Merged PR #$pr_number"
         return 0
     else
@@ -251,7 +263,8 @@ function __flo_close_pr --description "Close PR without merging"
     # Close PR
     __flo_log_info "Closing PR #$pr_number..."
 
-    if gh pr close "$branch_name" 2>&1
+    gh pr close "$branch_name" 2>&1
+    if test $status -eq 0
         __flo_log_success "Closed PR #$pr_number"
         return 0
     else
@@ -304,7 +317,7 @@ end
 
 function flo_end
     # Parse flags
-    argparse f/force y/yes 'resolve=' 'ignore=' 'project=' -- $argv; or return
+    argparse f/force y/yes 'resolve=' 'ignore=+' 'project=' -- $argv; or return
 
     # Validate --resolve flag
     set -l resolve_mode success
@@ -594,7 +607,12 @@ function flo_end
 
         if test "$resolve_mode" = success
             # Merge PR
-            __flo_merge_pr "$branch_name"
+            # Only delete remote branch if we're also removing local worktree/branch
+            set -l delete_branch_flag false
+            if test "$ignore_worktree" = false
+                set delete_branch_flag true
+            end
+            __flo_merge_pr "$branch_name" "$delete_branch_flag"
 
             if test $status -eq 0
                 set pr_merged true

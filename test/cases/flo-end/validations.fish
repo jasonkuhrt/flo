@@ -5,15 +5,16 @@ setup_temp_repo
 
 # Test 1: Block on failing PR checks (success mode)
 cd_temp_repo
-flo feat/failing-checks >/dev/null 2>&1
+flo feat/failing-checks
 set -l WORKTREE_PATH (get_worktree_path "feat/failing-checks")
 cd "$WORKTREE_PATH"
 
 # Push and create PR
-echo content >test.txt
-git add test.txt
+set -l unique_file "failing-checks-"(date +%s)".txt"
+echo content >"$unique_file"
+git add "$unique_file"
 git commit -m "Test with failing checks" >/dev/null 2>&1
-git push -u origin feat/failing-checks >/dev/null 2>&1
+git push -u origin feat/failing-checks --force >/dev/null 2>&1
 gh pr create --title "Failing checks test" --body Test --head feat/failing-checks >/dev/null 2>&1
 
 # Wait for checks to start (they will fail or be pending)
@@ -21,11 +22,11 @@ gh pr create --title "Failing checks test" --body Test --head feat/failing-check
 # For testing, we'll simulate by checking for non-SUCCESS status
 
 # Try to end (should block)
-set -l OUTPUT (flo end --yes --resolve success 2>&1)
+run flo end --yes --resolve success
 set -l EXIT_CODE $status
 
 # Should fail with validation error
-assert_string_contains "PR checks" "$OUTPUT" "Shows PR checks validation error"
+assert_string_contains "PR checks" "$RUN_OUTPUT" "Shows PR checks validation error"
 test $EXIT_CODE -ne 0
 assert_success "Command exits with error when checks not passing"
 
@@ -39,7 +40,7 @@ git worktree remove --force "$WORKTREE_PATH" 2>/dev/null
 
 # Test 2: Block on uncommitted changes (success mode)
 cd_temp_repo
-flo feat/dirty-worktree >/dev/null 2>&1
+run flo feat/dirty-worktree
 set WORKTREE_PATH (get_worktree_path "feat/dirty-worktree")
 cd "$WORKTREE_PATH"
 
@@ -47,11 +48,11 @@ cd "$WORKTREE_PATH"
 echo uncommitted >dirty.txt
 
 # Try to end (should block)
-set OUTPUT (flo end --yes --resolve success 2>&1)
+run flo end --yes --resolve success
 set EXIT_CODE $status
 
 # Should fail with validation error
-assert_string_contains "uncommitted changes" "$OUTPUT" "Shows dirty worktree validation error"
+assert_string_contains "uncommitted changes" "$RUN_OUTPUT" "Shows dirty worktree validation error"
 test $EXIT_CODE -ne 0
 assert_success "Command exits with error when worktree dirty"
 
@@ -69,7 +70,7 @@ set WORKTREE_PATH (get_worktree_path "feat/unpushed")
 cd "$WORKTREE_PATH"
 
 # Push to set up tracking
-git push -u origin feat/unpushed >/dev/null 2>&1
+git push -u origin feat/unpushed --force >/dev/null 2>&1
 
 # Create a local commit (not pushed)
 echo unpushed >unpushed.txt
@@ -77,11 +78,11 @@ git add unpushed.txt
 git commit -m "Unpushed commit" >/dev/null 2>&1
 
 # Try to end (should block)
-set OUTPUT (flo end --yes --resolve success 2>&1)
+run flo end --yes --resolve success
 set EXIT_CODE $status
 
 # Should fail with validation error
-assert_string_contains "unpushed commits" "$OUTPUT" "Shows unpushed commits validation error"
+assert_string_contains "unpushed commits" "$RUN_OUTPUT" "Shows unpushed commits validation error"
 test $EXIT_CODE -ne 0
 assert_success "Command exits with error when commits unpushed"
 
@@ -95,7 +96,7 @@ git push origin --delete feat/unpushed 2>/dev/null
 
 # Test 4: --force bypasses all validations
 cd_temp_repo
-flo feat/force-bypass >/dev/null 2>&1
+run flo feat/force-bypass
 set WORKTREE_PATH (get_worktree_path "feat/force-bypass")
 cd "$WORKTREE_PATH"
 
@@ -106,7 +107,7 @@ echo uncommitted >dirty.txt
 echo committed >committed.txt
 git add committed.txt
 git commit -m Committed >/dev/null 2>&1
-git push -u origin feat/force-bypass >/dev/null 2>&1
+git push -u origin feat/force-bypass --force >/dev/null 2>&1
 
 # Create unpushed commit
 echo unpushed >unpushed.txt
@@ -114,7 +115,7 @@ git add unpushed.txt
 git commit -m Unpushed >/dev/null 2>&1
 
 # End with --force (should bypass validations)
-set OUTPUT (flo end --yes --force --resolve success 2>&1)
+run flo end --yes --force --resolve success
 set EXIT_CODE $status
 
 # Should succeed despite dirty state and unpushed commits
@@ -130,16 +131,17 @@ git push origin --delete feat/force-bypass 2>/dev/null
 
 # Test 5: Abort mode has no validations
 cd_temp_repo
-flo feat/abort-no-validation >/dev/null 2>&1
+run flo feat/abort-no-validation
 set WORKTREE_PATH (get_worktree_path "feat/abort-no-validation")
 cd "$WORKTREE_PATH"
 
 # Create dirty worktree with unpushed commits
 echo uncommitted >dirty.txt
-echo committed >committed.txt
-git add committed.txt
+set -l unique_file "abort-no-validation-"(date +%s)".txt"
+echo committed >"$unique_file"
+git add "$unique_file"
 git commit -m "Test commit" >/dev/null 2>&1
-git push -u origin feat/abort-no-validation >/dev/null 2>&1
+git push -u origin feat/abort-no-validation --force >/dev/null 2>&1
 echo unpushed >unpushed.txt
 git add unpushed.txt
 git commit -m Unpushed >/dev/null 2>&1
@@ -147,8 +149,11 @@ git commit -m Unpushed >/dev/null 2>&1
 # Create PR
 gh pr create --title "Abort validation test" --body Test --head feat/abort-no-validation >/dev/null 2>&1
 
+# Capture PR number before branch deletion
+set -l PR_NUMBER (gh pr view feat/abort-no-validation --json number --jq .number 2>/dev/null)
+
 # End with abort (should succeed despite dirty state)
-set OUTPUT (flo end --yes --resolve abort 2>&1)
+run flo end --yes --resolve abort
 set EXIT_CODE $status
 
 # Should succeed without validation errors
@@ -156,14 +161,14 @@ test $EXIT_CODE -eq 0
 assert_success "Abort mode succeeds despite dirty state and unpushed commits"
 
 # Should not show validation errors
-assert_not_string_contains "uncommitted changes" "$OUTPUT" "No validation error for dirty worktree in abort mode"
-assert_not_string_contains "unpushed commits" "$OUTPUT" "No validation error for unpushed commits in abort mode"
+assert_not_string_contains "uncommitted changes" "$RUN_OUTPUT" "No validation error for dirty worktree in abort mode"
+assert_not_string_contains "unpushed commits" "$RUN_OUTPUT" "No validation error for unpushed commits in abort mode"
 
 # Worktree should be removed
 assert_not_dir_exists "$WORKTREE_PATH" "Worktree removed in abort mode"
 
-# PR should be closed
-set -l PR_STATE (gh pr view feat/abort-no-validation --json state --jq .state 2>/dev/null)
+# PR should be closed (query by number, not branch name)
+set -l PR_STATE (gh pr view "$PR_NUMBER" --json state --jq .state 2>/dev/null)
 assert_string_equals CLOSED "$PR_STATE" "PR closed in abort mode"
 
 # Cleanup

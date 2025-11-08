@@ -17,8 +17,8 @@ set -l SECOND_WORKTREE (get_worktree_path "$SECOND_BRANCH")
 set -l FLO_OUTPUT (flo "$SECOND_BRANCH" 2>&1)
 
 # Verify flo detected the worktree and showed appropriate message
-assert_string_contains "Detected flo worktree" "$FLO_OUTPUT" "Should show message about detecting worktree"
-assert_string_contains "switching to main project" "$FLO_OUTPUT" "Should show message about switching to main"
+assert_string_contains "Detected flo worktree" "$RUN_OUTPUT" "Should show message about detecting worktree"
+assert_string_contains "switching to main project" "$RUN_OUTPUT" "Should show message about switching to main"
 
 # Verify the second worktree was created with correct path
 assert_dir_exists "$SECOND_WORKTREE" "Second worktree should be created at correct path"

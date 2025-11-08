@@ -5,7 +5,7 @@ spy_on zed
 spy_on claude
 
 # Test 1: Default behavior (no --claude flag)
-flo feat/test-zed-default >/dev/null 2>&1
+run flo feat/test-zed-default
 
 spy_assert_called zed
 spy_assert_called_not claude

@@ -1,17 +1,17 @@
 # Test subcommand help output
 
 # Test list command help
-set -g LIST_HELP (flo list --help 2>&1)
-assert_snapshot list-help "$LIST_HELP"
+run flo list --help
+assert_snapshot list-help "$RUN_OUTPUT"
 
 # Test end command help
-set -g END_HELP (flo end --help 2>&1)
-assert_snapshot end-help "$END_HELP"
+run flo end --help
+assert_snapshot end-help "$RUN_OUTPUT"
 
 # Test rm alias help (should show same as end)
-set -g RM_HELP (flo rm --help 2>&1)
-assert_snapshot rm-help "$RM_HELP"
+run flo rm --help
+assert_snapshot rm-help "$RUN_OUTPUT"
 
 # Test prune command help
-set -g PRUNE_HELP (flo prune --help 2>&1)
-assert_snapshot prune-help "$PRUNE_HELP"
+run flo prune --help
+assert_snapshot prune-help "$RUN_OUTPUT"

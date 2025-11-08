@@ -15,17 +15,18 @@ set -l WORKTREE_PATH (get_worktree_path "feat/sync-test-1")
 cd "$WORKTREE_PATH"
 
 # Push and create/merge PR
-echo content >test.txt
-git add test.txt
+set -l unique_file "sync-test-1-"(date +%s)".txt"
+echo content >"$unique_file"
+git add "$unique_file"
 git commit -m "Test commit" >/dev/null 2>&1
-git push -u origin feat/sync-test-1 >/dev/null 2>&1
+git push -u origin feat/sync-test-1 --force >/dev/null 2>&1
 gh pr create --title "Sync test PR" --body Test --head feat/sync-test-1 >/dev/null 2>&1
 
 # End worktree (should merge PR and sync main)
-set -l OUTPUT (flo end --yes --resolve success 2>&1)
+run flo end --yes --resolve success
 
 # Should mention syncing main
-assert_string_contains Sync "$OUTPUT" "Output mentions syncing main branch"
+assert_string_contains Sync "$RUN_OUTPUT" "Output mentions syncing main branch"
 
 # Should be on main branch after operation
 cd_temp_repo
@@ -43,10 +44,11 @@ set WORKTREE_PATH (get_worktree_path "feat/sync-fail-test")
 cd "$WORKTREE_PATH"
 
 # Push and create PR
-echo content >test.txt
-git add test.txt
+set -l unique_file "sync-fail-test-"(date +%s)".txt"
+echo content >"$unique_file"
+git add "$unique_file"
 git commit -m Test >/dev/null 2>&1
-git push -u origin feat/sync-fail-test >/dev/null 2>&1
+git push -u origin feat/sync-fail-test --force >/dev/null 2>&1
 gh pr create --title "Sync fail test" --body Test --head feat/sync-fail-test >/dev/null 2>&1
 
 # Go to main and create a conflicting commit
@@ -57,7 +59,7 @@ git commit -m "Conflicting commit" >/dev/null 2>&1
 
 # Now end the worktree (sync might fail due to local commits)
 cd "$WORKTREE_PATH"
-set OUTPUT (flo end --yes --resolve success 2>&1)
+run flo end --yes --resolve success
 set -l EXIT_CODE $status
 
 # Command should succeed even if sync fails
@@ -65,7 +67,7 @@ test $EXIT_CODE -eq 0
 assert_success "Command succeeds even when main sync fails"
 
 # Should show warning about sync failure
-assert_string_contains sync "$OUTPUT" "Shows message about main sync"
+assert_string_contains sync "$RUN_OUTPUT" "Shows message about main sync"
 
 # Worktree should still be removed (cleanup succeeded)
 assert_not_dir_exists "$WORKTREE_PATH" "Worktree removed despite sync failure"
@@ -80,15 +82,16 @@ set WORKTREE_PATH (get_worktree_path "feat/ignore-pr-sync")
 cd "$WORKTREE_PATH"
 
 # Create changes but don't create PR
-echo content >test.txt
-git add test.txt
+set -l unique_file "ignore-pr-sync-"(date +%s)".txt"
+echo content >"$unique_file"
+git add "$unique_file"
 git commit -m Test >/dev/null 2>&1
 
 # End with --ignore pr
-set OUTPUT (flo end --yes --ignore pr --resolve success 2>&1)
+run flo end --yes --ignore pr --resolve success
 
 # Should not sync main (because no PR was touched)
-assert_not_string_contains Sync "$OUTPUT" "Does not sync main with --ignore pr"
+assert_not_string_contains Sync "$RUN_OUTPUT" "Does not sync main with --ignore pr"
 
 # Cleanup
 cd_temp_repo
@@ -101,18 +104,20 @@ set WORKTREE_PATH (get_worktree_path "feat/abort-no-sync")
 cd "$WORKTREE_PATH"
 
 # Push and create PR
-echo content >test.txt
-git add test.txt
+set -l unique_file "abort-no-sync-"(date +%s)".txt"
+echo content >"$unique_file"
+git add "$unique_file"
 git commit -m Test >/dev/null 2>&1
-git push -u origin feat/abort-no-sync >/dev/null 2>&1
+git push -u origin feat/abort-no-sync --force >/dev/null 2>&1
 gh pr create --title "Abort no sync test" --body Test --head feat/abort-no-sync >/dev/null 2>&1
 
 # End with abort
-set OUTPUT (flo end --yes --resolve abort 2>&1)
+run flo end --yes --resolve abort
 
 # Should close PR but not sync main
-assert_string_contains "Closed PR" "$OUTPUT" "Closes PR in abort mode"
-assert_not_string_contains Sync "$OUTPUT" "Does not sync main in abort mode"
+set -l clean_output (strip_ansi "$RUN_OUTPUT")
+assert_string_contains "Closed PR" "$clean_output" "Closes PR in abort mode"
+assert_not_string_contains Sync "$clean_output" "Does not sync main in abort mode"
 
 # Test 5: Sync switches from another branch to main
 cd_temp_repo
@@ -125,14 +130,15 @@ flo feat/switch-to-main >/dev/null 2>&1
 set WORKTREE_PATH (get_worktree_path "feat/switch-to-main")
 cd "$WORKTREE_PATH"
 
-echo content >test.txt
-git add test.txt
+set -l unique_file "switch-to-main-"(date +%s)".txt"
+echo content >"$unique_file"
+git add "$unique_file"
 git commit -m Test >/dev/null 2>&1
-git push -u origin feat/switch-to-main >/dev/null 2>&1
+git push -u origin feat/switch-to-main --force >/dev/null 2>&1
 gh pr create --title "Switch to main test" --body Test --head feat/switch-to-main >/dev/null 2>&1
 
 # End (should switch from other-branch to main)
-set OUTPUT (flo end --yes --resolve success 2>&1)
+run flo end --yes --resolve success
 
 # Should be on main after operation
 cd_temp_repo
@@ -151,17 +157,18 @@ flo feat/already-on-main >/dev/null 2>&1
 set WORKTREE_PATH (get_worktree_path "feat/already-on-main")
 cd "$WORKTREE_PATH"
 
-echo content >test.txt
-git add test.txt
+set -l unique_file "already-on-main-"(date +%s)".txt"
+echo content >"$unique_file"
+git add "$unique_file"
 git commit -m Test >/dev/null 2>&1
-git push -u origin feat/already-on-main >/dev/null 2>&1
+git push -u origin feat/already-on-main --force >/dev/null 2>&1
 gh pr create --title "Already on main test" --body Test --head feat/already-on-main >/dev/null 2>&1
 
 # End (main repo already on main)
-set OUTPUT (flo end --yes --resolve success 2>&1)
+run flo end --yes --resolve success
 
 # Should still sync (pull latest)
-assert_string_contains Sync "$OUTPUT" "Syncs main even when already on main"
+assert_string_contains Sync "$RUN_OUTPUT" "Syncs main even when already on main"
 
 # Should remain on main
 cd_temp_repo

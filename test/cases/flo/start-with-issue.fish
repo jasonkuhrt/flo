@@ -3,8 +3,8 @@ tags slow gh
 setup_temp_repo
 git remote add origin https://github.com/jasonkuhrt/flo.git
 
-# Test: flo start with issue number (explicit command syntax)
-flo start 17 >/dev/null 2>&1
+# Test: run flo start with issue number (explicit command syntax)
+flo start 17
 
 # Find the created worktree
 set -l WORKTREE_PATH (find_worktree "17-test-fixture")

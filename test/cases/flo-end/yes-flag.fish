@@ -13,7 +13,7 @@ cd "$WORKTREE_PATH"
 set -l OUTPUT (flo end --yes 2>&1)
 
 # Should succeed without prompting
-assert_string_contains "Removed worktree" "$OUTPUT" "--yes flag removes worktree without prompt"
+assert_string_contains "Removed worktree" "$RUN_OUTPUT" "--yes flag removes worktree without prompt"
 
 # Verify worktree was actually removed
 assert_not_dir_exists "$WORKTREE_PATH" "--yes flag: worktree directory removed"
@@ -26,11 +26,11 @@ cd "$WORKTREE_PATH"
 
 set OUTPUT (flo end -y 2>&1)
 
-assert_string_contains "Removed worktree" "$OUTPUT" "-y short form works"
+assert_string_contains "Removed worktree" "$RUN_OUTPUT" "-y short form works"
 
 # Test 3: --yes with --force combined
 cd_temp_repo
-flo feat/yes-force-test >/dev/null 2>&1
+run flo feat/yes-force-test
 set WORKTREE_PATH (get_worktree_path "feat/yes-force-test")
 cd "$WORKTREE_PATH"
 

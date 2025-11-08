@@ -17,5 +17,5 @@ assert_file_exists "$WORKTREE_PATH/.serena/cache/symbols.json"
 assert_file_contains "$WORKTREE_PATH/.serena/cache/test-file.txt" test-cache-data "Serena cache file content matches"
 
 # Verify user feedback in output
-assert_string_contains "Copying Serena cache" "$FLO" "flo output mentions cache copying"
-assert_string_contains "Serena cache copied" "$FLO" "flo output confirms cache copied"
+assert_string_contains "Copying Serena cache" "$RUN_OUTPUT" "flo output mentions cache copying"
+assert_string_contains "Serena cache copied" "$RUN_OUTPUT" "flo output confirms cache copied"

@@ -2,7 +2,7 @@ setup_temp_repo
 
 # Create a worktree from an issue (simulated with branch name pattern)
 # Pattern: <prefix>-<number>-<slug>
-flo feat/14-test-issue >/dev/null 2>&1
+run flo feat/14-test-issue
 
 # Should be able to remove by issue number
 flo end 14 >/dev/null 2>&1

@@ -11,9 +11,19 @@ set -g NC '\033[0m' # No Color
 set -g PASSED 0
 set -g FAILED 0
 
-# Core test result functions
+# Command execution helper
+# Runs a command and captures output for assertions
+function run
+    set -g RUN_OUTPUT (eval $argv 2>&1)
+    set -g RUN_STATUS $status
+    return $RUN_STATUS
+end
 
-function fail
+# Core test result functions
+# All assertion functions call fail/pass to report results
+# Results are collected in TEMP_OUTPUT and counted by test runner
+
+function fail --description "Report test assertion failure"
     set -l msg "$RED✗ Assertion: $argv[1]$NC"
     echo -e "$msg"
     if set -q TEMP_OUTPUT
@@ -23,7 +33,7 @@ function fail
     return 1
 end
 
-function pass
+function pass --description "Report test assertion success"
     set -l msg "$GREEN✓ Assertion: $argv[1]$NC"
     echo -e "$msg"
     if set -q TEMP_OUTPUT
@@ -266,19 +276,19 @@ end
 function spy_on
     set -l cmd $argv[1]
     set -l spy_dir "$TEST_CASE_TEMP_DIR/.spies"
-    set -l bin_dir "$spy_dir/bin"
     set -l log_dir "$spy_dir/logs"
+    set -l log_file "$log_dir/$cmd.log"
 
-    # Create directories
-    mkdir -p "$bin_dir" "$log_dir"
-
-    # Create spy executable that logs all invocations
-    echo '#!/usr/bin/env fish
-echo $argv >> "$TEST_CASE_TEMP_DIR/.spies/logs/'(basename $cmd)'.log"' >"$bin_dir/$cmd"
-    chmod +x "$bin_dir/$cmd"
-
-    # Prepend to PATH (safe due to subshell-like isolation in fish)
-    set -gx PATH "$bin_dir" $PATH
+    # Create a Fish function that overrides the command
+    # This is more reliable than PATH manipulation for Fish builtins/commands
+    # The function creates its log directory on first call (survives setup_temp_repo cleanup)
+    eval "
+    function $cmd --description 'Spy for $cmd'
+        mkdir -p '$log_dir' 2>/dev/null
+        echo \$argv >> '$log_file'
+        return 0
+    end
+    "
 end
 
 function spy_assert_called

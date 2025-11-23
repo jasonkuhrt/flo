@@ -1,0 +1,20 @@
+# Test fixture workflow for integration tests
+# This workflow exists so that PRs have checks to validate against.
+# It stays in "pending" state long enough for tests to catch it,
+# then succeeds so PRs can still be merged.
+
+name: Check Fixture
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wait (simulates slow check for tests)
+        run: sleep 30
+
+      - name: Pass
+        run: echo "Check passed"

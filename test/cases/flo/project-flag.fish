@@ -29,7 +29,7 @@ assert_string_equals "$EXPECTED" "$RELATIVE_RESOLVED" "Relative path (./) resolv
 # Test 3: Bare name without settings (should fail with helpful message)
 # Temporarily create empty settings
 set -l SETTINGS_FILE "$HOME/.config/flo/settings.json"
-set -l SETTINGS_BACKUP "$HOME/.config/flo/settings.json.backup-$$"
+set -l SETTINGS_BACKUP "$HOME/.config/flo/settings.json.backup-$fish_pid"
 
 if test -f "$SETTINGS_FILE"
     cp "$SETTINGS_FILE" "$SETTINGS_BACKUP"

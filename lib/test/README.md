@@ -45,6 +45,9 @@ lib/test/cli --file "flo end"      # Run all "flo end" tests
 - `assert_string_equals(expected, actual, [msg])`, `assert_not_string_equals(expected, actual, [msg])` - Exact match
 - `assert_string_regex(pattern, actual, [msg])`, `assert_not_string_regex(pattern, actual, [msg])` - Regex match
 
+**Output** (uses `$RUN_OUTPUT` from `run` helper):
+- `assert_output_contains(pattern, [msg])`, `assert_output_not_contains(pattern, [msg])` - Case-insensitive substring match against command output
+
 **Files (content)**:
 - `assert_file_contains(file, pattern, [msg])`, `assert_not_file_contains(file, pattern, [msg])`
 
@@ -179,7 +182,7 @@ mkdir -p "$TEST_CASE_TEMP_DIR/project"
 cd "$TEST_CASE_TEMP_DIR/project"
 
 # Run code under test
-set -l OUTPUT (my_command arg1 arg2 2>&1)
+run my_command arg1 arg2
 
 # Assert results
 assert_output_contains "expected string" "Command produced expected output"

@@ -26,7 +26,7 @@ gh pr create --title "Sync test PR" --body Test --head feat/sync-test-1 >/dev/nu
 run flo end --yes --resolve success
 
 # Should mention syncing main
-assert_string_contains Sync "$RUN_OUTPUT" "Output mentions syncing main branch"
+assert_output_contains Sync "Output mentions syncing main branch"
 
 # Should be on main branch after operation
 cd_temp_repo
@@ -67,7 +67,7 @@ test $EXIT_CODE -eq 0
 assert_success "Command succeeds even when main sync fails"
 
 # Should show warning about sync failure
-assert_string_contains sync "$RUN_OUTPUT" "Shows message about main sync"
+assert_output_contains sync "Shows message about main sync"
 
 # Worktree should still be removed (cleanup succeeded)
 assert_not_dir_exists "$WORKTREE_PATH" "Worktree removed despite sync failure"
@@ -91,7 +91,7 @@ git commit -m Test >/dev/null 2>&1
 run flo end --yes --ignore pr --resolve success
 
 # Should not sync main (because no PR was touched)
-assert_not_string_contains Sync "$RUN_OUTPUT" "Does not sync main with --ignore pr"
+assert_output_not_contains Sync "Does not sync main with --ignore pr"
 
 # Cleanup
 cd_temp_repo
@@ -117,7 +117,7 @@ run flo end --yes --resolve abort
 # Should close PR but not sync main
 set -l clean_output (strip_ansi "$RUN_OUTPUT")
 assert_string_contains "Closed PR" "$clean_output" "Closes PR in abort mode"
-assert_not_string_contains Sync "$clean_output" "Does not sync main in abort mode"
+assert_output_not_contains Sync "Does not sync main in abort mode"
 
 # Test 5: Sync switches from another branch to main
 cd_temp_repo
@@ -168,7 +168,7 @@ gh pr create --title "Already on main test" --body Test --head feat/already-on-m
 run flo end --yes --resolve success
 
 # Should still sync (pull latest)
-assert_string_contains Sync "$RUN_OUTPUT" "Syncs main even when already on main"
+assert_output_contains Sync "Syncs main even when already on main"
 
 # Should remain on main
 cd_temp_repo

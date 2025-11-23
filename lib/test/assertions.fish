@@ -340,3 +340,27 @@ function spy_get_calls
         cat "$log_file"
     end
 end
+
+# Output assertions (use $RUN_OUTPUT from run helper)
+
+function assert_output_contains
+    set -l pattern $argv[1]
+    set -l msg (test (count $argv) -ge 2; and echo $argv[2]; or echo "Output contains: $pattern")
+
+    if string match -qi "*$pattern*" "$RUN_OUTPUT"
+        pass "$msg"
+    else
+        fail "$msg"
+    end
+end
+
+function assert_output_not_contains
+    set -l pattern $argv[1]
+    set -l msg (test (count $argv) -ge 2; and echo $argv[2]; or echo "Output does not contain: $pattern")
+
+    if not string match -qi "*$pattern*" "$RUN_OUTPUT"
+        pass "$msg"
+    else
+        fail "$msg"
+    end
+end

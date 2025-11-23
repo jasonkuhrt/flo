@@ -10,10 +10,10 @@ set -l WORKTREE_PATH (get_worktree_path "feat/yes-test")
 cd "$WORKTREE_PATH"
 
 # Remove with --yes (no stdin provided)
-set -l OUTPUT (flo end --yes 2>&1)
+run flo end --yes
 
 # Should succeed without prompting
-assert_string_contains "Removed worktree" "$RUN_OUTPUT" "--yes flag removes worktree without prompt"
+assert_output_contains "Removed worktree" "--yes flag removes worktree without prompt"
 
 # Verify worktree was actually removed
 assert_not_dir_exists "$WORKTREE_PATH" "--yes flag: worktree directory removed"
@@ -24,9 +24,9 @@ flo feat/short-yes-test >/dev/null 2>&1
 set WORKTREE_PATH (get_worktree_path "feat/short-yes-test")
 cd "$WORKTREE_PATH"
 
-set OUTPUT (flo end -y 2>&1)
+run flo end -y
 
-assert_string_contains "Removed worktree" "$RUN_OUTPUT" "-y short form works"
+assert_output_contains "Removed worktree" "-y short form works"
 
 # Test 3: --yes with --force combined
 cd_temp_repo

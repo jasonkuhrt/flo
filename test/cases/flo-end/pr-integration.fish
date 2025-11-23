@@ -61,8 +61,8 @@ cd "$WORKTREE_PATH"
 run flo end --yes --force --resolve success
 
 # Should skip PR operations gracefully
-assert_string_contains "No PR found" "$RUN_OUTPUT" "Gracefully handles missing PR"
-assert_not_string_contains "Merged PR" "$RUN_OUTPUT" "Does not attempt to merge non-existent PR"
+assert_output_contains "No PR found" "Gracefully handles missing PR"
+assert_output_not_contains "Merged PR" "Does not attempt to merge non-existent PR"
 
 # Worktree should still be removed
 assert_not_dir_exists "$WORKTREE_PATH" "Worktree removed even without PR"
@@ -88,7 +88,7 @@ gh pr merge feat/already-merged --squash --delete-branch >/dev/null 2>&1
 run flo end --yes --resolve success
 
 # Should handle already-merged gracefully
-assert_string_contains "already merged" "$RUN_OUTPUT" "Detects already-merged PR"
+assert_output_contains "already merged" "Detects already-merged PR"
 assert_not_dir_exists "$WORKTREE_PATH" "Still removes worktree"
 
 # Test 4: Abort path - Close open PR
@@ -132,8 +132,8 @@ cd "$WORKTREE_PATH"
 run flo end --yes --resolve abort
 
 # Should skip PR close gracefully
-assert_string_contains "No PR found" "$RUN_OUTPUT" "Gracefully handles missing PR in abort mode"
-assert_not_string_contains "Closed PR" "$RUN_OUTPUT" "Does not attempt to close non-existent PR"
+assert_output_contains "No PR found" "Gracefully handles missing PR in abort mode"
+assert_output_not_contains "Closed PR" "Does not attempt to close non-existent PR"
 
 # Worktree should still be removed
 assert_not_dir_exists "$WORKTREE_PATH" "Worktree removed even without PR in abort mode"
@@ -159,5 +159,5 @@ gh pr close feat/already-closed >/dev/null 2>&1
 run flo end --yes --resolve abort
 
 # Should handle already-closed gracefully
-assert_string_contains "already closed" "$RUN_OUTPUT" "Detects already-closed PR"
+assert_output_contains "already closed" "Detects already-closed PR"
 assert_not_dir_exists "$WORKTREE_PATH" "Still removes worktree"

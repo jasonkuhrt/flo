@@ -4,10 +4,10 @@
 setup_temp_repo
 
 # Create a new branch (should not exist yet)
-set -l FLO (flo feat/test-new-branch 2>&1)
+run flo feat/test-new-branch
 
 # Assert no "fatal: invalid reference" error appears
-assert_output_not_contains "$FLO" "fatal: invalid reference" \
+assert_output_not_contains "fatal: invalid reference" \
     "No 'fatal: invalid reference' error shown when creating new branch"
 
 # Verify worktree was created successfully (positive case)

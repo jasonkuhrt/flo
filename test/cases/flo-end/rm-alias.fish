@@ -5,7 +5,7 @@ setup_temp_repo
 run flo feat/rm-alias-test
 
 # Use rm alias (not end) to remove worktree
-flo rm feat/rm-alias-test >/dev/null 2>&1
+flo rm feat/rm-alias-test --yes >/dev/null 2>&1
 
 set -l WORKTREE_PATH (get_worktree_path "feat/rm-alias-test")
 

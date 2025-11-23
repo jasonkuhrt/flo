@@ -17,14 +17,17 @@ git commit -m "Test with pending checks" >/dev/null 2>&1
 git push -u origin feat/pending-checks --force >/dev/null 2>&1
 gh pr create --title "Pending checks test" --body Test --head feat/pending-checks >/dev/null 2>&1
 
-# Try to end immediately (checks likely pending, not SUCCESS)
+# Wait for checks to start (check-fixture workflow takes 30s, so checks will be pending)
+wait_for_checks feat/pending-checks 60
+
+# Try to end (checks should be pending, not SUCCESS yet)
 run flo end --yes --resolve success
 set -l EXIT_CODE $status
 
 # Should block on pending checks (same as failing checks)
 test $EXIT_CODE -ne 0
 assert_success "Command blocks on pending checks"
-assert_string_contains checks "$RUN_OUTPUT" "Shows message about PR checks"
+assert_output_contains "PR checks not passing" "Shows message about PR checks"
 
 # Worktree should NOT be removed
 assert_dir_exists "$WORKTREE_PATH" "Worktree preserved when checks pending"
@@ -68,7 +71,7 @@ set EXIT_CODE $status
 # Should fail with merge conflict error from gh
 test $EXIT_CODE -ne 0
 assert_success "Command fails when PR has merge conflicts"
-assert_string_contains conflict "$RUN_OUTPUT" "Shows merge conflict error"
+assert_output_contains conflict "Shows merge conflict error"
 
 # Worktree should NOT be removed (operation failed)
 assert_dir_exists "$WORKTREE_PATH" "Worktree preserved when merge fails"
@@ -202,10 +205,10 @@ set EXIT_CODE $status
 
 # Should either skip PR operations or show clear error
 if test $EXIT_CODE -ne 0
-    assert_string_contains remote "$RUN_OUTPUT" "Shows error about missing remote"
+    assert_output_contains remote "Shows error about missing remote"
 else
     # If it succeeds, it should skip PR operations
-    assert_not_string_contains "Merged PR" "$RUN_OUTPUT" "Skips PR operations without remote"
+    assert_output_not_contains "Merged PR" "Skips PR operations without remote"
 end
 
 # Restore origin remote

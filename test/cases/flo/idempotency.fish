@@ -6,7 +6,7 @@ flo feat/idempotent >/dev/null 2>&1
 assert_dir_exists "$WORKTREE_PATH"
 
 cd_temp_repo
-set -g OUTPUT (flo feat/idempotent 2>&1)
+run flo feat/idempotent
 
 # Idempotency check - running flo again should succeed without error
-assert_not_string_contains Error "$RUN_OUTPUT" "No error on existing worktree"
+assert_output_not_contains Error "No error on existing worktree"

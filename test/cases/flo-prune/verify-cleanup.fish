@@ -13,12 +13,12 @@ assert_string_contains prune-test "$BEFORE" "Worktree registered before manual d
 rm -rf "$WORKTREE_PATH"
 
 # Verify git still thinks it exists (orphaned metadata)
-set -g OUTPUT (git worktree list 2>&1; or true)
-assert_string_contains prune-test "$RUN_OUTPUT" "Git metadata still exists after manual deletion"
+run git worktree list
+assert_output_contains prune-test "Git metadata still exists after manual deletion"
 
 # Run flo prune to clean up
 flo prune >/dev/null 2>&1
 
 # Verify git metadata is cleaned up
-set -g OUTPUT (git worktree list 2>&1; or true)
-assert_not_string_contains prune-test "$RUN_OUTPUT" "Git metadata cleaned up by prune"
+run git worktree list
+assert_output_not_contains prune-test "Git metadata cleaned up by prune"

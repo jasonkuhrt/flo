@@ -24,8 +24,8 @@ set -l PR_NUMBER (gh pr view feat/ignore-pr-test --json number --jq .number 2>/d
 run flo end --yes --ignore pr --resolve success
 
 # Should not merge or close PR
-assert_not_string_contains "Merged PR" "$RUN_OUTPUT" "Does not merge PR with --ignore pr"
-assert_not_string_contains "Closed PR" "$RUN_OUTPUT" "Does not close PR with --ignore pr"
+assert_output_not_contains "Merged PR" "Does not merge PR with --ignore pr"
+assert_output_not_contains "Closed PR" "Does not close PR with --ignore pr"
 
 # Worktree should still be removed
 assert_not_dir_exists "$WORKTREE_PATH" "Worktree removed even with --ignore pr"
@@ -97,9 +97,9 @@ test $EXIT_CODE -eq 0
 assert_success "Command succeeds with all operations ignored"
 
 # Should not perform any operations
-assert_not_string_contains "Merged PR" "$RUN_OUTPUT" "Does not merge PR"
-assert_not_string_contains "Removed worktree" "$RUN_OUTPUT" "Does not remove worktree"
-assert_not_string_contains "Deleted branch" "$RUN_OUTPUT" "Does not delete branch"
+assert_output_not_contains "Merged PR" "Does not merge PR"
+assert_output_not_contains "Removed worktree" "Does not remove worktree"
+assert_output_not_contains "Deleted branch" "Does not delete branch"
 
 # Everything should be unchanged
 assert_dir_exists "$WORKTREE_PATH" "Worktree still exists"
@@ -199,7 +199,7 @@ set EXIT_CODE $status
 # Should fail with error
 test $EXIT_CODE -ne 0
 assert_success "Command fails with invalid --resolve value"
-assert_string_contains invalid "$RUN_OUTPUT" "Shows error for invalid --resolve value"
+assert_output_contains invalid "Shows error for invalid --resolve value"
 
 # Cleanup
 cd_temp_repo

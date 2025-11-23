@@ -71,6 +71,28 @@ end
 # Load flo CLI framework once - defines the flo function
 source "$PROJECT_ROOT/functions/flo.fish"
 
+# Wait for PR checks to start (non-empty statusCheckRollup)
+# Usage: wait_for_checks <branch_name> [timeout_seconds]
+# Returns 0 if checks started, 1 if timeout
+function wait_for_checks
+    set -l branch_name $argv[1]
+    set -l timeout (test (count $argv) -ge 2; and echo $argv[2]; or echo 30)
+    set -l elapsed 0
+
+    while test $elapsed -lt $timeout
+        set -l check_count (gh pr view "$branch_name" --json statusCheckRollup --jq '.statusCheckRollup | length' 2>/dev/null)
+
+        if test -n "$check_count"; and test "$check_count" -gt 0
+            return 0
+        end
+
+        sleep 2
+        set elapsed (math $elapsed + 2)
+    end
+
+    return 1
+end
+
 # Setup worktree for a GitHub issue and cd into it
 # Usage: setup_issue_worktree [issue_number] [search_pattern]
 # Defaults: issue_number=17, search_pattern="17-test-fixture"

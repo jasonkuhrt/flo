@@ -552,17 +552,12 @@ function flo_end
     # VALIDATIONS (success mode only, unless --force)
     if test "$resolve_mode" = success -a "$ignore_pr" = false
         if not set -q _flag_force
-            # Check gh availability
-            __flo_check_gh
-            if test $status -ne 0
-                return 1
-            end
-
-            # Check if PR exists
+            # Check if PR exists (gracefully handles gh not being available)
             set -l pr_number (__flo_get_pr_number "$branch_name")
 
             if test $status -eq 0
                 # PR exists - validate checks
+                # Note: gh availability already confirmed by successful __flo_get_pr_number
                 __flo_log_info "Validating PR checks..."
 
                 if not __flo_check_pr_status "$branch_name"
@@ -596,15 +591,10 @@ function flo_end
     end
 
     # PR OPERATIONS (unless --ignore pr)
+    # Note: __flo_merge_pr and __flo_close_pr gracefully handle missing gh/PR
     set -l pr_merged false
 
     if test "$ignore_pr" = false -a -n "$branch_name"
-        # Check gh availability
-        __flo_check_gh
-        if test $status -ne 0
-            return 1
-        end
-
         if test "$resolve_mode" = success
             # Merge PR
             # Only delete remote branch if we're also removing local worktree/branch
@@ -642,6 +632,10 @@ function flo_end
 
         if test $status -eq 0
             __flo_log_success "Removed worktree: $worktree_path"
+
+            # Change to main worktree before branch deletion
+            # (shell may still be in deleted worktree directory)
+            cd "$main_worktree"
 
             # Delete the local branch
             set -l force_delete false

@@ -29,3 +29,6 @@ coverage/
 # Temporary files
 tmp/
 temp/
+# Test artifacts
+*-[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9].txt
+test*.txt

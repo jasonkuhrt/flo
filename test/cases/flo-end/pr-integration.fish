@@ -21,23 +21,13 @@ echo "test content" >"$unique_file"
 git add "$unique_file"
 git commit -m "Test commit for PR" >/dev/null 2>&1
 
-echo "DEBUG: Git log before push:"
-git log --oneline -3
-echo "DEBUG: Remote branches:"
-git branch -r
-echo "DEBUG: Merge base with origin/main:"
-git merge-base HEAD origin/main 2>&1; or echo "No merge base found"
-
 # Push branch and create PR (requires GitHub remote)
 git push -u origin "$test_branch" >/dev/null 2>&1
-gh pr create --title "Test PR $timestamp" --body "Test PR for integration" --head "$test_branch"
-echo "DEBUG: PR create exit: $status"
+gh pr create --title "Test PR $timestamp" --body "Test PR for integration" --head "$test_branch" >/dev/null 2>&1
 
 # End worktree (should merge PR)
 # Use --force to skip validation (PR checks may be pending in test environment)
 run flo end --yes --force --resolve success
-echo "DEBUG flo end output: $RUN_OUTPUT"
-echo "DEBUG flo end exit: $status"
 
 # Verify PR was merged
 set -l clean_output (strip_ansi "$RUN_OUTPUT")
@@ -83,8 +73,8 @@ git commit -m Test >/dev/null 2>&1
 git push -u origin "$merged_branch" --force >/dev/null 2>&1
 gh pr create --title "Already merged test $merged_timestamp" --body Test --head "$merged_branch" >/dev/null 2>&1
 
-# Manually merge the PR
-gh pr merge "$merged_branch" --squash --delete-branch >/dev/null 2>&1
+# Manually merge the PR (don't delete branch - we need it for PR lookup)
+gh pr merge "$merged_branch" --squash >/dev/null 2>&1
 
 # Try to end again (should be idempotent)
 run flo end --yes --resolve success

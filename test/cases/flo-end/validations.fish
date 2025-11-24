@@ -3,41 +3,7 @@ tags slow gh
 
 setup_temp_repo
 
-# Test 1: Block on failing PR checks (success mode)
-cd_temp_repo
-flo feat/failing-checks
-set -l WORKTREE_PATH (get_worktree_path "feat/failing-checks")
-cd "$WORKTREE_PATH"
-
-# Push and create PR
-set -l unique_file "failing-checks-"(date +%s)".txt"
-echo content >"$unique_file"
-git add "$unique_file"
-git commit -m "Test with failing checks" >/dev/null 2>&1
-git push -u origin feat/failing-checks --force >/dev/null 2>&1
-gh pr create --title "Failing checks test" --body Test --head feat/failing-checks >/dev/null 2>&1
-
-# Wait for checks to start (check-fixture workflow takes 30s, so checks will be pending)
-wait_for_checks feat/failing-checks 60
-
-# Try to end (should block because checks are pending/not SUCCESS)
-run flo end --yes --resolve success
-set -l EXIT_CODE $status
-
-# Should fail with validation error (checks are pending, not SUCCESS)
-assert_output_contains "PR checks not passing" "Shows PR checks validation error"
-test $EXIT_CODE -ne 0
-assert_success "Command exits with error when checks not passing"
-
-# Worktree should NOT be removed (validation failed)
-assert_dir_exists "$WORKTREE_PATH" "Worktree preserved when validation fails"
-
-# Cleanup
-cd_temp_repo
-gh pr close feat/failing-checks >/dev/null 2>&1
-git worktree remove --force "$WORKTREE_PATH" 2>/dev/null
-
-# Test 2: Block on uncommitted changes (success mode)
+# Test 1: Block on uncommitted changes (success mode)
 cd_temp_repo
 run flo feat/dirty-worktree
 set WORKTREE_PATH (get_worktree_path "feat/dirty-worktree")

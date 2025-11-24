@@ -556,16 +556,21 @@ function flo_end
             set -l pr_number (__flo_get_pr_number "$branch_name")
 
             if test $status -eq 0
-                # PR exists - validate checks
-                # Note: gh availability already confirmed by successful __flo_get_pr_number
-                __flo_log_info "Validating PR checks..."
+                # PR exists - check if already merged (skip validation for merged PRs)
+                set -l pr_state (gh pr view "$branch_name" --json state --jq .state 2>/dev/null)
 
-                if not __flo_check_pr_status "$branch_name"
-                    __flo_log_error "PR checks not passing" "Use --force to bypass, or wait for checks to complete"
-                    return 1
+                if test "$pr_state" != MERGED
+                    # PR not yet merged - validate checks
+                    # Note: gh availability already confirmed by successful __flo_get_pr_number
+                    __flo_log_info "Validating PR checks..."
+
+                    if not __flo_check_pr_status "$branch_name"
+                        __flo_log_error "PR checks not passing" "Use --force to bypass, or wait for checks to complete"
+                        return 1
+                    end
+
+                    __flo_log_success "PR checks passing"
                 end
-
-                __flo_log_success "PR checks passing"
             end
 
             # Validate worktree is clean

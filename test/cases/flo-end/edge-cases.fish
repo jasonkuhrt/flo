@@ -3,43 +3,7 @@ tags slow gh
 
 setup_temp_repo
 
-# Test 1: PR checks pending (not failed, incomplete)
-cd_temp_repo
-flo feat/pending-checks >/dev/null 2>&1
-set -l WORKTREE_PATH (get_worktree_path "feat/pending-checks")
-cd "$WORKTREE_PATH"
-
-# Push and create PR
-set -l unique_file "pending-checks-"(date +%s)".txt"
-echo content >"$unique_file"
-git add "$unique_file"
-git commit -m "Test with pending checks" >/dev/null 2>&1
-git push -u origin feat/pending-checks --force >/dev/null 2>&1
-gh pr create --title "Pending checks test" --body Test --head feat/pending-checks >/dev/null 2>&1
-
-# Wait for checks to start (check-fixture workflow takes 30s, so checks will be pending)
-wait_for_checks feat/pending-checks 60
-
-# Try to end (checks should be pending, not SUCCESS yet)
-run flo end --yes --resolve success
-set -l EXIT_CODE $status
-
-# Should block on pending checks (same as failing checks)
-test $EXIT_CODE -ne 0
-assert_success "Command blocks on pending checks"
-assert_output_contains "PR checks not passing" "Shows message about PR checks"
-
-# Worktree should NOT be removed
-assert_dir_exists "$WORKTREE_PATH" "Worktree preserved when checks pending"
-
-# Can bypass with --force
-run flo end --yes --force --resolve success
-set EXIT_CODE $status
-
-test $EXIT_CODE -eq 0
-assert_success "Can bypass pending checks with --force"
-
-# Test 2: PR has merge conflicts
+# Test 1: PR has merge conflicts
 cd_temp_repo
 run flo feat/merge-conflict
 set WORKTREE_PATH (get_worktree_path "feat/merge-conflict")

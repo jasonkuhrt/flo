@@ -70,6 +70,8 @@ assert_string_contains feat/ignore-worktree-test "$BRANCHES" "Branch preserved w
 # Cleanup
 git worktree remove --force "$WORKTREE_PATH" 2>/dev/null
 git branch -D feat/ignore-worktree-test 2>/dev/null
+# Switch back to test-runner (flo end sync switches to main)
+git checkout test-runner 2>/dev/null
 
 # Test 3: --ignore pr --ignore worktree is no-op
 cd_temp_repo

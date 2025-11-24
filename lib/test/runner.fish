@@ -227,6 +227,11 @@ function run_tests
 
             # Run before_each setup
             __test_setup
+
+            # CRITICAL: Start tests in temp dir to prevent file pollution in project root
+            # If test cd commands fail, files will be created in temp dir instead of project root
+            cd "$TEST_CASE_TEMP_DIR"
+
             source "$test_file"
         end
 

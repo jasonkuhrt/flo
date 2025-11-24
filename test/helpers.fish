@@ -52,6 +52,34 @@ function get_worktree_path
     echo "$TEST_CASE_TEMP_DIR"_"$sanitized"
 end
 
+# Change to worktree directory with error checking
+# FAILS the test if the worktree doesn't exist - prevents silent failures that pollute project root
+# Usage: cd_worktree <branch-name>  OR  cd_worktree $WORKTREE_PATH
+function cd_worktree
+    set -l target $argv[1]
+    set -l path
+
+    # If it looks like a path (starts with / or contains _), use directly
+    # Otherwise, treat as branch name and resolve
+    if string match -q '/*' "$target"; or string match -q '*_*' "$target"
+        set path "$target"
+    else
+        set path (get_worktree_path "$target")
+    end
+
+    if not test -d "$path"
+        fail "cd_worktree: Directory does not exist: $path"
+        echo "  Hint: Did 'flo <branch>' succeed? Check worktree was created." >&2
+        return 1
+    end
+
+    cd "$path"
+    or begin
+        fail "cd_worktree: Failed to cd to: $path"
+        return 1
+    end
+end
+
 # Find worktree directory by pattern
 # Only finds worktrees belonging to current TEST_CASE_TEMP_DIR to avoid test pollution
 function find_worktree

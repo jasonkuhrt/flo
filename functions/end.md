@@ -107,30 +107,30 @@ The command follows a task-based model where operations can be selectively inclu
 1. **Validate**: PR checks passing (if PR exists)
 2. **Validate**: Worktree clean (no uncommitted changes)
 3. **Validate**: Branch synced (no unpushed commits)
-4. **Delete worktree**
-5. **Delete local branch**
-6. **Merge PR** (deletes remote branch via `gh pr merge --squash --delete-branch`)
+4. **Merge PR** (deletes remote branch via `gh pr merge --squash --delete-branch`)
+5. **Delete worktree**
+6. **Delete local branch**
 7. **Sync main branch** (`git pull origin main` in main repo)
 8. **Navigate to main repo**
 
 **Modifiers:**
 - `--force`: Skip tasks 1-3 (all validations)
-- `--ignore pr`: Skip tasks 1, 6, 7
-- `--ignore worktree`: Skip tasks 2-5
-- If no PR exists: Skip tasks 1, 6, 7 automatically
-- If PR already merged: Skip tasks 6, 7 automatically (idempotent)
+- `--ignore pr`: Skip tasks 1, 4, 7
+- `--ignore worktree`: Skip tasks 2-3, 5-6
+- If no PR exists: Skip tasks 1, 4, 7 automatically
+- If PR already merged: Skip tasks 4, 7 automatically (idempotent)
 
 ### Abort Path (`--resolve abort`)
 
 **Tasks executed:**
-1. **Delete worktree**
-2. **Delete local branch**
-3. **Close PR** without merging (via `gh pr close`)
+1. **Close PR** without merging (via `gh pr close`)
+2. **Delete worktree**
+3. **Delete local branch**
 4. **Navigate to main repo**
 
 **Modifiers:**
-- `--ignore pr`: Skip task 3
-- `--ignore worktree`: Skip tasks 1-2
+- `--ignore pr`: Skip task 1
+- `--ignore worktree`: Skip tasks 2-3
 - No validations (you're abandoning work, dirty state is acceptable)
 
 ## Validations (Success Path Only)
@@ -148,9 +148,3 @@ The following validations prevent accidental data loss and ensure clean merges. 
 - **PR already closed**: Close task skipped gracefully (idempotent operation)
 - **`--ignore pr --ignore worktree`**: Does nothing, exits successfully (all tasks subtracted)
 - **Remote vs local**: `--ignore worktree` only affects LOCAL state (worktree + local branch). Remote branch is still deleted via PR merge/close.
-
-## Breaking Changes from Previous Version
-
-- **Removed**: `--keep-branch` flag (use `--ignore worktree` instead)
-- **Changed**: `--force` now skips all validations, not just worktree/branch force-delete
-- **New**: PR integration requires `gh` CLI to be installed and authenticated

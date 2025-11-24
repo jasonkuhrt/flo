@@ -511,8 +511,8 @@ function flo_end
         end
     end
 
-    if set -q _flag_dry
-        # Dry run - gather detailed state
+    # Gather detailed state for preview (both dry-run and confirmation prompt)
+    if not set -q _flag_yes; or set -q _flag_dry
         if test -n "$pr_number"
             set pr_state (gh pr view "$branch_name" --json state --jq .state 2>/dev/null)
             if test "$pr_state" = OPEN
@@ -582,63 +582,61 @@ function flo_end
             end
         end
 
-        # Dry run shows actual state
-        if set -q _flag_dry
-            echo ""
-            echo "  $__flo_c_dim""State:$__flo_c_reset"
+        # Show actual state (both dry-run and interactive confirmation)
+        echo ""
+        echo "  $__flo_c_dim""State:$__flo_c_reset"
 
-            # PR state
-            if test "$ignore_pr" = false
-                if test -n "$pr_number"
-                    if test "$pr_state" = MERGED
-                        echo "    $__flo_c_green✓$__flo_c_reset PR #$pr_number: $__flo_c_dim""already merged$__flo_c_reset"
-                    else if test "$pr_state" = CLOSED
-                        echo "    $__flo_c_yellow•$__flo_c_reset PR #$pr_number: $__flo_c_dim""already closed$__flo_c_reset"
+        # PR state
+        if test "$ignore_pr" = false
+            if test -n "$pr_number"
+                if test "$pr_state" = MERGED
+                    echo "    $__flo_c_green✓$__flo_c_reset PR #$pr_number: $__flo_c_dim""already merged$__flo_c_reset"
+                else if test "$pr_state" = CLOSED
+                    echo "    $__flo_c_yellow•$__flo_c_reset PR #$pr_number: $__flo_c_dim""already closed$__flo_c_reset"
+                else
+                    if test "$pr_checks_passing" = true
+                        echo "    $__flo_c_green✓$__flo_c_reset PR #$pr_number: $__flo_c_green""checks passing$__flo_c_reset"
                     else
-                        if test "$pr_checks_passing" = true
-                            echo "    $__flo_c_green✓$__flo_c_reset PR #$pr_number: $__flo_c_green""checks passing$__flo_c_reset"
-                        else
-                            echo "    $__flo_c_red✗$__flo_c_reset PR #$pr_number: $__flo_c_red""checks not passing$__flo_c_reset"
-                            # Show failing checks
-                            for failing in $pr_failing_checks
-                                set -l state (echo "$failing" | cut -d: -f1)
-                                set -l name (echo "$failing" | cut -d: -f2-)
-                                set -l state_color $__flo_c_red
-                                if test "$state" = PENDING
-                                    set state_color $__flo_c_yellow
-                                end
-                                echo "      $state_color$state$__flo_c_reset $__flo_c_dim$name$__flo_c_reset"
+                        echo "    $__flo_c_red✗$__flo_c_reset PR #$pr_number: $__flo_c_red""checks not passing$__flo_c_reset"
+                        # Show failing checks
+                        for failing in $pr_failing_checks
+                            set -l state (echo "$failing" | cut -d: -f1)
+                            set -l name (echo "$failing" | cut -d: -f2-)
+                            set -l state_color $__flo_c_red
+                            if test "$state" = PENDING
+                                set state_color $__flo_c_yellow
                             end
+                            echo "      $state_color$state$__flo_c_reset $__flo_c_dim$name$__flo_c_reset"
                         end
                     end
-                else
-                    echo "    $__flo_c_dim•$__flo_c_reset PR: $__flo_c_dim""none$__flo_c_reset"
                 end
+            else
+                echo "    $__flo_c_dim•$__flo_c_reset PR: $__flo_c_dim""none$__flo_c_reset"
+            end
+        end
+
+        # Worktree state
+        if test "$ignore_worktree" = false
+            if test "$worktree_clean" = true
+                echo "    $__flo_c_green✓$__flo_c_reset Worktree: $__flo_c_green""clean$__flo_c_reset"
+            else
+                echo "    $__flo_c_red✗$__flo_c_reset Worktree: $__flo_c_red""has uncommitted changes$__flo_c_reset"
             end
 
-            # Worktree state
-            if test "$ignore_worktree" = false
-                if test "$worktree_clean" = true
-                    echo "    $__flo_c_green✓$__flo_c_reset Worktree: $__flo_c_green""clean$__flo_c_reset"
-                else
-                    echo "    $__flo_c_red✗$__flo_c_reset Worktree: $__flo_c_red""has uncommitted changes$__flo_c_reset"
-                end
-
-                if test "$branch_synced" = true
-                    echo "    $__flo_c_green✓$__flo_c_reset Branch: $__flo_c_green""synced$__flo_c_reset"
-                else
-                    echo "    $__flo_c_red✗$__flo_c_reset Branch: $__flo_c_red""has unpushed commits$__flo_c_reset"
-                end
+            if test "$branch_synced" = true
+                echo "    $__flo_c_green✓$__flo_c_reset Branch: $__flo_c_green""synced$__flo_c_reset"
+            else
+                echo "    $__flo_c_red✗$__flo_c_reset Branch: $__flo_c_red""has unpushed commits$__flo_c_reset"
             end
         end
 
         echo ""
         echo "  This will:"
 
-        # Show PR operations
+        # Show PR operations (using actual state gathered above)
         if test "$ignore_pr" = false
-            if set -q _flag_dry; and test -n "$pr_number"
-                # Dry run - show specific action based on state
+            if test -n "$pr_number"
+                # PR exists - show specific action based on state
                 if test "$pr_state" = MERGED
                     echo "    $__flo_c_dim•$__flo_c_reset Skip PR merge (already merged)"
                 else if test "$pr_state" = CLOSED
@@ -648,15 +646,8 @@ function flo_end
                 else
                     echo "    $__flo_c_blue•$__flo_c_reset Close PR #$pr_number without merging"
                 end
-            else if set -q _flag_dry; and test -z "$pr_number"
-                echo "    $__flo_c_dim•$__flo_c_reset Skip PR operations (no PR exists)"
             else
-                # Normal confirmation - show generic
-                if test "$resolve_mode" = success
-                    echo "    $__flo_c_blue•$__flo_c_reset Merge PR (if exists)"
-                else
-                    echo "    $__flo_c_blue•$__flo_c_reset Close PR without merging (if exists)"
-                end
+                echo "    $__flo_c_dim•$__flo_c_reset Skip PR operations (no PR exists)"
             end
         end
 
@@ -677,13 +668,11 @@ function flo_end
 
         # Show main sync (happens when PR exists, regardless of whether it gets merged now or was already merged)
         if test "$resolve_mode" = success -a "$ignore_pr" = false
-            if set -q _flag_dry; and test -n "$pr_number"
+            if test -n "$pr_number"
                 # PR exists - main sync will happen (merge is idempotent)
                 echo "    $__flo_c_blue•$__flo_c_reset Sync main branch"
-            else if set -q _flag_dry; and test -z "$pr_number"
-                echo "    $__flo_c_dim•$__flo_c_reset Skip main sync (no PR)"
             else
-                echo "    $__flo_c_blue•$__flo_c_reset Sync main branch"
+                echo "    $__flo_c_dim•$__flo_c_reset Skip main sync (no PR)"
             end
         end
 

@@ -69,20 +69,22 @@ assert_not_dir_exists "$WORKTREE_PATH" "Worktree removed even without PR"
 
 # Test 3: Success path - PR already merged (idempotent)
 cd_temp_repo
-run flo feat/already-merged
-set WORKTREE_PATH (get_worktree_path "feat/already-merged")
+set -l merged_timestamp (date +%s)
+set -l merged_branch "feat/already-merged-$merged_timestamp"
+run flo "$merged_branch"
+set WORKTREE_PATH (get_worktree_path "$merged_branch")
 cd "$WORKTREE_PATH"
 
 # Push and create PR
-set unique_file "file-"(date +%s)".txt"
+set unique_file "file-$merged_timestamp.txt"
 echo content >"$unique_file"
 git add "$unique_file"
 git commit -m Test >/dev/null 2>&1
-git push -u origin feat/already-merged --force >/dev/null 2>&1
-gh pr create --title "Already merged test" --body Test --head feat/already-merged >/dev/null 2>&1
+git push -u origin "$merged_branch" --force >/dev/null 2>&1
+gh pr create --title "Already merged test $merged_timestamp" --body Test --head "$merged_branch" >/dev/null 2>&1
 
 # Manually merge the PR
-gh pr merge feat/already-merged --squash --delete-branch >/dev/null 2>&1
+gh pr merge "$merged_branch" --squash --delete-branch >/dev/null 2>&1
 
 # Try to end again (should be idempotent)
 run flo end --yes --resolve success

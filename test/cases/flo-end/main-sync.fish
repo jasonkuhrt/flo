@@ -9,18 +9,22 @@ cd_temp_repo
 # Make sure we're on main and have latest
 git checkout main 2>/dev/null
 
+# Use timestamp for unique branch names
+set -l sync_timestamp (date +%s)
+
 # Create a worktree and PR
-flo feat/sync-test-1 >/dev/null 2>&1
-set -l WORKTREE_PATH (get_worktree_path "feat/sync-test-1")
+set -l sync_branch "feat/sync-test-$sync_timestamp"
+flo "$sync_branch" >/dev/null 2>&1
+set -l WORKTREE_PATH (get_worktree_path "$sync_branch")
 cd "$WORKTREE_PATH"
 
 # Push and create/merge PR
-set -l unique_file "sync-test-1-"(date +%s)".txt"
+set -l unique_file "sync-test-$sync_timestamp.txt"
 echo content >"$unique_file"
 git add "$unique_file"
 git commit -m "Test commit" >/dev/null 2>&1
-git push -u origin feat/sync-test-1 --force >/dev/null 2>&1
-gh pr create --title "Sync test PR" --body Test --head feat/sync-test-1 >/dev/null 2>&1
+git push -u origin "$sync_branch" --force >/dev/null 2>&1
+gh pr create --title "Sync test PR $sync_timestamp" --body Test --head "$sync_branch" >/dev/null 2>&1
 
 # End worktree (should merge PR and sync main)
 # Use --force to bypass PR check validation (we're testing sync, not validation)
@@ -40,22 +44,24 @@ assert_string_contains "up to date" "$PULL_OUTPUT" "Main branch is synced with r
 
 # Test 2: Handle main sync failures gracefully
 cd_temp_repo
-flo feat/sync-fail-test >/dev/null 2>&1
-set WORKTREE_PATH (get_worktree_path "feat/sync-fail-test")
+set -l fail_timestamp (date +%s)
+set -l fail_branch "feat/sync-fail-$fail_timestamp"
+flo "$fail_branch" >/dev/null 2>&1
+set WORKTREE_PATH (get_worktree_path "$fail_branch")
 cd "$WORKTREE_PATH"
 
 # Push and create PR
-set -l unique_file "sync-fail-test-"(date +%s)".txt"
+set -l unique_file "sync-fail-$fail_timestamp.txt"
 echo content >"$unique_file"
 git add "$unique_file"
 git commit -m Test >/dev/null 2>&1
-git push -u origin feat/sync-fail-test --force >/dev/null 2>&1
-gh pr create --title "Sync fail test" --body Test --head feat/sync-fail-test >/dev/null 2>&1
+git push -u origin "$fail_branch" --force >/dev/null 2>&1
+gh pr create --title "Sync fail test $fail_timestamp" --body Test --head "$fail_branch" >/dev/null 2>&1
 
 # Go to main and create a conflicting commit
 cd_temp_repo
-echo conflict >conflict.txt
-git add conflict.txt
+echo conflict >"conflict-$fail_timestamp.txt"
+git add "conflict-$fail_timestamp.txt"
 git commit -m "Conflicting commit" >/dev/null 2>&1
 
 # Now end the worktree (sync might fail due to local commits)
@@ -79,12 +85,14 @@ cd_temp_repo
 # Reset main to clean state
 git reset --hard HEAD~1 >/dev/null 2>&1
 
-flo feat/ignore-pr-sync >/dev/null 2>&1
-set WORKTREE_PATH (get_worktree_path "feat/ignore-pr-sync")
+set -l ignore_timestamp (date +%s)
+set -l ignore_branch "feat/ignore-pr-sync-$ignore_timestamp"
+flo "$ignore_branch" >/dev/null 2>&1
+set WORKTREE_PATH (get_worktree_path "$ignore_branch")
 cd "$WORKTREE_PATH"
 
 # Create changes but don't create PR
-set -l unique_file "ignore-pr-sync-"(date +%s)".txt"
+set -l unique_file "ignore-pr-sync-$ignore_timestamp.txt"
 echo content >"$unique_file"
 git add "$unique_file"
 git commit -m Test >/dev/null 2>&1
@@ -101,17 +109,19 @@ git worktree remove --force "$WORKTREE_PATH" 2>/dev/null; or true
 
 # Test 4: Don't sync in abort mode
 cd_temp_repo
-flo feat/abort-no-sync >/dev/null 2>&1
-set WORKTREE_PATH (get_worktree_path "feat/abort-no-sync")
+set -l abort_timestamp (date +%s)
+set -l abort_branch "feat/abort-no-sync-$abort_timestamp"
+flo "$abort_branch" >/dev/null 2>&1
+set WORKTREE_PATH (get_worktree_path "$abort_branch")
 cd "$WORKTREE_PATH"
 
 # Push and create PR
-set -l unique_file "abort-no-sync-"(date +%s)".txt"
+set -l unique_file "abort-no-sync-$abort_timestamp.txt"
 echo content >"$unique_file"
 git add "$unique_file"
 git commit -m Test >/dev/null 2>&1
-git push -u origin feat/abort-no-sync --force >/dev/null 2>&1
-gh pr create --title "Abort no sync test" --body Test --head feat/abort-no-sync >/dev/null 2>&1
+git push -u origin "$abort_branch" --force >/dev/null 2>&1
+gh pr create --title "Abort no sync test $abort_timestamp" --body Test --head "$abort_branch" >/dev/null 2>&1
 
 # End with abort
 run flo end --yes --resolve abort
@@ -125,19 +135,21 @@ assert_output_not_contains Sync "Does not sync main in abort mode"
 cd_temp_repo
 
 # Create and switch to a different branch
-git checkout -b other-branch 2>/dev/null
+set -l switch_timestamp (date +%s)
+git checkout -b "other-branch-$switch_timestamp" 2>/dev/null
 
 # Create worktree and PR
-flo feat/switch-to-main >/dev/null 2>&1
-set WORKTREE_PATH (get_worktree_path "feat/switch-to-main")
+set -l switch_branch "feat/switch-to-main-$switch_timestamp"
+flo "$switch_branch" >/dev/null 2>&1
+set WORKTREE_PATH (get_worktree_path "$switch_branch")
 cd "$WORKTREE_PATH"
 
-set -l unique_file "switch-to-main-"(date +%s)".txt"
+set -l unique_file "switch-to-main-$switch_timestamp.txt"
 echo content >"$unique_file"
 git add "$unique_file"
 git commit -m Test >/dev/null 2>&1
-git push -u origin feat/switch-to-main --force >/dev/null 2>&1
-gh pr create --title "Switch to main test" --body Test --head feat/switch-to-main >/dev/null 2>&1
+git push -u origin "$switch_branch" --force >/dev/null 2>&1
+gh pr create --title "Switch to main test $switch_timestamp" --body Test --head "$switch_branch" >/dev/null 2>&1
 
 # End (should switch from other-branch to main)
 # Use --force to bypass PR check validation (we're testing branch switching)
@@ -150,22 +162,24 @@ assert_string_equals main "$CURRENT_BRANCH" "Switches to main from other branch"
 
 # Cleanup
 git checkout main 2>/dev/null
-git branch -D other-branch 2>/dev/null
+git branch -D "other-branch-$switch_timestamp" 2>/dev/null
 
 # Test 6: Sync when already on main
 cd_temp_repo
 git checkout main 2>/dev/null
 
-flo feat/already-on-main >/dev/null 2>&1
-set WORKTREE_PATH (get_worktree_path "feat/already-on-main")
+set -l already_timestamp (date +%s)
+set -l already_branch "feat/already-on-main-$already_timestamp"
+flo "$already_branch" >/dev/null 2>&1
+set WORKTREE_PATH (get_worktree_path "$already_branch")
 cd "$WORKTREE_PATH"
 
-set -l unique_file "already-on-main-"(date +%s)".txt"
+set -l unique_file "already-on-main-$already_timestamp.txt"
 echo content >"$unique_file"
 git add "$unique_file"
 git commit -m Test >/dev/null 2>&1
-git push -u origin feat/already-on-main --force >/dev/null 2>&1
-gh pr create --title "Already on main test" --body Test --head feat/already-on-main >/dev/null 2>&1
+git push -u origin "$already_branch" --force >/dev/null 2>&1
+gh pr create --title "Already on main test $already_timestamp" --body Test --head "$already_branch" >/dev/null 2>&1
 
 # End (main repo already on main)
 # Use --force to bypass PR check validation (we're testing sync when already on main)

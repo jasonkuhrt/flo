@@ -145,17 +145,19 @@ assert_not_dir_exists "$WORKTREE_PATH" "Worktree removed with --resolve abort"
 
 # Test 5: --resolve success is the default
 cd_temp_repo
-flo feat/default-resolve-test >/dev/null 2>&1
-set WORKTREE_PATH (get_worktree_path "feat/default-resolve-test")
+set -l default_timestamp (date +%s)
+set -l default_branch "feat/default-resolve-$default_timestamp"
+flo "$default_branch" >/dev/null 2>&1
+set WORKTREE_PATH (get_worktree_path "$default_branch")
 cd "$WORKTREE_PATH"
 
 # Push and create PR
-set -l unique_file "default-resolve-"(date +%s)".txt"
+set -l unique_file "default-resolve-$default_timestamp.txt"
 echo content >"$unique_file"
 git add "$unique_file"
 git commit -m "Test commit" >/dev/null 2>&1
-git push -u origin feat/default-resolve-test --force >/dev/null 2>&1
-gh pr create --title "Default resolve test" --body "Should be merged" --head feat/default-resolve-test >/dev/null 2>&1
+git push -u origin "$default_branch" --force >/dev/null 2>&1
+gh pr create --title "Default resolve test $default_timestamp" --body "Should be merged" --head "$default_branch" >/dev/null 2>&1
 
 # End without --resolve flag (should default to success)
 # Use --force to bypass PR check validation (we're testing default resolve, not validation)

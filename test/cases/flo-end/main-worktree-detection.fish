@@ -1,7 +1,7 @@
 # Test that __flo_get_main_worktree correctly identifies main repository
 
 setup_temp_repo
-git remote add origin https://github.com/jasonkuhrt/flo.git
+git remote add origin https://github.com/jasonkuhrt/flo-fixture-repo.git
 
 # Get main repo path before creating worktree
 set -l MAIN_REPO (realpath $PWD)

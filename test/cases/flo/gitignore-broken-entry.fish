@@ -1,7 +1,7 @@
 # Test that flo adds correct .gitignore entry even when broken entry exists
 
 setup_temp_repo
-git remote add origin https://github.com/jasonkuhrt/flo.git
+git remote add origin https://github.com/jasonkuhrt/flo-fixture-repo.git
 
 # Create .gitignore in main repo with broken entry
 touch .gitignore

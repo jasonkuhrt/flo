@@ -1,7 +1,7 @@
 tags slow gh
 
 setup_temp_repo
-git remote add origin https://github.com/jasonkuhrt/flo.git
+git remote add origin https://github.com/jasonkuhrt/flo-fixture-repo.git
 
 # Test: Verify gh can fetch issues and format them correctly
 set -l ISSUES_JSON (gh issue list --state open --json number,title --limit 5 2>/dev/null)
@@ -27,10 +27,10 @@ else
 end
 
 # Test: Verify issue number extraction from formatted string
-set -l TEST_STRING "#17 - 🧪 TEST FIXTURE - DO NOT CLOSE 🧪"
+set -l TEST_STRING "#1 - 🧪 TEST FIXTURE - DO NOT CLOSE 🧪"
 set -l EXTRACTED (fish -c "echo '$TEST_STRING' | string replace -r '^#(\d+).*' '\$1'" 2>/dev/null)
 
-assert_string_equals 17 "$EXTRACTED" "Issue number extraction works correctly"
+assert_string_equals 1 "$EXTRACTED" "Issue number extraction works correctly"
 
 # Test: Verify __flo_select_issue returns non-zero when gum not available
 # Create a function wrapper that removes gum from PATH
@@ -43,14 +43,14 @@ set -l NO_GUM_RESULT (fish -c "
 
 assert_string_equals 1 "$NO_GUM_RESULT" "Function returns error when gum not available"
 
-# Test: Verify full flow with mocked gum (simulates user selecting issue #17)
+# Test: Verify full flow with mocked gum (simulates user selecting issue #1)
 set -l MOCKED_RESULT (fish -c "
     # Mock gum to return a predetermined selection
     function gum
         if contains -- filter \$argv
-            echo '#17 - 🧪 TEST FIXTURE - DO NOT CLOSE 🧪'
+            echo '#1 - 🧪 TEST FIXTURE - DO NOT CLOSE 🧪'
         else if contains -- choose \$argv
-            echo '#17 - 🧪 TEST FIXTURE - DO NOT CLOSE 🧪'
+            echo '#1 - 🧪 TEST FIXTURE - DO NOT CLOSE 🧪'
         end
     end
 
@@ -58,7 +58,7 @@ set -l MOCKED_RESULT (fish -c "
     __flo_select_issue
 " 2>/dev/null)
 
-assert_string_equals 17 "$MOCKED_RESULT" "Full flow with mocked gum returns correct issue number"
+assert_string_equals 1 "$MOCKED_RESULT" "Full flow with mocked gum returns correct issue number"
 
 # Test: Verify function uses gum filter for many issues
 set -l USES_FILTER (fish -c "

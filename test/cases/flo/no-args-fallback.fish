@@ -1,5 +1,5 @@
 setup_temp_repo
-git remote add origin https://github.com/jasonkuhrt/flo.git
+git remote add origin https://github.com/jasonkuhrt/flo-fixture-repo.git
 
 # Test: Verify __flo_select_issue function exists and has proper structure
 fish -c "source $PROJECT_ROOT/functions/flo.fish; functions -q __flo_select_issue" 2>&1

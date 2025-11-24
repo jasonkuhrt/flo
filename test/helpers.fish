@@ -3,22 +3,22 @@
 # Variables available: $TEST_DIR, $PROJECT_ROOT
 
 # Setup temp repo with git initialized
-# For PR tests, this clones from the real flo repository to share commit history
+# For PR tests, this clones from a dedicated fixture repo to avoid polluting main flo repo
 function setup_temp_repo
     # Clean temp dir first (before_each hook may have created spy directories)
     rm -rf "$TEST_CASE_TEMP_DIR"
     mkdir -p "$TEST_CASE_TEMP_DIR"
     cd "$TEST_CASE_TEMP_DIR"
 
-    # Clone from real flo repository to share commit history (required for PRs)
+    # Clone from fixture repository (dedicated for tests, can be freely polluted)
     # MUST use full clone (not --depth 1) so feature branches share ancestry with remote main
-    git clone --quiet git@github.com:jasonkuhrt/flo.git . 2>/dev/null
+    git clone --quiet git@github.com:jasonkuhrt/flo-fixture-repo.git . 2>/dev/null
 
     if test $status -ne 0
         # Fallback to init if clone fails (e.g., no network, no auth)
         git init -q
         git config init.defaultBranch main
-        git remote add origin git@github.com:jasonkuhrt/flo.git 2>/dev/null; or true
+        git remote add origin git@github.com:jasonkuhrt/flo-fixture-repo.git 2>/dev/null; or true
         echo test >test.txt
         git add test.txt
         git commit -q -m "Initial commit"
@@ -73,7 +73,7 @@ source "$PROJECT_ROOT/functions/flo.fish"
 
 # Setup worktree for a GitHub issue and cd into it
 # Usage: setup_issue_worktree [issue_number] [search_pattern]
-# Defaults: issue_number=17, search_pattern="17-test-fixture"
+# Defaults: issue_number=1, search_pattern="1-test-fixture"
 # Guarantees:
 #   - Worktree is created and can be found
 #   - Changes to worktree directory
@@ -82,8 +82,8 @@ source "$PROJECT_ROOT/functions/flo.fish"
 #   - If main repo has .gitignore, worktree has it too
 # Fails the test with clear error if guarantees not met
 function setup_issue_worktree
-    set -l issue_number (test (count $argv) -ge 1; and echo $argv[1]; or echo 17)
-    set -l search_pattern (test (count $argv) -ge 2; and echo $argv[2]; or echo "17-test-fixture")
+    set -l issue_number (test (count $argv) -ge 1; and echo $argv[1]; or echo 1)
+    set -l search_pattern (test (count $argv) -ge 2; and echo $argv[2]; or echo "1-test-fixture")
 
     # Clean up any stale worktrees/branches for this issue first
     git worktree list 2>/dev/null | grep "$search_pattern" | awk '{print $1}' | xargs -I {} git worktree remove --force {} 2>/dev/null; or true

@@ -1,5 +1,5 @@
 setup_temp_repo
-git remote add origin https://github.com/jasonkuhrt/flo.git
+git remote add origin https://github.com/jasonkuhrt/flo-fixture-repo.git
 
 # Test: flo start with explicit command syntax
 flo start feat/test-start-command >/dev/null 2>&1

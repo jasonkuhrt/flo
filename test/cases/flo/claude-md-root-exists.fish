@@ -1,5 +1,5 @@
 setup_temp_repo
-git remote add origin https://github.com/jasonkuhrt/flo.git
+git remote add origin https://github.com/jasonkuhrt/flo-fixture-repo.git
 
 # Create root CLAUDE.md to simulate a project with existing configuration
 echo "# Project CLAUDE.md" >CLAUDE.md

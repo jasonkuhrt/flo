@@ -1,5 +1,5 @@
 setup_temp_repo
-git remote add origin https://github.com/jasonkuhrt/flo.git
+git remote add origin https://github.com/jasonkuhrt/flo-fixture-repo.git
 
 # Create worktree and cd into it
 setup_issue_worktree

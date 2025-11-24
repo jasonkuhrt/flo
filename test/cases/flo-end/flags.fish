@@ -52,8 +52,8 @@ git commit -m "Test commit" >/dev/null 2>&1
 git push -u origin feat/ignore-worktree-test --force >/dev/null 2>&1
 gh pr create --title "Ignore worktree test" --body "PR will be merged" --head feat/ignore-worktree-test >/dev/null 2>&1
 
-# End with --ignore worktree
-run flo end --yes --ignore worktree --resolve success
+# End with --ignore worktree (use --force to bypass PR check validation)
+run flo end --yes --ignore worktree --resolve success --force
 
 # Should merge PR
 set -l clean_output (strip_ansi "$RUN_OUTPUT")
@@ -158,7 +158,8 @@ git push -u origin feat/default-resolve-test --force >/dev/null 2>&1
 gh pr create --title "Default resolve test" --body "Should be merged" --head feat/default-resolve-test >/dev/null 2>&1
 
 # End without --resolve flag (should default to success)
-run flo end --yes
+# Use --force to bypass PR check validation (we're testing default resolve, not validation)
+run flo end --yes --force
 
 # Should merge PR (default behavior)
 set -l clean_output (strip_ansi "$RUN_OUTPUT")

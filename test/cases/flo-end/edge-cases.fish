@@ -45,21 +45,20 @@ run flo feat/merge-conflict
 set WORKTREE_PATH (get_worktree_path "feat/merge-conflict")
 cd "$WORKTREE_PATH"
 
-# Create a commit
-set -l unique_file "merge-conflict-"(date +%s)".txt"
-echo "feature content" >"$unique_file"
-git add "$unique_file"
+# Create a file with content that will conflict
+echo "feature content" >shared-file.txt
+git add shared-file.txt
 git commit -m "Feature commit" >/dev/null 2>&1
 git push -u origin feat/merge-conflict --force >/dev/null 2>&1
 
 # Create PR
 gh pr create --title "Conflict test" --body Test --head feat/merge-conflict >/dev/null 2>&1
 
-# Now create conflicting commit on main
+# Now create conflicting commit on main (same file, different content)
 cd_temp_repo
 git checkout main 2>/dev/null
-echo "main content" >conflict.txt
-git add conflict.txt
+echo "main content" >shared-file.txt
+git add shared-file.txt
 git commit -m "Main commit" >/dev/null 2>&1
 git push origin main >/dev/null 2>&1
 
@@ -71,7 +70,8 @@ set EXIT_CODE $status
 # Should fail with merge conflict error from gh
 test $EXIT_CODE -ne 0
 assert_success "Command fails when PR has merge conflicts"
-assert_output_contains conflict "Shows merge conflict error"
+# gh pr merge outputs various messages - check for any indication of failure
+assert_output_contains "CONFLICTING\|conflict\|cannot be merged" "Shows merge conflict error"
 
 # Worktree should NOT be removed (operation failed)
 assert_dir_exists "$WORKTREE_PATH" "Worktree preserved when merge fails"
@@ -113,25 +113,25 @@ assert_not_dir_exists "$WORKTREE_PATH" "Worktree removed even when remote alread
 # Test 4: Removing by issue number
 cd_temp_repo
 
-# Create worktree using issue number
-flo 42 >/dev/null 2>&1
+# Create worktree using issue number (use issue #17 which is the test fixture)
+flo 17 >/dev/null 2>&1
 
 # Find the worktree (pattern depends on issue fetch)
-set WORKTREE_PATH (find_worktree "42")
+set WORKTREE_PATH (find_worktree "17-test-fixture")
 
 # If worktree was created
 if test -n "$WORKTREE_PATH"; and test -d "$WORKTREE_PATH"
     cd "$WORKTREE_PATH"
 
     # Make a commit
-    set -l unique_file "issue-42-"(date +%s)".txt"
+    set -l unique_file "issue-17-"(date +%s)".txt"
     echo content >"$unique_file"
     git add "$unique_file"
     git commit -m Test >/dev/null 2>&1
 
     # Remove by issue number
     cd_temp_repo
-    run flo end 42 --yes --ignore pr
+    run flo end 17 --yes --ignore pr
 
     # Should remove the worktree
     assert_not_dir_exists "$WORKTREE_PATH" "Can remove worktree by issue number"
@@ -246,14 +246,15 @@ git worktree remove --force "$WORKTREE_PATH" 2>/dev/null
 # Test 10: Detached HEAD worktree (existing behavior)
 cd_temp_repo
 
-# Create worktree with detached HEAD
+# Create worktree with detached HEAD (use path within test directory structure)
 set -l COMMIT (git rev-parse HEAD)
-git worktree add --detach /tmp/flo-detached-test "$COMMIT" >/dev/null 2>&1
+set -l DETACHED_PATH "$TEST_CASE_TEMP_DIR"_detached-head-test
+git worktree add --detach "$DETACHED_PATH" "$COMMIT" >/dev/null 2>&1
 
-cd /tmp/flo-detached-test
+cd "$DETACHED_PATH"
 
 # Try to remove (should handle gracefully)
 run flo end --yes --ignore pr
 
 # Should remove worktree but skip branch deletion (no branch)
-assert_not_dir_exists /tmp/flo-detached-test "Removes detached HEAD worktree"
+assert_not_dir_exists "$DETACHED_PATH" "Removes detached HEAD worktree"

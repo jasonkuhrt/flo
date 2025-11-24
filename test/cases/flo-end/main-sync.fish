@@ -23,7 +23,8 @@ git push -u origin feat/sync-test-1 --force >/dev/null 2>&1
 gh pr create --title "Sync test PR" --body Test --head feat/sync-test-1 >/dev/null 2>&1
 
 # End worktree (should merge PR and sync main)
-run flo end --yes --resolve success
+# Use --force to bypass PR check validation (we're testing sync, not validation)
+run flo end --yes --resolve success --force
 
 # Should mention syncing main
 assert_output_contains Sync "Output mentions syncing main branch"
@@ -59,7 +60,8 @@ git commit -m "Conflicting commit" >/dev/null 2>&1
 
 # Now end the worktree (sync might fail due to local commits)
 cd "$WORKTREE_PATH"
-run flo end --yes --resolve success
+# Use --force to bypass PR check validation (we're testing sync failure handling)
+run flo end --yes --resolve success --force
 set -l EXIT_CODE $status
 
 # Command should succeed even if sync fails
@@ -138,7 +140,8 @@ git push -u origin feat/switch-to-main --force >/dev/null 2>&1
 gh pr create --title "Switch to main test" --body Test --head feat/switch-to-main >/dev/null 2>&1
 
 # End (should switch from other-branch to main)
-run flo end --yes --resolve success
+# Use --force to bypass PR check validation (we're testing branch switching)
+run flo end --yes --resolve success --force
 
 # Should be on main after operation
 cd_temp_repo
@@ -165,7 +168,8 @@ git push -u origin feat/already-on-main --force >/dev/null 2>&1
 gh pr create --title "Already on main test" --body Test --head feat/already-on-main >/dev/null 2>&1
 
 # End (main repo already on main)
-run flo end --yes --resolve success
+# Use --force to bypass PR check validation (we're testing sync when already on main)
+run flo end --yes --resolve success --force
 
 # Should still sync (pull latest)
 assert_output_contains Sync "Syncs main even when already on main"

@@ -666,14 +666,19 @@ function flo_end
             end
         end
 
-        # Show main sync (happens when PR exists, regardless of whether it gets merged now or was already merged)
+        # Show main sync (only when PR will be merged or was already merged)
         if test "$resolve_mode" = success -a "$ignore_pr" = false
             if test -n "$pr_number"
-                # PR exists - main sync will happen (merge is idempotent)
-                echo "    $__flo_c_blue•$__flo_c_reset Sync main branch"
-            else
-                echo "    $__flo_c_dim•$__flo_c_reset Skip main sync (no PR)"
+                if test "$pr_state" = OPEN
+                    # PR will be merged - sync main afterward
+                    echo "    $__flo_c_blue•$__flo_c_reset Sync main branch"
+                else if test "$pr_state" = MERGED
+                    # PR already merged - sync main to get those changes
+                    echo "    $__flo_c_blue•$__flo_c_reset Sync main branch (pull merged changes)"
+                end
+                # If PR is CLOSED, no sync needed (nothing was merged)
             end
+            # If no PR, no sync needed
         end
 
         echo "    $__flo_c_blue•$__flo_c_reset Return to main directory"

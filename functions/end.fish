@@ -222,17 +222,20 @@ function __flo_merge_pr --description "Merge PR and optionally delete remote bra
         return 0
     end
 
-    # Merge PR with squash, optionally delete remote branch
+    # Merge PR with squash
+    # Note: We don't use --delete-branch because it tries to checkout main locally,
+    # which fails in worktree setups where main is already checked out elsewhere
     __flo_log_info "Merging PR #$pr_number..."
 
-    if test "$delete_branch" = true
-        gh pr merge "$branch_name" --squash --delete-branch 2>&1
-    else
-        gh pr merge "$branch_name" --squash 2>&1
-    end
+    gh pr merge "$branch_name" --squash 2>&1
 
     if test $status -eq 0
         __flo_log_success "Merged PR #$pr_number"
+        # Delete remote branch if requested
+        if test "$delete_branch" = true
+            git push origin --delete "$branch_name" 2>/dev/null
+            # Silent failure OK - branch may already be deleted by GitHub
+        end
         return 0
     else
         __flo_log_error "Failed to merge PR #$pr_number" "Check PR status on GitHub"

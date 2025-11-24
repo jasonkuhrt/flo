@@ -115,7 +115,7 @@ The command follows a task-based model where operations can be selectively inclu
 1. **Validate**: PR checks passing (if PR exists)
 2. **Validate**: Worktree clean (no uncommitted changes)
 3. **Validate**: Branch synced (no unpushed commits)
-4. **Merge PR** (deletes remote branch via `gh pr merge --squash --delete-branch`)
+4. **Merge PR** (via `gh pr merge --squash`, then `git push origin --delete <branch>`)
 5. **Delete worktree**
 6. **Delete local branch**
 7. **Sync main branch** (`git pull origin main` in main repo)

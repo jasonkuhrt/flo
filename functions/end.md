@@ -29,6 +29,10 @@
       "description": "Skip confirmation prompt (non-interactive mode)"
     },
     {
+      "name": "--dry",
+      "description": "Show what would be done without making any changes"
+    },
+    {
       "name": "--project",
       "description": "Project to operate on (name or path). Names resolved via ~/.config/flo/settings.json"
     }
@@ -73,6 +77,10 @@
     {
       "command": "flo end --yes",
       "description": "Non-interactive mode (for automation)"
+    },
+    {
+      "command": "flo end --dry",
+      "description": "Preview what would be done without executing"
     },
     {
       "command": "flo end --force --yes",

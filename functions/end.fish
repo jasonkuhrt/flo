@@ -118,17 +118,22 @@ function __flo_check_pr_status --description "Check if PR checks are passing"
     end
 
     # Get PR status checks
-    set -l check_status (gh pr view "$branch_name" --json statusCheckRollup --jq '.statusCheckRollup[].state' 2>/dev/null)
+    # Note: CheckRun uses "conclusion", StatusContext uses "state"
+    set -l check_status (gh pr view "$branch_name" --json statusCheckRollup --jq '.statusCheckRollup[] | (.conclusion // .state)' 2>/dev/null)
 
     if test $status -ne 0
         # PR not found or gh failed
         return 1
     end
 
-    # Check if all checks are SUCCESS
+    # Check if all checks are passing (SUCCESS, SKIPPED, or NEUTRAL are acceptable)
     for status_line in $check_status
-        if test "$status_line" != SUCCESS
-            return 1
+        switch "$status_line"
+            case SUCCESS SKIPPED NEUTRAL
+                # These states are acceptable
+            case '*'
+                # Any other state (FAILURE, PENDING, ERROR, etc.) means not passing
+                return 1
         end
     end
 
@@ -317,7 +322,7 @@ end
 
 function flo_end
     # Parse flags
-    argparse f/force y/yes 'resolve=' 'ignore=+' 'project=' -- $argv; or return
+    argparse f/force y/yes dry 'resolve=' 'ignore=+' 'project=' -- $argv; or return
 
     # Validate --resolve flag
     set -l resolve_mode success
@@ -491,22 +496,167 @@ function flo_end
         end
     end
 
-    # Show confirmation prompt (unless --yes flag provided)
-    if not set -q _flag_yes
+    # Gather state for preview (dry-run gets detailed state, confirmation just needs PR number)
+    set -l pr_number ""
+    set -l pr_state ""
+    set -l pr_checks_passing ""
+    set -l pr_failing_checks
+    set -l worktree_clean ""
+    set -l branch_synced ""
+
+    # Get PR number for preview (both dry-run and confirmation prompt)
+    if not set -q _flag_yes; or set -q _flag_dry
+        if test "$ignore_pr" = false -a -n "$branch_name"
+            set pr_number (__flo_get_pr_number "$branch_name" 2>/dev/null)
+        end
+    end
+
+    if set -q _flag_dry
+        # Dry run - gather detailed state
+        if test -n "$pr_number"
+            set pr_state (gh pr view "$branch_name" --json state --jq .state 2>/dev/null)
+            if test "$pr_state" = OPEN
+                # Get individual check statuses
+                # Note: CheckRun uses "conclusion", StatusContext uses "state"
+                set -l check_results (gh pr view "$branch_name" --json statusCheckRollup --jq '.statusCheckRollup[] | "\(.conclusion // .state)\t\(.name // .context)"' 2>/dev/null)
+                set pr_checks_passing true
+                for check in $check_results
+                    set -l check_state (echo "$check" | cut -f1)
+                    set -l check_name (echo "$check" | cut -f2)
+                    switch "$check_state"
+                        case SUCCESS SKIPPED NEUTRAL
+                            # Acceptable
+                        case '*'
+                            set pr_checks_passing false
+                            set -a pr_failing_checks "$check_state:$check_name"
+                    end
+                end
+            end
+        end
+
+        if test "$ignore_worktree" = false
+            if __flo_validate_clean_worktree "$worktree_path"
+                set worktree_clean true
+            else
+                set worktree_clean false
+            end
+
+            if __flo_validate_branch_synced "$worktree_path"
+                set branch_synced true
+            else
+                set branch_synced false
+            end
+        end
+    end
+
+    # Extract issue number from branch name (e.g., feat/91-description -> 91)
+    set -l issue_number ""
+    if test -n "$branch_name"
+        set issue_number (echo "$branch_name" | string replace -r '.*?(\d+).*' '$1')
+    end
+
+    # Show preview (for --dry or confirmation prompt)
+    if set -q _flag_dry; or not set -q _flag_yes
         echo ""
         echo "  $__flo_c_dim Worktree:$__flo_c_reset $__flo_c_cyan$worktree_path$__flo_c_reset"
         if test -n "$branch_name"
             echo "  $__flo_c_dim Branch:$__flo_c_reset   $__flo_c_cyan$branch_name$__flo_c_reset"
         end
+        # Get repo URL once for PR/Issue links
+        set -l repo_url ""
+        if test -n "$pr_number" -o -n "$issue_number"
+            set repo_url (gh repo view --json url --jq .url 2>/dev/null)
+        end
+        if test -n "$pr_number"
+            if test -n "$repo_url"
+                echo "  $__flo_c_dim PR:$__flo_c_reset       $__flo_c_cyan$repo_url/pull/$pr_number$__flo_c_reset"
+            else
+                echo "  $__flo_c_dim PR:$__flo_c_reset       $__flo_c_cyan#$pr_number$__flo_c_reset"
+            end
+        end
+        if test -n "$issue_number"
+            if test -n "$repo_url"
+                echo "  $__flo_c_dim Issue:$__flo_c_reset    $__flo_c_cyan$repo_url/issues/$issue_number$__flo_c_reset"
+            else
+                echo "  $__flo_c_dim Issue:$__flo_c_reset    $__flo_c_cyan#$issue_number$__flo_c_reset"
+            end
+        end
+
+        # Dry run shows actual state
+        if set -q _flag_dry
+            echo ""
+            echo "  $__flo_c_dim""State:$__flo_c_reset"
+
+            # PR state
+            if test "$ignore_pr" = false
+                if test -n "$pr_number"
+                    if test "$pr_state" = MERGED
+                        echo "    $__flo_c_green✓$__flo_c_reset PR #$pr_number: $__flo_c_dim""already merged$__flo_c_reset"
+                    else if test "$pr_state" = CLOSED
+                        echo "    $__flo_c_yellow•$__flo_c_reset PR #$pr_number: $__flo_c_dim""already closed$__flo_c_reset"
+                    else
+                        if test "$pr_checks_passing" = true
+                            echo "    $__flo_c_green✓$__flo_c_reset PR #$pr_number: $__flo_c_green""checks passing$__flo_c_reset"
+                        else
+                            echo "    $__flo_c_red✗$__flo_c_reset PR #$pr_number: $__flo_c_red""checks not passing$__flo_c_reset"
+                            # Show failing checks
+                            for failing in $pr_failing_checks
+                                set -l state (echo "$failing" | cut -d: -f1)
+                                set -l name (echo "$failing" | cut -d: -f2-)
+                                set -l state_color $__flo_c_red
+                                if test "$state" = PENDING
+                                    set state_color $__flo_c_yellow
+                                end
+                                echo "      $state_color$state$__flo_c_reset $__flo_c_dim$name$__flo_c_reset"
+                            end
+                        end
+                    end
+                else
+                    echo "    $__flo_c_dim•$__flo_c_reset PR: $__flo_c_dim""none$__flo_c_reset"
+                end
+            end
+
+            # Worktree state
+            if test "$ignore_worktree" = false
+                if test "$worktree_clean" = true
+                    echo "    $__flo_c_green✓$__flo_c_reset Worktree: $__flo_c_green""clean$__flo_c_reset"
+                else
+                    echo "    $__flo_c_red✗$__flo_c_reset Worktree: $__flo_c_red""has uncommitted changes$__flo_c_reset"
+                end
+
+                if test "$branch_synced" = true
+                    echo "    $__flo_c_green✓$__flo_c_reset Branch: $__flo_c_green""synced$__flo_c_reset"
+                else
+                    echo "    $__flo_c_red✗$__flo_c_reset Branch: $__flo_c_red""has unpushed commits$__flo_c_reset"
+                end
+            end
+        end
+
         echo ""
         echo "  This will:"
 
         # Show PR operations
         if test "$ignore_pr" = false
-            if test "$resolve_mode" = success
-                echo "    $__flo_c_blue•$__flo_c_reset Merge PR (if exists)"
+            if set -q _flag_dry; and test -n "$pr_number"
+                # Dry run - show specific action based on state
+                if test "$pr_state" = MERGED
+                    echo "    $__flo_c_dim•$__flo_c_reset Skip PR merge (already merged)"
+                else if test "$pr_state" = CLOSED
+                    echo "    $__flo_c_dim•$__flo_c_reset Skip PR close (already closed)"
+                else if test "$resolve_mode" = success
+                    echo "    $__flo_c_blue•$__flo_c_reset Merge PR #$pr_number"
+                else
+                    echo "    $__flo_c_blue•$__flo_c_reset Close PR #$pr_number without merging"
+                end
+            else if set -q _flag_dry; and test -z "$pr_number"
+                echo "    $__flo_c_dim•$__flo_c_reset Skip PR operations (no PR exists)"
             else
-                echo "    $__flo_c_blue•$__flo_c_reset Close PR without merging (if exists)"
+                # Normal confirmation - show generic
+                if test "$resolve_mode" = success
+                    echo "    $__flo_c_blue•$__flo_c_reset Merge PR (if exists)"
+                else
+                    echo "    $__flo_c_blue•$__flo_c_reset Close PR without merging (if exists)"
+                end
             end
         end
 
@@ -525,13 +675,43 @@ function flo_end
             end
         end
 
-        # Show main sync
+        # Show main sync (happens when PR exists, regardless of whether it gets merged now or was already merged)
         if test "$resolve_mode" = success -a "$ignore_pr" = false
-            echo "    $__flo_c_blue•$__flo_c_reset Sync main branch"
+            if set -q _flag_dry; and test -n "$pr_number"
+                # PR exists - main sync will happen (merge is idempotent)
+                echo "    $__flo_c_blue•$__flo_c_reset Sync main branch"
+            else if set -q _flag_dry; and test -z "$pr_number"
+                echo "    $__flo_c_dim•$__flo_c_reset Skip main sync (no PR)"
+            else
+                echo "    $__flo_c_blue•$__flo_c_reset Sync main branch"
+            end
         end
 
         echo "    $__flo_c_blue•$__flo_c_reset Return to main directory"
         echo ""
+
+        # Dry run - show validation result and exit
+        if set -q _flag_dry
+            # Check if validations would fail
+            set -l would_fail false
+            if test "$resolve_mode" = success -a "$ignore_pr" = false; and not set -q _flag_force
+                if test -n "$pr_number" -a "$pr_state" = OPEN -a "$pr_checks_passing" = false
+                    set would_fail true
+                end
+            end
+            if test "$ignore_worktree" = false; and not set -q _flag_force
+                if test "$worktree_clean" = false -o "$branch_synced" = false
+                    set would_fail true
+                end
+            end
+
+            if test "$would_fail" = true
+                __flo_log_error "Would fail validation" "Use --force to bypass"
+            else
+                __flo_log_success Ready
+            end
+            return 0
+        end
 
         read -l -P "Continue? [y/N]: " confirm
 

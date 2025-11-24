@@ -210,3 +210,37 @@ assert_output_contains invalid "Shows error for invalid --resolve value"
 cd_temp_repo
 git worktree remove --force "$WORKTREE_PATH" 2>/dev/null
 git branch -D feat/invalid-resolve-test 2>/dev/null
+
+# Test 8: --dry flag shows preview without executing
+cd_temp_repo
+flo feat/dry-test >/dev/null 2>&1
+set WORKTREE_PATH (get_worktree_path "feat/dry-test")
+cd "$WORKTREE_PATH"
+
+# Create minimal setup
+echo content >test.txt
+git add test.txt
+git commit -m Test >/dev/null 2>&1
+
+# Run with --dry flag
+run flo end --dry
+
+# Should succeed
+test $status -eq 0
+assert_success "Command succeeds with --dry flag"
+
+# Should show preview information
+assert_output_contains "This will:" "Shows preview header"
+assert_output_contains "Dry run" "Shows dry run message"
+
+# Should NOT actually remove worktree
+assert_dir_exists "$WORKTREE_PATH" "Worktree NOT removed with --dry flag"
+
+# Branch should still exist
+cd_temp_repo
+set -l BRANCHES (git branch)
+assert_string_contains feat/dry-test "$BRANCHES" "Branch NOT deleted with --dry flag"
+
+# Cleanup
+git worktree remove --force "$WORKTREE_PATH" 2>/dev/null
+git branch -D feat/dry-test 2>/dev/null

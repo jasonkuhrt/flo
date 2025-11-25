@@ -211,7 +211,7 @@ function __flo_merge_pr --description "Merge PR and optionally delete remote bra
     if test $status -ne 0
         # No PR found - not an error, just skip
         __flo_log_info_dim "No PR found for branch: $branch_name"
-        return 0
+        return 2 # No-op
     end
 
     # Check if PR is already merged
@@ -219,7 +219,7 @@ function __flo_merge_pr --description "Merge PR and optionally delete remote bra
 
     if test "$pr_state" = MERGED
         __flo_log_info_dim "PR #$pr_number already merged (idempotent)"
-        return 0
+        return 2 # No-op
     end
 
     # Merge PR with squash
@@ -294,6 +294,14 @@ function __flo_sync_main --description "Sync main branch with remote"
 
     # Change to main worktree
     cd "$main_worktree" || return 1
+
+    # Check if main worktree is dirty (has uncommitted changes)
+    set -l status_output (git status --porcelain 2>/dev/null)
+    if test -n "$status_output"
+        cd "$prev_dir"
+        __flo_log_info_dim "Skipping main sync (has uncommitted changes)"
+        return 0 # Not a failure, just skipped
+    end
 
     # Get current branch
     set -l current_branch (git branch --show-current 2>/dev/null)
@@ -785,13 +793,16 @@ function flo_end
                 set delete_branch_flag true
             end
             __flo_merge_pr "$branch_name" "$delete_branch_flag"
+            set -l merge_status $status
 
-            if test $status -eq 0
+            if test $merge_status -eq 0
+                # Actual merge happened
                 set pr_merged true
-            else
+            else if test $merge_status -eq 1
                 # Merge failed - exit early
                 return 1
             end
+            # status 2 = no-op (no PR or already merged), pr_merged stays false
         else
             # Close PR without merging
             __flo_close_pr "$branch_name"
@@ -820,8 +831,11 @@ function flo_end
             cd "$main_worktree"
 
             # Delete the local branch
+            # Force delete if:
+            # - User passed --force flag, OR
+            # - PR was just merged (squash merge commits differ from branch commits)
             set -l force_delete false
-            if set -q _flag_force
+            if set -q _flag_force; or test "$pr_merged" = true
                 set force_delete true
             end
             __flo_delete_branch "$branch_name" "$force_delete"

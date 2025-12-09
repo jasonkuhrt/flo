@@ -158,23 +158,19 @@ When you run `flo 123`:
        chore/123-<title> for chores
   4. Creates worktree: ../<project>_<branch>/
   5. Copies Serena MCP cache if present (speeds up symbol indexing)
-  6. Sets up .claude/CLAUDE.md (one-time)
-  7. Generates .claude/CLAUDE.local.md with issue context
-  8. Runs pnpm install
-  9. Ready to code!
+  6. Generates CLAUDE.local.md with issue context
+  7. Runs pnpm install
+  8. Ready to code!
 
 # CLAUDE INTEGRATION
 
-When you create a worktree from an issue, flo uses a two-file system:
+When you create a worktree from an issue, flo generates `CLAUDE.local.md` in the
+project root. Claude Code automatically reads this file when starting a session.
 
-.claude/CLAUDE.md (one-time):
-  - Instructs Claude to read .claude/CLAUDE.local.md
-  - Prepended to existing CLAUDE.md if present
-  - Committed to your repo
-
-.claude/CLAUDE.local.md (per-issue):
-  - Overwritten each run with issue context
-  - Gitignored - never committed
+CLAUDE.local.md (per-issue):
+  - Contains GitHub issue context (title, description, comments)
+  - Overwritten each run with fresh issue data
+  - Auto-gitignored by Claude Code
   - Worktree-specific
 
 # SERENA MCP INTEGRATION

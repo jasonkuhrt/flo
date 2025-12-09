@@ -165,8 +165,8 @@ refactor/123- for refactoring
 chore/123- for chores                                                           
 4. Creates worktree: ../_/                                                      
 5. Copies Serena MCP cache if present (speeds up symbol indexing)               
-6. Sets up .claude/CLAUDE.md (one-time)                                         
-7. Generates .claude/CLAUDE.local.md with issue context                         
+6. Generates .claude/CLAUDE.local.md with issue context                         
+7. Configures SessionStart hook to auto-load context                            
 8. Runs pnpm install                                                            
 9. Ready to code!                                                               
                                                                                 
@@ -174,19 +174,20 @@ chore/123- for chores
                                                                                 
 CLAUDE INTEGRATION                                                              
                                                                                 
-  When you create a worktree from an issue, flo uses a two-file system:         
-                                                                                
-  .claude/CLAUDE.md (one-time):                                                 
-                                                                                
-• Instructs Claude to read .claude/CLAUDE.local.md                              
-• Prepended to existing CLAUDE.md if present                                    
-• Committed to your repo                                                        
+  When you create a worktree from an issue, flo sets up Claude context:         
                                                                                 
   .claude/CLAUDE.local.md (per-issue):                                          
                                                                                 
-• Overwritten each run with issue context                                       
+• Contains GitHub issue context (title, description, comments)                  
+• Overwritten each run with fresh issue data                                    
 • Gitignored - never committed                                                  
 • Worktree-specific                                                             
+                                                                                
+  .claude/settings.local.json (per-worktree):                                   
+                                                                                
+• Configures SessionStart hook to auto-load CLAUDE.local.md                     
+• Claude sees issue context automatically when session starts                   
+• Gitignored - never committed                                                  
                                                                                 
                                                                                 
                                                                                 
@@ -361,7 +362,8 @@ CORE CONCEPT: TASK-BASED CLEANUP
 1. Validate: PR checks passing (if PR exists)                                   
 2. Validate: Worktree clean (no uncommitted changes)                            
 3. Validate: Branch synced (no unpushed commits)                                
-4. Merge PR (deletes remote branch via  gh pr merge --squash --delete-branch )  
+4. Merge PR (via  gh pr merge --squash , then  git push origin --delete <branch>
+)                                                                               
 5. Delete worktree                                                              
 6. Delete local branch                                                          
 7. Sync main branch ( git pull origin main  in main repo)                       

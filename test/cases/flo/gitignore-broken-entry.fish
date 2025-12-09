@@ -3,9 +3,9 @@
 setup_temp_repo
 git remote add origin https://github.com/jasonkuhrt/flo-fixture-repo.git
 
-# Create .gitignore in main repo with broken entry
+# Create .gitignore in main repo with broken entry (using old path format)
 touch .gitignore
-echo "+.claude/*.local.md" >.gitignore
+echo "+CLAUDE.local.md" >.gitignore
 git add .gitignore
 git commit -q -m "Add .gitignore with broken entry"
 
@@ -14,11 +14,11 @@ git commit -q -m "Add .gitignore with broken entry"
 setup_issue_worktree
 
 # Verify flo added correct entry (not just the broken one)
-grep -Fxq '.claude/*.local.md' .gitignore 2>/dev/null
+grep -Fxq 'CLAUDE.local.md' .gitignore 2>/dev/null
 assert_success "flo added correct gitignore entry"
 
 # Verify the correct entry actually works for ignoring files
-echo test >.claude/CLAUDE.local.md
-set -l OUTPUT (git status --porcelain .claude/CLAUDE.local.md 2>&1)
+echo test >CLAUDE.local.md
+set -l OUTPUT (git status --porcelain CLAUDE.local.md 2>&1)
 
 assert_string_equals "" "$OUTPUT" "CLAUDE.local.md properly ignored by git"

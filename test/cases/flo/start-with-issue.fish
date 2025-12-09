@@ -21,5 +21,5 @@ assert_dir_exists "$WORKTREE_PATH" "flo start created worktree from issue number
 git show-ref --verify --quiet refs/heads/feat/1-test-fixture-do-not-close
 assert_success "flo start created branch from issue"
 
-# Verify Claude context was created (issue mode)
-assert_file_exists "$WORKTREE_PATH/.claude/CLAUDE.local.md" "flo start created Claude context for issue"
+# Verify Claude context was created at project root (issue mode)
+assert_file_exists "$WORKTREE_PATH/CLAUDE.local.md" "flo start created Claude context for issue"

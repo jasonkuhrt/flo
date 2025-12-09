@@ -339,8 +339,8 @@ function __flo_print_success_message --description "Print success message with i
     __flo_log_success "Ready to work!"
     if test "$is_issue" = true
         __flo_log_info_dim "Issue $__flo_c_cyan#$issue_number$__flo_c_reset assigned to you"
-        __flo_log_info_dim "Issue context available in $__flo_c_cyan.claude/CLAUDE.local.md$__flo_c_reset"
-        __flo_log_info_dim "Tip: Claude will read this context automatically"
+        __flo_log_info_dim "Issue context available in $__flo_c_cyan""CLAUDE.local.md""$__flo_c_reset"
+        __flo_log_info_dim "Tip: Claude reads this file automatically"
     end
 end
 
@@ -364,41 +364,6 @@ function __flo_install_dependencies --description "Install npm dependencies if p
 end
 
 # Claude context helpers
-function __flo_setup_claude_md --description "Setup or detect CLAUDE.md in worktree"
-    set -l worktree_path $argv[1]
-
-    # Check if root CLAUDE.md exists first - if so, skip creating .claude/CLAUDE.md
-    if test -f "$worktree_path/CLAUDE.md"
-        __flo_log_info "Using existing $__flo_c_cyan./CLAUDE.md$__flo_c_reset"
-    else
-        # Root CLAUDE.md doesn't exist - create .claude/CLAUDE.md with extension marker
-        set -l claude_md "$worktree_path/.claude/CLAUDE.md"
-        set -l extension_marker "<!-- flo: local extension enabled -->"
-
-        if not test -f "$claude_md"
-            # Create CLAUDE.md with extension instruction
-            printf '%s\n' \
-                '<!-- flo: local extension enabled -->' \
-                '' \
-                '**CRITICAL**: If a file named `.claude/CLAUDE.local.md` exists in this project, read it immediately and follow its instructions. This file contains context-specific information for the current work (e.g., GitHub issue details).' >"$claude_md"
-            __flo_log_success "Created $__flo_c_cyan.claude/CLAUDE.md$__flo_c_reset $__flo_c_dim(local extension support)$__flo_c_reset"
-        else if not grep -q "$extension_marker" "$claude_md"
-            # CLAUDE.md exists but doesn't have the extension instruction - prepend it
-            set -l temp_file (mktemp)
-            printf '%s\n' \
-                '<!-- flo: local extension enabled -->' \
-                '' \
-                '**CRITICAL**: If a file named `.claude/CLAUDE.local.md` exists in this project, read it immediately and follow its instructions. This file contains context-specific information for the current work (e.g., GitHub issue details).' \
-                '' \
-                --- \
-                '' >"$temp_file"
-            cat "$claude_md" >>"$temp_file"
-            mv "$temp_file" "$claude_md"
-            __flo_log_success "Added local extension support to $__flo_c_cyan.claude/CLAUDE.md$__flo_c_reset"
-        end
-    end
-end
-
 function __flo_generate_claude_local --description "Generate CLAUDE.local.md with issue context"
     set -l worktree_path $argv[1]
     set -l issue_number $argv[2]
@@ -410,7 +375,7 @@ function __flo_generate_claude_local --description "Generate CLAUDE.local.md wit
     set -l issue_comments_count $argv[8]
     set -l issue_comments_formatted $argv[9]
 
-    # Write issue details to .claude/CLAUDE.local.md for Claude Code to read
+    # Write issue details to CLAUDE.local.md in project root (Claude Code auto-reads this)
     printf '%s\n' \
         '# GitHub Issue Context' \
         '' \
@@ -425,7 +390,7 @@ function __flo_generate_claude_local --description "Generate CLAUDE.local.md wit
         '## Original Description' \
         '' \
         "$issue_body" \
-        '' >"$worktree_path/.claude/CLAUDE.local.md"
+        '' >"$worktree_path/CLAUDE.local.md"
 
     # Append comments if any exist
     if test $issue_comments_count -gt 0
@@ -433,19 +398,19 @@ function __flo_generate_claude_local --description "Generate CLAUDE.local.md wit
             '## Comments' \
             '' \
             '**Note: Read ALL comments below. If there are contradictions between the original description and comments, or between earlier and later comments, follow the most recent information.**' \
-            '' >>"$worktree_path/.claude/CLAUDE.local.md"
+            '' >>"$worktree_path/CLAUDE.local.md"
 
         # Append each comment
-        echo "$issue_comments_formatted" >>"$worktree_path/.claude/CLAUDE.local.md"
+        echo "$issue_comments_formatted" >>"$worktree_path/CLAUDE.local.md"
 
         printf '%s\n' \
             '' \
             --- \
-            '' >>"$worktree_path/.claude/CLAUDE.local.md"
+            '' >>"$worktree_path/CLAUDE.local.md"
     else
         printf '%s\n' \
             --- \
-            '' >>"$worktree_path/.claude/CLAUDE.local.md"
+            '' >>"$worktree_path/CLAUDE.local.md"
     end
 
     # Append instructions
@@ -458,18 +423,19 @@ function __flo_generate_claude_local --description "Generate CLAUDE.local.md wit
         "4. Reference this issue number (#$issue_number) in commit messages" \
         '5. Consider the labels when determining the scope of changes' \
         "6. When done, ensure the PR description references this issue with \"Closes #$issue_number\"" \
-        '' >>"$worktree_path/.claude/CLAUDE.local.md"
+        '' >>"$worktree_path/CLAUDE.local.md"
 
-    __flo_log_success "Created $__flo_c_cyan.claude/CLAUDE.local.md$__flo_c_reset $__flo_c_dim(issue context)$__flo_c_reset"
+    __flo_log_success "Created $__flo_c_cyan./CLAUDE.local.md$__flo_c_reset $__flo_c_dim(issue context)$__flo_c_reset"
 end
 
-function __flo_setup_gitignore --description "Add .claude/*.local.md to .gitignore"
+function __flo_setup_gitignore --description "Add CLAUDE.local.md to .gitignore"
     set -l worktree_path $argv[1]
 
     if test -f "$worktree_path/.gitignore"
-        if not grep -Fxq '.claude/*.local.md' "$worktree_path/.gitignore"
-            echo ".claude/*.local.md" >>"$worktree_path/.gitignore"
-            __flo_log_success "Added $__flo_c_cyan.claude/*.local.md$__flo_c_reset to .gitignore"
+        # Add CLAUDE.local.md if not present (Claude Code auto-gitignores this, but be explicit)
+        if not grep -Fxq 'CLAUDE.local.md' "$worktree_path/.gitignore"
+            echo "CLAUDE.local.md" >>"$worktree_path/.gitignore"
+            __flo_log_success "Added $__flo_c_cyan""CLAUDE.local.md""$__flo_c_reset to .gitignore"
         end
     end
 end
@@ -644,10 +610,8 @@ function flo_start
         __flo_internal_config_set "$full_path" "$issue_number" "$branch_name"
 
         __flo_log_info "Creating Claude context..."
-        mkdir -p "$worktree_path/.claude"
 
-        # Setup CLAUDE.md and generate CLAUDE.local.md
-        __flo_setup_claude_md "$worktree_path"
+        # Generate CLAUDE.local.md in project root (Claude Code auto-reads this)
         __flo_generate_claude_local "$worktree_path" "$issue_number" "$issue_title" "$issue_url" "$issue_labels" "$branch_name" "$issue_body" "$issue_comments_count" "$issue_comments_formatted"
         __flo_setup_gitignore "$worktree_path"
     end

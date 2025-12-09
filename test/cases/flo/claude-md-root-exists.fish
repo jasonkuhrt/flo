@@ -17,5 +17,5 @@ assert_not_file_exists ".claude/CLAUDE.md" \
 # Verify root CLAUDE.md is present in worktree (Git tracks it)
 assert_file_exists "CLAUDE.md"
 
-# Verify CLAUDE.local.md was created (should always be created in issue mode)
-assert_file_exists ".claude/CLAUDE.local.md"
+# Verify CLAUDE.local.md was created at project root (should always be created in issue mode)
+assert_file_exists "CLAUDE.local.md"

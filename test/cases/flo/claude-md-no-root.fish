@@ -9,5 +9,5 @@ assert_not_file_exists "$WORKTREE_PATH/.claude/CLAUDE.md" \
     "Does not create .claude/CLAUDE.md in branch mode (only for issues)"
 
 # Branch mode also shouldn't create CLAUDE.local.md
-assert_not_file_exists "$WORKTREE_PATH/.claude/CLAUDE.local.md" \
-    "Does not create .claude/CLAUDE.local.md in branch mode (only for issues)"
+assert_not_file_exists "$WORKTREE_PATH/CLAUDE.local.md" \
+    "Does not create CLAUDE.local.md in branch mode (only for issues)"

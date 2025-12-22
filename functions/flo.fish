@@ -239,21 +239,36 @@ function __flo_select_issue --description "Interactively select an issue with gu
         return 1
     end
 
+    # Add custom branch option at the top
+    set -l custom_branch_option "→ Custom branch..."
+    set -l all_options "$custom_branch_option" $formatted_issues
+
     # Use gum filter for >10 issues, choose for <=10
     set -l selected
     if test "$issue_count" -gt 10
-        set selected (printf '%s\n' $formatted_issues | gum filter --placeholder "Search issues..." --height 15)
+        set selected (printf '%s\n' $all_options | gum filter --placeholder "Search issues or select custom branch..." --height 15)
     else
-        set selected (printf '%s\n' $formatted_issues | gum choose --header "Select an issue:")
+        set selected (printf '%s\n' $all_options | gum choose --header "Select an issue:")
+    end
+
+    # Handle selection
+    if test -z "$selected"
+        return 1
+    end
+
+    # If custom branch selected, prompt for branch name
+    if test "$selected" = "$custom_branch_option"
+        set -l branch_name (gum input --placeholder "Branch name (e.g., feat/my-feature)")
+        if test -z "$branch_name"
+            return 1
+        end
+        echo "$branch_name"
+        return 0
     end
 
     # Extract issue number from selection (format: #123 - Title)
-    if test -n "$selected"
-        echo "$selected" | string replace -r '^#(\d+).*' '$1'
-        return 0
-    else
-        return 1
-    end
+    echo "$selected" | string replace -r '^#(\d+).*' '$1'
+    return 0
 end
 
 # Issue handling helpers
@@ -339,7 +354,7 @@ function __flo_print_success_message --description "Print success message with i
     __flo_log_success "Ready to work!"
     if test "$is_issue" = true
         __flo_log_info_dim "Issue $__flo_c_cyan#$issue_number$__flo_c_reset assigned to you"
-        __flo_log_info_dim "Issue context available in $__flo_c_cyan""CLAUDE.local.md""$__flo_c_reset"
+        __flo_log_info_dim "Issue context available in $__flo_c_cyan.claude/issue.md$__flo_c_reset"
         __flo_log_info_dim "Tip: Claude reads this file automatically"
     end
 end
@@ -364,7 +379,7 @@ function __flo_install_dependencies --description "Install npm dependencies if p
 end
 
 # Claude context helpers
-function __flo_generate_claude_local --description "Generate CLAUDE.local.md with issue context"
+function __flo_generate_issue_context --description "Generate .claude/issue.md with issue context"
     set -l worktree_path $argv[1]
     set -l issue_number $argv[2]
     set -l issue_title $argv[3]
@@ -375,7 +390,12 @@ function __flo_generate_claude_local --description "Generate CLAUDE.local.md wit
     set -l issue_comments_count $argv[8]
     set -l issue_comments_formatted $argv[9]
 
-    # Write issue details to CLAUDE.local.md in project root (Claude Code auto-reads this)
+    # Ensure .claude directory exists
+    mkdir -p "$worktree_path/.claude"
+
+    set -l issue_file "$worktree_path/.claude/issue.md"
+
+    # Write issue details to .claude/issue.md (include via @.claude/issue.md in CLAUDE.md)
     printf '%s\n' \
         '# GitHub Issue Context' \
         '' \
@@ -390,7 +410,7 @@ function __flo_generate_claude_local --description "Generate CLAUDE.local.md wit
         '## Original Description' \
         '' \
         "$issue_body" \
-        '' >"$worktree_path/CLAUDE.local.md"
+        '' >"$issue_file"
 
     # Append comments if any exist
     if test $issue_comments_count -gt 0
@@ -398,19 +418,19 @@ function __flo_generate_claude_local --description "Generate CLAUDE.local.md wit
             '## Comments' \
             '' \
             '**Note: Read ALL comments below. If there are contradictions between the original description and comments, or between earlier and later comments, follow the most recent information.**' \
-            '' >>"$worktree_path/CLAUDE.local.md"
+            '' >>"$issue_file"
 
         # Append each comment
-        echo "$issue_comments_formatted" >>"$worktree_path/CLAUDE.local.md"
+        echo "$issue_comments_formatted" >>"$issue_file"
 
         printf '%s\n' \
             '' \
             --- \
-            '' >>"$worktree_path/CLAUDE.local.md"
+            '' >>"$issue_file"
     else
         printf '%s\n' \
             --- \
-            '' >>"$worktree_path/CLAUDE.local.md"
+            '' >>"$issue_file"
     end
 
     # Append instructions
@@ -423,21 +443,63 @@ function __flo_generate_claude_local --description "Generate CLAUDE.local.md wit
         "4. Reference this issue number (#$issue_number) in commit messages" \
         '5. Consider the labels when determining the scope of changes' \
         "6. When done, ensure the PR description references this issue with \"Closes #$issue_number\"" \
-        '' >>"$worktree_path/CLAUDE.local.md"
+        '' >>"$issue_file"
 
-    __flo_log_success "Created $__flo_c_cyan./CLAUDE.local.md$__flo_c_reset $__flo_c_dim(issue context)$__flo_c_reset"
+    __flo_log_success "Created $__flo_c_cyan.claude/issue.md$__flo_c_reset $__flo_c_dim(issue context)$__flo_c_reset"
 end
 
-function __flo_setup_gitignore --description "Add CLAUDE.local.md to .gitignore"
+function __flo_setup_gitignore --description "Add .claude/issue.md to .gitignore"
     set -l worktree_path $argv[1]
 
     if test -f "$worktree_path/.gitignore"
-        # Add CLAUDE.local.md if not present (Claude Code auto-gitignores this, but be explicit)
-        if not grep -Fxq 'CLAUDE.local.md' "$worktree_path/.gitignore"
-            echo "CLAUDE.local.md" >>"$worktree_path/.gitignore"
-            __flo_log_success "Added $__flo_c_cyan""CLAUDE.local.md""$__flo_c_reset to .gitignore"
+        # Add .claude/issue.md if not present
+        if not grep -Fxq '.claude/issue.md' "$worktree_path/.gitignore"
+            echo ".claude/issue.md" >>"$worktree_path/.gitignore"
+            __flo_log_success "Added $__flo_c_cyan.claude/issue.md$__flo_c_reset to .gitignore"
         end
     end
+end
+
+function __flo_setup_claude_import --description "Add issue.md import to project CLAUDE.md"
+    set -l worktree_path $argv[1]
+
+    # Find project CLAUDE.md and determine correct import path
+    # Import path is relative to where CLAUDE.md lives
+    set -l claude_file ""
+    set -l import_line ""
+    if test -f "$worktree_path/CLAUDE.md"
+        set claude_file "$worktree_path/CLAUDE.md"
+        set import_line '@.claude/issue.md'
+    else if test -f "$worktree_path/.claude/CLAUDE.md"
+        set claude_file "$worktree_path/.claude/CLAUDE.md"
+        set import_line '@issue.md'
+    else
+        # No CLAUDE.md found - skip silently
+        return 0
+    end
+
+    # Check if import already present
+    if grep -Fxq "$import_line" "$claude_file"
+        return 0
+    end
+
+    # Add import near top (after first heading if present, otherwise at top)
+    set -l first_line (head -1 "$claude_file")
+    if string match -qr '^#' -- "$first_line"
+        # Has heading - insert after it (line 2)
+        sed -i '' "1a\\
+$import_line\\
+" "$claude_file"
+    else
+        # No heading - insert at top
+        set -l tmp_file (mktemp)
+        echo "$import_line" >"$tmp_file"
+        echo "" >>"$tmp_file"
+        cat "$claude_file" >>"$tmp_file"
+        mv "$tmp_file" "$claude_file"
+    end
+
+    __flo_log_success "Added $__flo_c_cyan$import_line$__flo_c_reset to CLAUDE.md"
 end
 
 # Worktree management helpers
@@ -536,6 +598,23 @@ function flo_start
     set current_dir (basename $project_path)
     set arg $argv[1]
 
+    # If no argument provided, show interactive issue picker
+    if test -z "$arg"
+        # Check dependencies first
+        if not command -v gum >/dev/null 2>&1
+            __flo_log_error "No issue/branch specified and gum not installed" "Install gum: brew install gum"
+            return 1
+        end
+        __flo_require_gh; or return
+
+        __flo_log_info "Fetching issues..."
+        set arg (__flo_select_issue)
+        if test $status -ne 0; or test -z "$arg"
+            __flo_log_error "No issue selected"
+            return 1
+        end
+    end
+
     # Strip leading # if present (e.g., #123 -> 123)
     set arg (string replace -r '^#' '' -- $arg)
 
@@ -611,9 +690,10 @@ function flo_start
 
         __flo_log_info "Creating Claude context..."
 
-        # Generate CLAUDE.local.md in project root (Claude Code auto-reads this)
-        __flo_generate_claude_local "$worktree_path" "$issue_number" "$issue_title" "$issue_url" "$issue_labels" "$branch_name" "$issue_body" "$issue_comments_count" "$issue_comments_formatted"
+        # Generate .claude/issue.md (include via @.claude/issue.md in CLAUDE.md)
+        __flo_generate_issue_context "$worktree_path" "$issue_number" "$issue_title" "$issue_url" "$issue_labels" "$branch_name" "$issue_body" "$issue_comments_count" "$issue_comments_formatted"
         __flo_setup_gitignore "$worktree_path"
+        __flo_setup_claude_import "$worktree_path"
     end
 
     # Auto-install npm dependencies if package.json exists (skip if worktree existed)

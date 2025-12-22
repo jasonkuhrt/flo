@@ -7,7 +7,7 @@ setup_issue_worktree
 set -l WORKTREE_PATH (realpath $PWD)
 
 # Test: flo end --force with 'y' confirmation should remove worktree
-# (using --force to bypass uncommitted changes check from CLAUDE.local.md)
+# (using --force to bypass uncommitted changes check from .claude/issue.md)
 set -l OUTPUT (echo "y" | flo end --force 2>&1)
 
 # Strip ANSI color codes for easier matching

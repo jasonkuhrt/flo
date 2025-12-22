@@ -122,15 +122,16 @@ flo start 123 --project backend
 When you run `flo` with no arguments:
   1. Fetches up to 100 open issues from GitHub
   2. Shows interactive picker:
+       - `→ Custom branch...` option at top for branch mode
        - Uses `gum filter` (fuzzy search) for >10 issues
        - Uses `gum choose` (simple list) for ≤10 issues
-  3. Creates worktree for selected issue
+  3. Creates worktree for selected issue (or custom branch)
 
 Requirements:
   - gum: https://github.com/charmbracelet/gum (install with: `brew install gum`)
   - gh CLI: https://cli.github.com (install with: `brew install gh`)
 
-Fallback: If gum or gh are not installed, shows help message instead.
+Fallback: If gum or gh are not installed, shows error with install instructions.
 
 # BRANCH MODE
 
@@ -158,19 +159,27 @@ When you run `flo 123`:
        chore/123-<title> for chores
   4. Creates worktree: ../<project>_<branch>/
   5. Copies Serena MCP cache if present (speeds up symbol indexing)
-  6. Generates CLAUDE.local.md with issue context
+  6. Generates .claude/issue.md with issue context
   7. Runs pnpm install
   8. Ready to code!
 
 # CLAUDE INTEGRATION
 
-When you create a worktree from an issue, flo generates `CLAUDE.local.md` in the
-project root. Claude Code automatically reads this file when starting a session.
+When you create a worktree from an issue, flo:
+  1. Generates `.claude/issue.md` with issue context
+  2. Adds `.claude/issue.md` to `.gitignore`
+  3. Auto-adds `@.claude/issue.md` import to project's CLAUDE.md (if exists)
 
-CLAUDE.local.md (per-issue):
+The @-import is added automatically:
+  - Root `CLAUDE.md` → adds `@.claude/issue.md`
+  - `.claude/CLAUDE.md` → adds `@issue.md` (relative path)
+  - No CLAUDE.md → silently skips
+  - Already has import → idempotent, skips
+
+.claude/issue.md (per-issue):
   - Contains GitHub issue context (title, description, comments)
   - Overwritten each run with fresh issue data
-  - Auto-gitignored by Claude Code
+  - Gitignored - never committed
   - Worktree-specific
 
 # SERENA MCP INTEGRATION

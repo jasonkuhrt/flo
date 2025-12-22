@@ -8,6 +8,6 @@ set -l WORKTREE_PATH (get_worktree_path "test-branch")
 assert_not_file_exists "$WORKTREE_PATH/.claude/CLAUDE.md" \
     "Does not create .claude/CLAUDE.md in branch mode (only for issues)"
 
-# Branch mode also shouldn't create CLAUDE.local.md
-assert_not_file_exists "$WORKTREE_PATH/CLAUDE.local.md" \
-    "Does not create CLAUDE.local.md in branch mode (only for issues)"
+# Branch mode also shouldn't create .claude/issue.md
+assert_not_file_exists "$WORKTREE_PATH/.claude/issue.md" \
+    "Does not create .claude/issue.md in branch mode (only for issues)"

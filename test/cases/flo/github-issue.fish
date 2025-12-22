@@ -19,17 +19,17 @@ end
 
 set -l WORKTREE_DIR (find_worktree "1-test-fixture")
 
-if test -n "$WORKTREE_DIR"; and test -f "$WORKTREE_DIR/CLAUDE.local.md"
-    set -l CLAUDE_FILE "$WORKTREE_DIR/CLAUDE.local.md"
+if test -n "$WORKTREE_DIR"; and test -f "$WORKTREE_DIR/.claude/issue.md"
+    set -l CLAUDE_FILE "$WORKTREE_DIR/.claude/issue.md"
 
     assert_file_contains "$CLAUDE_FILE" "CRITICAL.*ALL comments" \
-        "CLAUDE.local.md contains instruction to read ALL comments"
+        ".claude/issue.md contains instruction to read ALL comments"
 
     assert_file_contains "$CLAUDE_FILE" "Later comments take precedence" \
-        "CLAUDE.local.md contains precedence instruction"
+        ".claude/issue.md contains precedence instruction"
 
     assert_file_contains "$CLAUDE_FILE" "and all comments" \
         "Instructions explicitly mention reading comments"
 else
-    echo "⚠️  Worktree not found, skipping CLAUDE.local.md tests"
+    echo "⚠️  Worktree not found, skipping .claude/issue.md tests"
 end

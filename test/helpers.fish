@@ -105,7 +105,7 @@ source "$PROJECT_ROOT/functions/flo.fish"
 # Guarantees:
 #   - Worktree is created and can be found
 #   - Changes to worktree directory
-#   - CLAUDE.local.md exists at project root (issue mode creates it)
+#   - .claude/issue.md exists (issue mode creates it)
 #   - If main repo has .gitignore, worktree has it too
 # Fails the test with clear error if guarantees not met
 function setup_issue_worktree
@@ -129,8 +129,8 @@ function setup_issue_worktree
     cd "$worktree_path"
 
     # Verify guarantees
-    if not test -f CLAUDE.local.md
-        fail "Issue mode should create CLAUDE.local.md at project root (not found in $worktree_path)"
+    if not test -f .claude/issue.md
+        fail "Issue mode should create .claude/issue.md (not found in $worktree_path)"
         exit 1
     end
 

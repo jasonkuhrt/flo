@@ -20,8 +20,8 @@ function flo-issue --description "Display GitHub issue context for current workt
     end
 
     # Display Claude context file if it exists in current directory
-    if test -f .claude/CLAUDE.local.md
-        cat .claude/CLAUDE.local.md
+    if test -f .claude/issue.md
+        cat .claude/issue.md
     else
         echo "No issue context found in current worktree"
         echo "Tip: Only worktrees created with 'flo <issue-number>' have issue context"

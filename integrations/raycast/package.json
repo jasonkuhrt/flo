@@ -70,6 +70,22 @@
           "description": "Path or command name for the Flo CLI."
         }
       ]
+    },
+    {
+      "name": "end-work",
+      "title": "End Flo Work",
+      "description": "End a Flo feature checkout and optionally return to main",
+      "mode": "view",
+      "preferences": [
+        {
+          "name": "floBinary",
+          "type": "textfield",
+          "title": "Flo Binary",
+          "required": false,
+          "default": "flo",
+          "description": "Path or command name for the Flo CLI."
+        }
+      ]
     }
   ],
   "title": "Flo"

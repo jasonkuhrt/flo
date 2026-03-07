@@ -168,6 +168,9 @@ flo config init
 
 # End a piece of work
 flo end 123
+
+# End work and jump back to main
+flo end 123 --open-main
 ```
 
 ## What Happens When Flo Opens Main Project Work
@@ -512,7 +515,7 @@ The initial public command model is:
 - `flo config init`
   Scaffold a validated starter config at the resolved Flo config path.
 - `flo end [selector]`
-  Resolve or conclude a piece of work and clean up the checkout when appropriate.
+  Resolve or conclude a piece of work and clean up the checkout when appropriate. `--open-main` returns to the main workspace immediately after cleanup.
 - `flo prune`
   Clean up stale local workspace, worktree, and recent-state records.
 - `flo ui ...`

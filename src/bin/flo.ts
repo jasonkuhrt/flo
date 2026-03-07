@@ -34,7 +34,7 @@ Usage:
   flo doctor [--json]
   flo config init [--force] [--json]
   flo claude install-hooks [--json]
-  flo end [selector] [--dry-run] [--force] [--json]
+  flo end [selector] [--dry-run] [--force] [--open-main] [--json]
   flo prune [--dry-run] [--json]
   flo ui sync [--workspace <id>] [--phase <value|clear>] [--agents <n|clear>] [--claude <value|clear>] [--json]
   flo ui log [--workspace <id>] [--level <level>] [--source <source>] <message> [--json]
@@ -59,6 +59,7 @@ Examples:
   flo config init
   flo claude install-hooks
   flo end 123
+  flo end 123 --open-main
   flo prune
   flo ui sync --phase compacting
   flo ui log --source claude "Compaction complete"
@@ -453,6 +454,7 @@ const main = async (): Promise<void> => {
         ...(selector === undefined ? {} : { selector }),
         dryRun,
         force,
+        openMain: parsed.booleans.has(`open-main`),
       })
 
       if (json || dryRun) {

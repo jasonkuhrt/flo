@@ -1015,6 +1015,7 @@ export const endWork = async (args: {
   selector?: string
   dryRun?: boolean
   force?: boolean
+  openMain?: boolean
   dependencies?: FloRuntimeDependencies
 }): Promise<FloEndResult> => {
   const dependencies = { ...defaultDependencies, ...args.dependencies }
@@ -1055,12 +1056,32 @@ export const endWork = async (args: {
     })
   }
 
+  const reopenedMainWorkspace =
+    args.openMain === true && !args.dryRun
+      ? await openWorkspace({
+          context: {
+            cwd: target.project.path,
+            env: args.context.env,
+          },
+          selector: target.project.name,
+          dependencies,
+        })
+      : null
+
   return {
     ...target,
     closedWorkspace,
     removedCheckout: !args.dryRun,
     killedEditorSession,
     killedClaudeSession,
+    ...(reopenedMainWorkspace === null
+      ? {}
+      : {
+          reopenedMainWorkspace: true,
+          ...(reopenedMainWorkspace.workspaceId === undefined
+            ? {}
+            : { reopenedMainWorkspaceId: reopenedMainWorkspace.workspaceId }),
+        }),
   }
 }
 

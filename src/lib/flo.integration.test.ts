@@ -1048,6 +1048,79 @@ describe(`flo runtime`, () => {
     )
   })
 
+  it(`can return to the main workspace after ending work`, async () => {
+    const fixture = await makeRepoFixture()
+    const calls: string[] = []
+    const runner: CommandRunner = async (command, args = []) => {
+      const key = [command, ...args].join(` `)
+      calls.push(key)
+
+      if (key === `git -C ${fixture.featureWorktreePath} rev-parse --show-toplevel`) {
+        return ok(`${fixture.repoRoot}\n`)
+      }
+      if (key === `git -C ${fixture.repoRoot} rev-parse --show-toplevel`) {
+        return ok(`${fixture.repoRoot}\n`)
+      }
+      if (key === `git -C ${fixture.repoRoot} remote get-url origin`) {
+        return ok(`git@github.com:jasonkuhrt/flo.git\n`)
+      }
+      if (key === `git -C ${fixture.repoRoot} worktree list --porcelain`) {
+        return ok(featureWorktreeList(fixture.repoRoot, fixture.featureWorktreePath))
+      }
+      if (key === `git -C ${fixture.featureWorktreePath} status --short`) return ok()
+      if (key === `cmux ping`) return ok()
+      if (key === `cmux --json list-workspaces`) {
+        return ok(
+          JSON.stringify({
+            workspaces: [
+              { id: `workspace:3`, title: `main` },
+              { id: `workspace:8`, title: `feature` },
+            ],
+          }),
+        )
+      }
+      if (key === `cmux --json sidebar-state --workspace workspace:3`) {
+        return ok(
+          JSON.stringify({
+            cwd: fixture.repoRoot,
+            statuses: [],
+          }),
+        )
+      }
+      if (key === `cmux --json sidebar-state --workspace workspace:8`) {
+        return ok(
+          JSON.stringify({
+            cwd: fixture.featureWorktreePath,
+            statuses: [],
+          }),
+        )
+      }
+      if (key === `cmux close-workspace --workspace workspace:8`) return ok()
+      if (key === `cmux select-workspace --workspace workspace:3`) return ok()
+      if (key.startsWith(`cmux set-status flo.`)) return ok()
+      if (key === `zmx list --short`) return ok(`flo-flo-feature-deadbeef0000-editor\n`)
+      if (key.startsWith(`zmx kill flo-flo-feature-`)) return ok()
+      if (key === `git -C ${fixture.repoRoot} worktree remove ${fixture.featureWorktreePath}`) {
+        return ok()
+      }
+
+      return fail()
+    }
+
+    const result = await endWork({
+      context: {
+        cwd: fixture.featureWorktreePath,
+        env: fixture.env,
+      },
+      openMain: true,
+      dependencies: { runner },
+    })
+
+    expect(result.reopenedMainWorkspace).toBe(true)
+    expect(result.reopenedMainWorkspaceId).toBe(`workspace:3`)
+    expect(calls).toContain(`cmux select-workspace --workspace workspace:3`)
+  })
+
   it(`reports doctor information for the current checkout`, async () => {
     const fixture = await makeRepoFixture()
     const runner = mockRunner({

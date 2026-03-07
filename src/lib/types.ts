@@ -295,6 +295,8 @@ export interface FloEndResult extends FloEndedTarget {
   removedCheckout: boolean
   killedEditorSession: boolean
   killedClaudeSession: boolean
+  reopenedMainWorkspace?: boolean
+  reopenedMainWorkspaceId?: string
 }
 
 export interface FloPruneWorkspaceResult {

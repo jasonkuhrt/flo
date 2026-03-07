@@ -231,6 +231,45 @@ The feature workspace is the dedicated execution context for the work you are do
 
 Flo should keep both easy to reach and safe to restore.
 
+### Workspace Identity
+
+Workspace titles are defaults for presentation.
+They are not the durable identity of a Flo workspace.
+
+The workspace identity algorithm should be:
+
+1. canonicalize the checkout path with `realpath`
+2. compute `flo.identity = sha256(canonicalCheckoutPath)`
+3. stamp the workspace with Flo metadata
+
+Required Flo metadata:
+
+- `flo.identity`
+- `flo.checkout`
+- `flo.project`
+- `flo.kind`
+
+Suggested values:
+
+- `flo.checkout = /absolute/canonical/checkout/path`
+- `flo.project = flo`
+- `flo.kind = main | feature`
+
+Lookup should work like this:
+
+1. resolve the target checkout
+2. canonicalize its path
+3. compute `flo.identity`
+4. scan `cmux` workspaces
+5. inspect Flo metadata for each workspace
+6. match by `flo.identity` first, then `flo.checkout` as a fallback
+
+This means:
+
+- the default title can be `flo:<project>` for main workspaces
+- the default title can be `flo:<project>@<branch>` for feature workspaces
+- users may rename workspace titles without breaking Flo's ability to find them later
+
 ### Init vs Restore
 
 Flo should be strict about the difference between first open and return:

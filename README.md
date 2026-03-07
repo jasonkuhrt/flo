@@ -590,8 +590,8 @@ Flo has two configuration scopes:
 - project configuration
   Defines project-level defaults such as source routing, bootstrap commands, editor/runtime behavior, and context imports.
 
-The config format is intentionally not finalized in this spec.
-What is fixed is the configuration model.
+The config format is JSON and validated at load time.
+The model will continue to grow, but malformed fields should fail fast with precise config-path errors instead of surfacing later during runtime.
 
 The current config file is JSON at `~/.config/flo/config.json`.
 

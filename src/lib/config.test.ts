@@ -98,4 +98,37 @@ describe(`config`, () => {
 
     expect(thrown).toBeInstanceOf(FloError)
   })
+
+  it(`rejects malformed config fields with a precise error`, async () => {
+    const path = await mkdtemp(join(tmpdir(), `flo-config-invalid-fields-`))
+    tempPaths.push(path)
+    const configPath = join(path, `config.json`)
+    await writeFile(
+      configPath,
+      JSON.stringify({
+        runtime: {
+          editorCommand: ``,
+        },
+        projects: [
+          {
+            name: `dotfiles`,
+            path: 42,
+          },
+        ],
+      }),
+    )
+
+    let thrown: unknown = null
+
+    try {
+      await loadConfig({
+        FLO_CONFIG_PATH: configPath,
+      })
+    } catch (error) {
+      thrown = error
+    }
+
+    expect(thrown).toBeInstanceOf(FloError)
+    expect(String(thrown)).toContain(`runtime.editorCommand`)
+  })
 })

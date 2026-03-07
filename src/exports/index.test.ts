@@ -31,3 +31,7 @@ test(`re-exports openLastWorkspace`, () => {
 test(`re-exports initConfig`, () => {
   expect(typeof Lib.initConfig).toBe(`function`)
 })
+
+test(`re-exports installClaudeHooks`, () => {
+  expect(typeof Lib.installClaudeHooks).toBe(`function`)
+})

@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os'
 
 import { afterEach, describe, expect, it } from 'bun:test'
 
+import { installClaudeHooks } from '#lib/claude'
 import {
   doctorFlo,
   endWork,
@@ -1017,6 +1018,66 @@ describe(`flo runtime`, () => {
     expect(result.wroteConfig).toBe(true)
     expect(await Bun.file(configPath).text()).toContain(`"name": "flo"`)
     expect(await Bun.file(configPath).text()).toContain(`"repo": "jasonkuhrt/flo"`)
+  })
+
+  it(`installs Claude hook settings for the current checkout`, async () => {
+    const fixture = await makeRepoFixture()
+    const settingsPath = join(fixture.repoRoot, `.claude`, `settings.local.json`)
+    await mkdir(join(fixture.repoRoot, `.claude`), { recursive: true })
+    await writeFile(
+      settingsPath,
+      JSON.stringify({
+        permissions: {
+          allow: [`Read`],
+        },
+      }),
+    )
+
+    const runner = mockRunner({
+      [`git -C ${fixture.repoRoot} rev-parse --show-toplevel`]: ok(`${fixture.repoRoot}\n`),
+      [`git -C ${fixture.repoRoot} remote get-url origin`]: ok(
+        `git@github.com:jasonkuhrt/flo.git\n`,
+      ),
+      [`git -C ${fixture.repoRoot} worktree list --porcelain`]: ok(
+        mainWorktreeList(fixture.repoRoot),
+      ),
+    })
+
+    const result = await installClaudeHooks({
+      context: {
+        cwd: fixture.repoRoot,
+        env: fixture.env,
+      },
+      dependencies: { runner },
+    })
+
+    expect(result.settingsPath).toBe(settingsPath)
+    const parsedSettings: unknown = JSON.parse(await Bun.file(settingsPath).text())
+    expect(typeof parsedSettings).toBe(`object`)
+    expect(parsedSettings).not.toBeNull()
+    if (
+      typeof parsedSettings !== `object` ||
+      parsedSettings === null ||
+      !(`permissions` in parsedSettings) ||
+      !(`hooks` in parsedSettings)
+    ) {
+      throw new Error(`expected Claude settings object`)
+    }
+
+    expect(parsedSettings.permissions).toEqual({
+      allow: [`Read`],
+    })
+    const hooks =
+      typeof parsedSettings.hooks === `object` && parsedSettings.hooks !== null
+        ? parsedSettings.hooks
+        : {}
+    expect(Object.keys(hooks)).toEqual([
+      `Notification`,
+      `SessionStart`,
+      `PreCompact`,
+      `SubagentStart`,
+      `SubagentStop`,
+    ])
   })
 
   it(`prunes orphaned Flo workspaces by identity`, async () => {

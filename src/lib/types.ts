@@ -268,6 +268,13 @@ export interface FloConfigInitResult {
   }
 }
 
+export interface FloClaudeHookInstallResult {
+  settingsPath: string
+  checkoutPath: string
+  wroteSettings: boolean
+  hookEvents: string[]
+}
+
 export interface FloCommandContext {
   cwd: string
   env: NodeJS.ProcessEnv

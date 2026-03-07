@@ -2,6 +2,7 @@
 
 import { basename } from 'pathe'
 
+import { installClaudeHooks } from '#lib/claude'
 import { FloError } from '#lib/errors'
 import {
   doctorFlo,
@@ -31,6 +32,7 @@ Usage:
   flo recent [--json]
   flo doctor [--json]
   flo config init [--force] [--json]
+  flo claude install-hooks [--json]
   flo end [selector] [--dry-run] [--force] [--json]
   flo prune [--dry-run] [--json]
   flo ui sync [--workspace <id>] [--phase <value|clear>] [--agents <n|clear>] [--claude <value|clear>] [--json]
@@ -53,6 +55,7 @@ Examples:
   flo recent
   flo doctor --json
   flo config init
+  flo claude install-hooks
   flo end 123
   flo prune
   flo ui sync --phase compacting
@@ -390,6 +393,18 @@ const main = async (): Promise<void> => {
       const result = await initConfig({
         context,
         force,
+      })
+      printResult(result)
+      return
+    }
+    case `claude`: {
+      const [subcommand] = rest
+      if (subcommand !== `install-hooks`) {
+        throw new FloError(`CLI_USAGE`, `Unknown flo claude subcommand.\n\n${usage}`)
+      }
+
+      const result = await installClaudeHooks({
+        context,
       })
       printResult(result)
       return

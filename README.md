@@ -434,6 +434,8 @@ The current Claude-facing Flo surfaces are:
   Send attention-worthy `cmux` notifications for the current workspace.
 - `flo ui claude-hook <hook>`
   Parse Claude hook JSON from stdin and map it into the Flo UI contract.
+- `flo claude install-hooks`
+  Install Flo's Claude hook bridge into `.claude/settings.local.json` for the current checkout.
 
 A ready-to-call wrapper for hook commands lives at `integrations/claude/hooks/flo-ui-hook.sh`.
 

@@ -558,23 +558,25 @@ This section is temporary and exists only to align on the initial build plan.
 - active checkout listing and pruning
 - generated Claude context for a checkout
 
-### Initial Delivery Slice
+### V1 Scope
 
-The first meaningful slice should prove the new architecture, not just recreate the old CLI.
-
-Initial slice:
+V1 should prove the architecture and deliver the actual day-one product shape.
+It can land in multiple implementation slices, but these capabilities belong in v1:
 
 - typed Flo core
 - GitHub source
 - checkout and worktree orchestration
+- rename-safe `cmux` workspace identity via Flo metadata
 - `cmux` plus `zmx` integration
 - main-checkout `flo open` flow distinct from scoped `flo start`
-- canonical CLI commands: `flo`, `flo start`, `flo open`, `flo list`
-
-### Follow-On Slices
-
+- canonical CLI commands: `flo`, `flo start`, `flo open`, `flo list`, `flo end`, `flo prune`
+- first-open workspace init for the default `nvim + claude` layout
 - Claude skill integration on top of Flo state and context
+- Claude hook integration into Flo UI signals and `cmux` notifications/status/log
 - experimental Raycast extension as an entrypoint over Flo core
+- end-of-work lifecycle and cleanup policy
+
+### Deferred Sources
+
 - Linear source
 - Beads source
-- end-of-work lifecycle and cleanup policy

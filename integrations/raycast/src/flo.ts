@@ -31,6 +31,24 @@ export interface FloListResult {
   projects: FloListProject[];
 }
 
+export interface FloRecentItem {
+  selector: string;
+  projectName: string;
+  checkoutPath: string;
+  branch: string | null;
+  isMain: boolean;
+  workspaceIdentity: string;
+  workspaceTitle: string;
+  workspaceOpen: boolean | null;
+  lastOpenedAt: string;
+  lastAction: "open" | "start";
+}
+
+export interface FloRecentResult {
+  cmuxAvailable: boolean;
+  items: FloRecentItem[];
+}
+
 const floBinary = (): string =>
   getPreferenceValues<Preferences>().floBinary ?? "flo";
 

@@ -1,17 +1,33 @@
 #!/usr/bin/env node
 
-import { basename } from 'node:path'
+import { basename } from 'pathe'
 
 import { FloError } from '#lib/errors'
-import { launchInteractive, listFloState, openWorkspace, startWork } from '#lib/flo'
+import {
+  endWork,
+  getFloContext,
+  launchInteractive,
+  listFloState,
+  openWorkspace,
+  pruneFloState,
+  startWork,
+} from '#lib/flo'
+import { handleClaudeHook, logFloUi, notifyFloUi, syncFloUi } from '#lib/ui'
 
 const usage = `flo
 
 Usage:
   flo
   flo open [selector] [--dry-run] [--json]
-  flo start <selector> [--dry-run] [--json]
+  flo start <selector> [--project <project>] [--dry-run] [--json]
+  flo context [--json]
   flo list [--json]
+  flo end [selector] [--dry-run] [--force] [--json]
+  flo prune [--dry-run] [--json]
+  flo ui sync [--workspace <id>] [--phase <value|clear>] [--agents <n|clear>] [--claude <value|clear>] [--json]
+  flo ui log [--workspace <id>] [--level <level>] [--source <source>] <message> [--json]
+  flo ui notify [--workspace <id>] --title <title> [--subtitle <text>] [--body <text>] [--json]
+  flo ui claude-hook <notification|session-start|pre-compact|subagent-start|subagent-stop> [--workspace <id>] [--json]
   flo help
 
 Examples:
@@ -19,34 +35,83 @@ Examples:
   flo open dotfiles
   flo open heartbeat@feat-auth
   flo start 123
+  flo start 123 --project dotfiles
   flo start gh:123
   flo start feat/cmux-launcher
-  flo list --json
+  flo context --json
+  flo end 123
+  flo prune
+  flo ui sync --phase compacting
+  flo ui log --source claude "Compaction complete"
+  flo ui notify --title "Claude needs attention" --body "Permission prompt waiting"
 `
 
-interface CliOptions {
-  json: boolean
-  dryRun: boolean
+interface ParsedArgs {
+  booleans: Set<string>
+  named: Map<string, string>
+  positional: string[]
 }
 
-const parseOptions = (args: string[]): { options: CliOptions; positional: string[] } => {
+const valueFlags = new Set([
+  `--workspace`,
+  `--project`,
+  `--phase`,
+  `--agents`,
+  `--claude`,
+  `--level`,
+  `--source`,
+  `--title`,
+  `--subtitle`,
+  `--body`,
+])
+
+const parseArgs = (args: string[]): ParsedArgs => {
+  const booleans = new Set<string>()
+  const named = new Map<string, string>()
   const positional: string[] = []
-  const options: CliOptions = {
-    json: false,
-    dryRun: false,
+
+  for (let index = 0; index < args.length; index += 1) {
+    const arg = args[index]
+    if (arg === undefined) continue
+
+    if (valueFlags.has(arg)) {
+      const value = args[index + 1]
+      if (value === undefined) {
+        throw new FloError(`CLI_USAGE`, `Missing value for ${arg}.\n\n${usage}`)
+      }
+
+      named.set(arg.slice(2), value)
+      index += 1
+      continue
+    }
+
+    if (arg.startsWith(`--`)) {
+      booleans.add(arg.slice(2))
+      continue
+    }
+
+    positional.push(arg)
   }
 
-  for (const arg of args) {
-    if (arg === `--json`) options.json = true
-    else if (arg === `--dry-run`) options.dryRun = true
-    else positional.push(arg)
+  return {
+    booleans,
+    named,
+    positional,
   }
-
-  return { options, positional }
 }
 
 const printResult = (value: unknown): void => {
   process.stdout.write(`${JSON.stringify(value, null, 2)}\n`)
+}
+
+const readStdin = async (): Promise<string> => {
+  let text = ``
+
+  for await (const chunk of process.stdin) {
+    text += String(chunk)
+  }
+
+  return text
 }
 
 const printList = async (json: boolean): Promise<void> => {
@@ -77,9 +142,33 @@ const printList = async (json: boolean): Promise<void> => {
   }
 }
 
+const parseAgentsOption = (value: string): number | null => {
+  if (value === `clear`) return null
+
+  const parsed = Number.parseInt(value, 10)
+  if (Number.isNaN(parsed) || parsed < 0) {
+    throw new FloError(`CLI_USAGE`, `--agents must be a non-negative integer or "clear".`)
+  }
+
+  return parsed
+}
+
+const normalizeOptionalStatus = (value: string): string | null => (value === `clear` ? null : value)
+
 const main = async (): Promise<void> => {
-  const { options, positional } = parseOptions(process.argv.slice(2))
-  const [command, ...rest] = positional
+  const parsed = parseArgs(process.argv.slice(2))
+  const json = parsed.booleans.has(`json`)
+  const dryRun = parsed.booleans.has(`dry-run`)
+  const force = parsed.booleans.has(`force`)
+  const projectSelector = parsed.named.get(`project`)
+  const phase = parsed.named.get(`phase`)
+  const agents = parsed.named.get(`agents`)
+  const claude = parsed.named.get(`claude`)
+  const level = parsed.named.get(`level`)
+  const source = parsed.named.get(`source`)
+  const subtitle = parsed.named.get(`subtitle`)
+  const body = parsed.named.get(`body`)
+  const [command, ...rest] = parsed.positional
   const context = {
     cwd: process.cwd(),
     env: process.env,
@@ -89,12 +178,12 @@ const main = async (): Promise<void> => {
     case undefined: {
       const selection = await launchInteractive({
         context,
-        dryRun: options.dryRun,
+        dryRun,
       })
 
       if (selection === null) return
 
-      if (options.json || options.dryRun) {
+      if (json || dryRun) {
         printResult(selection)
         return
       }
@@ -113,10 +202,10 @@ const main = async (): Promise<void> => {
       const result = await openWorkspace({
         context,
         ...(selector === undefined ? {} : { selector }),
-        dryRun: options.dryRun,
+        dryRun,
       })
 
-      if (options.json || options.dryRun) {
+      if (json || dryRun) {
         printResult(result)
         return
       }
@@ -133,10 +222,11 @@ const main = async (): Promise<void> => {
       const result = await startWork({
         context,
         selector,
-        dryRun: options.dryRun,
+        ...(projectSelector === undefined ? {} : { projectSelector }),
+        dryRun,
       })
 
-      if (options.json || options.dryRun) {
+      if (json || dryRun) {
         printResult(result)
         return
       }
@@ -145,14 +235,146 @@ const main = async (): Promise<void> => {
       return
     }
     case `list`:
-      await printList(options.json)
+      await printList(json)
       return
-    case `end`:
-    case `prune`:
-      throw new FloError(
-        `CLI_UNIMPLEMENTED`,
-        `flo ${command} is planned but not implemented in v1 yet.`,
+    case `context`: {
+      const result = await getFloContext({ context })
+
+      if (json) {
+        printResult(result)
+        return
+      }
+
+      process.stdout.write(`${result.workspaceTitle}\n`)
+      return
+    }
+    case `end`: {
+      const [selector] = rest
+      const result = await endWork({
+        context,
+        ...(selector === undefined ? {} : { selector }),
+        dryRun,
+        force,
+      })
+
+      if (json || dryRun) {
+        printResult(result)
+        return
+      }
+
+      process.stdout.write(`${result.workspaceTitle}\n`)
+      return
+    }
+    case `prune`: {
+      const result = await pruneFloState({
+        context,
+        dryRun,
+      })
+
+      if (json || dryRun) {
+        printResult(result)
+        return
+      }
+
+      process.stdout.write(
+        `pruned ${result.projects.length} project(s); closed ${result.closedWorkspaces.length} workspace(s)\n`,
       )
+      return
+    }
+    case `ui`: {
+      const [uiCommand] = rest
+      const workspaceId = parsed.named.get(`workspace`)
+
+      switch (uiCommand) {
+        case undefined:
+          throw new FloError(`CLI_USAGE`, `flo ui requires a subcommand.\n\n${usage}`)
+        case `sync`: {
+          const result = await syncFloUi({
+            context,
+            ...(workspaceId === undefined ? {} : { workspaceId }),
+            ...(phase === undefined ? {} : { phase: normalizeOptionalStatus(phase) }),
+            ...(agents === undefined ? {} : { agents: parseAgentsOption(agents) }),
+            ...(claude === undefined ? {} : { claude: normalizeOptionalStatus(claude) }),
+          })
+
+          if (json) {
+            printResult(result)
+          }
+
+          return
+        }
+        case `log`: {
+          const message = rest.slice(1).join(` `).trim()
+          if (message.length === 0) {
+            throw new FloError(`CLI_USAGE`, `flo ui log requires a message.\n\n${usage}`)
+          }
+
+          const result = await logFloUi({
+            context,
+            ...(workspaceId === undefined ? {} : { workspaceId }),
+            message,
+            ...(level === undefined ? {} : { level }),
+            ...(source === undefined ? {} : { source }),
+          })
+
+          if (json) {
+            printResult(result)
+          }
+
+          return
+        }
+        case `notify`: {
+          const title = parsed.named.get(`title`)
+          if (title === undefined) {
+            throw new FloError(`CLI_USAGE`, `flo ui notify requires --title.\n\n${usage}`)
+          }
+
+          const result = await notifyFloUi({
+            context,
+            ...(workspaceId === undefined ? {} : { workspaceId }),
+            title,
+            ...(subtitle === undefined ? {} : { subtitle }),
+            ...(body === undefined ? {} : { body }),
+          })
+
+          if (json) {
+            printResult(result)
+          }
+
+          return
+        }
+        case `claude-hook`: {
+          const hook = rest[1]
+          if (
+            hook !== `notification` &&
+            hook !== `session-start` &&
+            hook !== `pre-compact` &&
+            hook !== `subagent-start` &&
+            hook !== `subagent-stop`
+          ) {
+            throw new FloError(
+              `CLI_USAGE`,
+              `flo ui claude-hook requires a supported hook name.\n\n${usage}`,
+            )
+          }
+
+          const result = await handleClaudeHook({
+            context,
+            ...(workspaceId === undefined ? {} : { workspaceId }),
+            hook,
+            input: await readStdin(),
+          })
+
+          if (json) {
+            printResult(result)
+          }
+
+          return
+        }
+        default:
+          throw new FloError(`CLI_USAGE`, `Unknown ui command "${uiCommand}".\n\n${usage}`)
+      }
+    }
     case `help`:
     case `--help`:
     case `-h`:

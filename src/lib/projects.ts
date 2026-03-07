@@ -1,7 +1,7 @@
-import { readdir, realpath } from 'node:fs/promises'
-import { basename, resolve } from 'node:path'
+import { basename, join, resolve } from 'pathe'
 
 import { FloError } from '#lib/errors'
+import { readDirectoryEntries, realPath } from '#lib/filesystem'
 import {
   deriveDefaultWorktreeRoot,
   getGitRemoteOrigin,
@@ -20,10 +20,10 @@ import type {
 } from '#lib/types'
 
 const listRootCandidates = async (root: string): Promise<string[]> => {
-  const entries = await readdir(root, { withFileTypes: true }).catch(() => [])
+  const entries = await readDirectoryEntries(root).catch(() => [])
   const childDirectories = entries
-    .filter((entry) => entry.isDirectory() && !entry.name.startsWith(`.`))
-    .map((entry) => resolve(root, entry.name))
+    .filter((entry) => entry.type === `Directory` && !entry.name.startsWith(`.`))
+    .map((entry) => resolve(join(root, entry.name)))
 
   return [root, ...childDirectories]
 }
@@ -85,7 +85,7 @@ export const discoverProjects = async (args: {
       const topLevel = await getGitTopLevel(args.runner, candidatePath)
       if (topLevel === null) return null
 
-      const canonicalPath = resolve(await realpath(topLevel))
+      const canonicalPath = resolve(await realPath(topLevel))
       return {
         canonicalPath,
         configuredProject: mergeProjectConfig(canonicalPath, args.config.projects),
@@ -100,7 +100,7 @@ export const discoverProjects = async (args: {
 
   const cwdTopLevel = await getGitTopLevel(args.runner, args.cwd)
   if (cwdTopLevel !== null) {
-    const canonicalCwdPath = resolve(await realpath(cwdTopLevel))
+    const canonicalCwdPath = resolve(await realPath(cwdTopLevel))
     repositoryPaths.set(
       canonicalCwdPath,
       mergeProjectConfig(canonicalCwdPath, args.config.projects),

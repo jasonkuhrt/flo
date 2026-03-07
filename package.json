@@ -38,7 +38,7 @@
     ".": "./build/exports/index.js"
   },
   "scripts": {
-    "build:toc": "markdown-toc README.md -i --maxdepth 4 && oxfmt --write README.md",
+    "build:toc": "markdown-toc README.md -i --maxdepth 4 && oxfmt --ignore-path .gitignore --ignore-path .oxfmtignore --write README.md",
     "build:watch:emit": "bun run build --noCheck --watch",
     "build:watch": "bun run build --watch",
     "build:emit": "bun run build --noEmit",
@@ -52,17 +52,23 @@
     "prepack": "bun run build && bun scripts/prepack-imports.ts",
     "postpack": "bun scripts/prepack-imports.ts --restore",
     "fix": "bun run fix:format && bun run fix:lint",
-    "fix:format": "oxfmt --write",
-    "fix:lint": "oxlint --type-aware --fix-dangerously --deny-warnings",
+    "fix:format": "oxfmt --ignore-path .gitignore --ignore-path .oxfmtignore --write",
+    "fix:lint": "oxlint --type-aware --fix-dangerously --deny-warnings src scripts",
     "check": "bun run check:format && bun run check:lint && bun run check:types && bun run test && bun run check:cov && bun run check:package && bun run check:exports && bun run check:ci",
-    "check:format": "oxfmt --check",
-    "check:lint": "oxlint --type-aware --deny-warnings",
+    "check:format": "oxfmt --ignore-path .gitignore --ignore-path .oxfmtignore --check",
+    "check:lint": "oxlint --type-aware --deny-warnings src scripts",
     "check:types": "tsgo",
     "check:cov": "bun run test:coverage && bun scripts/check-coverage.ts src/coverage/lcov.info 90 90",
     "check:package": "bun run build && publint run --strict",
     "check:exports": "bun run build && attw --pack . --profile esm-only",
     "check:ci": "actionlint",
     "pre-commit": "bun run check"
+  },
+  "dependencies": {
+    "@effect/platform": "^0.94.5",
+    "@effect/platform-node": "^0.104.1",
+    "effect": "^3.19.19",
+    "pathe": "^2.0.3"
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.18.2",
@@ -72,17 +78,12 @@
     "@types/node": "25.3.5",
     "@typescript/native-preview": "7.0.0-dev.20260306.1",
     "dripip": "0.10.0",
-    "execa": "9.6.1",
     "fast-glob": "3.3.3",
-    "fs-jetpack": "5.1.0",
     "markdown-toc": "1.2.0",
     "oxfmt": "^0.36.0",
     "oxlint": "^1.51.0",
     "oxlint-tsgolint": "^0.16.0",
     "publint": "^0.3.18",
     "typescript": "5.9.3"
-  },
-  "peerDependencies": {
-    "effect": "^3.19.19"
   }
 }

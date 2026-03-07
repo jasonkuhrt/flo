@@ -7,3 +7,7 @@ test(`re-exports normalizeSelector`, () => {
     value: 'linear:ENG-241',
   })
 })
+
+test(`re-exports syncFloUi`, () => {
+  expect(typeof Lib.syncFloUi).toBe(`function`)
+})

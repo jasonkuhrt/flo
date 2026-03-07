@@ -1,8 +1,7 @@
-import { mkdir } from 'node:fs/promises'
-import { basename, dirname, join, resolve } from 'node:path'
-import { realpath } from 'node:fs/promises'
+import { basename, dirname, join, resolve } from 'pathe'
 
 import { FloError } from '#lib/errors'
+import { makeDirectoryRecursive, realPath } from '#lib/filesystem'
 import { shellQuote, slugify } from '#lib/strings'
 import type { CommandRunner } from '#lib/process'
 import type { FloCheckout, GitHubIssue } from '#lib/types'
@@ -120,7 +119,7 @@ export const createWorktree = async (
   branch: string,
 ): Promise<string> => {
   const worktreePath = toWorktreePath(worktreeRoot, branch)
-  await mkdir(dirname(worktreePath), { recursive: true })
+  await makeDirectoryRecursive(dirname(worktreePath))
 
   const branchAlreadyExists = await branchExists(runner, repositoryPath, branch)
   const args = branchAlreadyExists
@@ -136,7 +135,60 @@ export const createWorktree = async (
     )
   }
 
-  return resolve(await realpath(worktreePath))
+  return resolve(await realPath(worktreePath))
+}
+
+export const isCheckoutDirty = async (
+  runner: CommandRunner,
+  checkoutPath: string,
+): Promise<boolean> => {
+  const result = await runner(`git`, [`-C`, checkoutPath, `status`, `--short`])
+
+  if (result.exitCode !== 0) {
+    throw new FloError(
+      `GIT_STATUS_FAILED`,
+      `Failed to inspect checkout state for ${checkoutPath}: ${result.stderr || result.stdout}`,
+    )
+  }
+
+  return result.stdout.trim().length > 0
+}
+
+export const removeWorktree = async (args: {
+  runner: CommandRunner
+  repositoryPath: string
+  checkoutPath: string
+  force?: boolean
+}): Promise<void> => {
+  const result = await args.runner(`git`, [
+    `-C`,
+    args.repositoryPath,
+    `worktree`,
+    `remove`,
+    ...(args.force ? [`--force`] : []),
+    args.checkoutPath,
+  ])
+
+  if (result.exitCode !== 0) {
+    throw new FloError(
+      `GIT_WORKTREE_REMOVE_FAILED`,
+      `Failed to remove worktree ${args.checkoutPath}: ${result.stderr || result.stdout}`,
+    )
+  }
+}
+
+export const pruneWorktrees = async (
+  runner: CommandRunner,
+  repositoryPath: string,
+): Promise<void> => {
+  const result = await runner(`git`, [`-C`, repositoryPath, `worktree`, `prune`])
+
+  if (result.exitCode !== 0) {
+    throw new FloError(
+      `GIT_WORKTREE_PRUNE_FAILED`,
+      `Failed to prune worktrees for ${repositoryPath}: ${result.stderr || result.stdout}`,
+    )
+  }
 }
 
 export const fetchGitHubIssue = async (
@@ -209,6 +261,15 @@ export const buildEditorBootstrapCommand = (args: {
   editorCommand: string
 }): string =>
   `exec ${shellQuote(args.zmxBin)} attach ${shellQuote(args.sessionName)} ${shellQuote(args.shellCommand)} -lc ${shellQuote(`cd ${shellQuote(args.cwd)} && exec ${args.editorCommand}`)}`
+
+export const buildClaudeBootstrapCommand = (args: {
+  zmxBin: string
+  shellCommand: string
+  sessionName: string
+  cwd: string
+  claudeCommand: string
+}): string =>
+  `exec ${shellQuote(args.zmxBin)} attach ${shellQuote(args.sessionName)} ${shellQuote(args.shellCommand)} -lc ${shellQuote(`cd ${shellQuote(args.cwd)} && exec ${args.claudeCommand}`)}`
 
 export const deriveDefaultWorktreeRoot = (repositoryPath: string): string =>
   resolve(dirname(repositoryPath), `.flo-checkouts`, basename(repositoryPath))

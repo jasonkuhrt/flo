@@ -12,9 +12,7 @@ By default, that means:
 
 Raycast and the Claude skill are optional ways to invoke Flo.
 They are not separate workflow engines.
-
-This README currently doubles as the product spec for the initial release.
-Only the final section, "Temporary Implementation Notes", is intentionally non-final.
+This README describes the current Flo contract.
 
 ## Why Flo Exists
 
@@ -40,8 +38,8 @@ A work source is where work comes from.
 Examples:
 
 - GitHub issues
-- Linear issues
-- Beads
+- Linear issues later
+- Beads later
 
 Flo does not assume one source forever.
 A source resolves a selector, returns metadata, and provides context for the work.
@@ -123,10 +121,11 @@ flo open dotfiles
 # Start work from the current project's default source
 flo start 123
 
+# Start work from anywhere with an explicit project
+flo start 123 --project dotfiles
+
 # Start work from an explicit source
 flo start gh:123
-flo start linear:ENG-241
-flo start bead:parser/cleanup-import-resolution
 
 # Start work from a branch name
 flo start feat/cmux-launcher
@@ -136,6 +135,9 @@ flo open heartbeat@feat-auth
 
 # List active checkouts and workspaces
 flo list
+
+# Print the current checkout context for Claude or other tooling
+flo context --json
 
 # End a piece of work
 flo end 123
@@ -159,7 +161,7 @@ It is intentionally different from starting scoped feature work.
 
 When you run `flo start <selector>`, Flo:
 
-1. resolves the selector using the current project context and source rules
+1. resolves the selector using the current project context or an explicit `--project`
 2. resolves the owning project
 3. creates or reuses the correct checkout
 4. prepares work context for humans and agents
@@ -186,8 +188,7 @@ The intended routing model is:
 
 - if you are already inside a configured project, Flo uses that project as the first routing hint
 - a numeric selector like `123` routes to that project's default issue source
-- a selector that matches a Linear-style pattern routes to Linear
-- an explicit source selector like `gh:123` or `bead:core/parser-cleanup` always wins
+- an explicit source selector like `gh:123` always wins
 - a general string that does not look like a source item can be treated as a branch name or fuzzy project/checkout target
 
 Examples:
@@ -196,12 +197,8 @@ Examples:
 # Inside a project with GitHub as the default source
 flo start 123
 
-# Inside a project with Linear as the default source
-flo start ENG-241
-
 # Force a specific source
 flo start gh:123
-flo start linear:ENG-241
 
 # Branch-oriented work
 flo start feat/cmx-launcher
@@ -239,19 +236,18 @@ They are not the durable identity of a Flo workspace.
 The workspace identity algorithm should be:
 
 1. canonicalize the checkout path with `realpath`
-2. compute `flo.identity = sha256(canonicalCheckoutPath)`
+2. compute `flo.identity = sha256(canonicalCheckoutPath).slice(0, 12)`
 3. stamp the workspace with Flo metadata
 
 Required Flo metadata:
 
 - `flo.identity`
-- `flo.checkout`
 - `flo.project`
 - `flo.kind`
 
 Suggested values:
 
-- `flo.checkout = /absolute/canonical/checkout/path`
+- `flo.identity = 4f99918c0504`
 - `flo.project = flo`
 - `flo.kind = main | feature`
 
@@ -261,8 +257,8 @@ Lookup should work like this:
 2. canonicalize its path
 3. compute `flo.identity`
 4. scan `cmux` workspaces
-5. inspect Flo metadata for each workspace
-6. match by `flo.identity` first, then `flo.checkout` as a fallback
+5. inspect Flo metadata for each workspace via `sidebar-state`
+6. match by `flo.identity` first, then the workspace `cwd` as a fallback
 
 This means:
 
@@ -290,13 +286,19 @@ It means the first-class experience is intentionally:
 
 - resolve work
 - open or restore the correct workspace
-- land in `nvim` inside the correct checkout
+- land in the default `nvim + claude` workspace inside the correct checkout
 
 Editor integration can remain modular in architecture while still making `nvim` the default, built-in editor experience.
 
 ### nvim Init Profiles
 
-The first-open `nvim` experience should be project-aware.
+The first-open workspace layout is a two-pane terminal layout:
+
+- left pane: `nvim`
+- right pane: `claude`
+- restore behavior after first open belongs to `zmx`, not to Flo
+
+The first-open `nvim` experience is project-aware.
 
 Main checkout init can bias toward orientation:
 
@@ -322,9 +324,12 @@ That keeps the first-open experience intentional without clobbering a restored w
 
 Flo supports multiple work sources through one core interface.
 
-Initial source set:
+Current source support:
 
 - GitHub issues
+
+Planned next sources:
+
 - Linear issues
 - Beads
 
@@ -374,10 +379,23 @@ Its job is to let you invoke Flo from anywhere on macOS:
 
 - find a project
 - find a checkout
-- start work
+- start work with an explicit project
 - resume recent work
 
 It should not become a separate workflow engine.
+
+The current adapter lives in `integrations/raycast` and delegates to the Flo CLI:
+
+- `Open Flo Workspace` consumes `flo list --json` and calls `flo open`
+- `Start Flo Work` consumes the project list and calls `flo start --project ...`
+
+Repeatable Raycast workflows are exposed through the root `justfile`:
+
+- `just raycast-dev`
+- `just raycast-fix`
+- `just raycast-check`
+- `just raycast-build`
+- `just raycast-lint`
 
 ### Claude Skill
 
@@ -388,6 +406,21 @@ The intended relationship is:
 - Flo owns source resolution, checkout orchestration, and context generation
 - the Claude skill consumes that state and context
 - backend logic lives in Flo, not inside the skill
+
+The current Claude-facing Flo surfaces are:
+
+- `flo context --json`
+  Return the current project, checkout, workspace metadata, and GitHub issue context when the branch is issue-backed.
+- `flo ui sync`
+  Update ambient `cmux` status for the current workspace.
+- `flo ui log`
+  Write milestone-grade log entries into the current workspace.
+- `flo ui notify`
+  Send attention-worthy `cmux` notifications for the current workspace.
+- `flo ui claude-hook <hook>`
+  Parse Claude hook JSON from stdin and map it into the Flo UI contract.
+
+A ready-to-call wrapper for hook commands lives at `integrations/claude/hooks/flo-ui-hook.sh`.
 
 ### Claude Hooks and Workspace Signals
 
@@ -433,16 +466,20 @@ The initial public command model is:
 
 - `flo`
   Open the interactive launcher.
-- `flo start <selector>`
-  Resolve work, create or reuse a checkout, prepare context, and open it.
+- `flo start <selector> [--project <project>]`
+  Resolve work, create or reuse a checkout, prepare context, and open it. `--project` is the global-launcher path.
 - `flo open [selector]`
   Open or focus a project's main checkout workspace, or an existing checkout when a more specific selector is given.
+- `flo context`
+  Print the current project and checkout context, primarily for Claude and other automation.
 - `flo list`
   List active checkouts and workspace state.
 - `flo end [selector]`
   Resolve or conclude a piece of work and clean up the checkout when appropriate.
 - `flo prune`
   Clean up stale local state.
+- `flo ui ...`
+  Bridge Claude and other automation into Flo-owned `cmux` status, log, and notification behavior.
 
 ## Project Discovery and Defaults
 
@@ -473,12 +510,18 @@ flo start 123
 
 Expected behavior:
 
-1. use the current directory to narrow project resolution when possible
+1. use the current directory to narrow project resolution when possible, or accept `--project` when launched globally
 2. resolve the selector with smart routing rules
 3. create or reuse the correct checkout
 4. generate normalized work context
 5. create or focus the right `cmux` workspace
 6. land in the expected editor/runtime state
+
+Example:
+
+```bash
+flo start 123 --project dotfiles
+```
 
 ### Open Main Project
 
@@ -532,6 +575,28 @@ Flo has two configuration scopes:
 The config format is intentionally not finalized in this spec.
 What is fixed is the configuration model.
 
+The current config file is JSON at `~/.config/flo/config.json`.
+
+Minimal example:
+
+```json
+{
+  "discovery": {
+    "roots": ["~/projects/jasonkuhrt"]
+  },
+  "projects": [
+    {
+      "name": "dotfiles",
+      "path": "~/projects/jasonkuhrt/dotfiles",
+      "defaultSource": "github",
+      "github": {
+        "repo": "jasonkuhrt/dotfiles"
+      }
+    }
+  ]
+}
+```
+
 ## Non-Goals
 
 - shell-specific implementation as part of the product contract
@@ -540,43 +605,23 @@ What is fixed is the configuration model.
 - a second workflow engine inside the Claude skill
 - forcing Raycast as the primary interface
 
-## Temporary Implementation Notes
+## Current Scope
 
-This section is temporary and exists only to align on the initial build plan.
-
-### Clean-Slate Direction
-
-- archive the existing `jasonkuhrt/flo` repo as `flo-legacy`
-- create a new `flo` project from the template repo
-- port concepts and test intent from legacy Flo, not the Fish implementation
-
-### Legacy Concepts Worth Preserving
-
-- project-root discovery and fuzzy project resolution
-- issue-or-branch style selection, generalized into source selectors
-- worktree-first workflow
-- active checkout listing and pruning
-- generated Claude context for a checkout
-
-### V1 Scope
-
-V1 should prove the architecture and deliver the actual day-one product shape.
-It can land in multiple implementation slices, but these capabilities belong in v1:
+Implemented now:
 
 - typed Flo core
-- GitHub source
-- checkout and worktree orchestration
-- rename-safe `cmux` workspace identity via Flo metadata
-- `cmux` plus `zmx` integration
-- main-checkout `flo open` flow distinct from scoped `flo start`
-- canonical CLI commands: `flo`, `flo start`, `flo open`, `flo list`, `flo end`, `flo prune`
-- first-open workspace init for the default `nvim + claude` layout
-- Claude skill integration on top of Flo state and context
-- Claude hook integration into Flo UI signals and `cmux` notifications/status/log
-- experimental Raycast extension as an entrypoint over Flo core
-- end-of-work lifecycle and cleanup policy
+- GitHub-backed issue and branch routing
+- main-checkout `flo open` and scoped `flo start`
+- checkout/worktree orchestration
+- rename-safe `cmux` workspace lookup via Flo metadata
+- `cmux` plus `zmx` runtime integration
+- first-open `nvim + claude` workspace init
+- `flo end` and `flo prune`
+- `flo context` for Claude-facing checkout context
+- `flo ui` for Claude hook -> Flo -> `cmux` integration
+- experimental Raycast adapter over the Flo CLI
 
-### Deferred Sources
+Deferred for later:
 
-- Linear source
-- Beads source
+- Linear source execution
+- Beads source execution

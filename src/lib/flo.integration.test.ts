@@ -1,13 +1,16 @@
-import { mkdtemp, mkdir, realpath } from 'node:fs/promises'
+import { mkdtemp, mkdir, realpath, writeFile } from 'node:fs/promises'
 import { basename, dirname, join } from 'node:path'
 import { tmpdir } from 'node:os'
 
 import { afterEach, describe, expect, it } from 'bun:test'
 
 import {
+  endWork,
+  getFloContext,
   launchInteractive,
   listFloState,
   openWorkspace,
+  pruneFloState,
   resolveOpenTarget,
   resolveStartTarget,
   startWork,
@@ -56,6 +59,18 @@ const makeRepoFixture = async (): Promise<{
 
 const mainWorktreeList = (repoRoot: string): string =>
   [`worktree ${repoRoot}`, `HEAD abc123`, `branch refs/heads/main`, ``].join(`\n`)
+
+const featureWorktreeList = (repoRoot: string, featureWorktreePath: string): string =>
+  [
+    `worktree ${repoRoot}`,
+    `HEAD abc123`,
+    `branch refs/heads/main`,
+    ``,
+    `worktree ${featureWorktreePath}`,
+    `HEAD def456`,
+    `branch refs/heads/feat/auth`,
+    ``,
+  ].join(`\n`)
 
 const mockRunner =
   (
@@ -125,29 +140,36 @@ describe(`flo runtime`, () => {
       const key = [command, ...args].join(` `)
       calls.push(key)
 
-      if (
-        key ===
-        `git -C ${fixture.repoRoot} worktree add -b feat/auth ${fixture.featureWorktreePath}`
-      ) {
-        await mkdir(fixture.featureWorktreePath, { recursive: true })
+      if (key === `git -C ${fixture.repoRoot} rev-parse --show-toplevel`) {
+        return ok(`${fixture.repoRoot}\n`)
       }
 
-      return (
-        {
-          [`git -C ${fixture.repoRoot} rev-parse --show-toplevel`]: ok(`${fixture.repoRoot}\n`),
-          [`git -C ${fixture.repoRoot} remote get-url origin`]: ok(
-            `git@github.com:jasonkuhrt/flo.git\n`,
-          ),
-          [`git -C ${fixture.repoRoot} worktree list --porcelain`]: {
-            ...ok(mainWorktreeList(fixture.repoRoot)),
-          },
-          [`cmux ping`]: ok(),
-          [`cmux --json list-workspaces`]: {
-            ...ok(JSON.stringify({ workspaces: [{ id: `workspace:3`, title: `flo:flo` }] })),
-          },
-          [`cmux select-workspace --workspace workspace:3`]: ok(),
-        }[key] ?? fail()
-      )
+      if (key === `git -C ${fixture.repoRoot} remote get-url origin`) {
+        return ok(`git@github.com:jasonkuhrt/flo.git\n`)
+      }
+
+      if (key === `git -C ${fixture.repoRoot} worktree list --porcelain`) {
+        return ok(mainWorktreeList(fixture.repoRoot))
+      }
+
+      if (key === `cmux ping`) return ok()
+      if (key === `cmux --json list-workspaces`) {
+        return ok(JSON.stringify({ workspaces: [{ id: `workspace:3`, title: `renamed-main` }] }))
+      }
+
+      if (key === `cmux --json sidebar-state --workspace workspace:3`) {
+        return ok(
+          JSON.stringify({
+            cwd: fixture.repoRoot,
+            statuses: [],
+          }),
+        )
+      }
+
+      if (key.startsWith(`cmux set-status flo.`)) return ok()
+      if (key === `cmux select-workspace --workspace workspace:3`) return ok()
+
+      return fail()
     }
 
     const result = await openWorkspace({
@@ -203,6 +225,58 @@ describe(`flo runtime`, () => {
     })
   })
 
+  it(`starts work from outside the repo when an explicit project selector is provided`, async () => {
+    const fixture = await makeRepoFixture()
+    const configPath = fixture.env[`FLO_CONFIG_PATH`]
+    if (configPath === undefined) {
+      throw new Error(`expected FLO_CONFIG_PATH in fixture env`)
+    }
+
+    await writeFile(
+      configPath,
+      JSON.stringify({
+        projects: [{ name: `flo`, path: fixture.repoRoot }],
+      }),
+    )
+    const runner = mockRunner({
+      [`git -C ${fixture.repoRoot} rev-parse --show-toplevel`]: { stdout: `${fixture.repoRoot}\n` },
+      [`git -C ${tmpdir()} rev-parse --show-toplevel`]: { exitCode: 1 },
+      [`git -C ${fixture.repoRoot} remote get-url origin`]: {
+        stdout: `git@github.com:jasonkuhrt/flo.git\n`,
+      },
+      [`git -C ${fixture.repoRoot} worktree list --porcelain`]: {
+        stdout: mainWorktreeList(fixture.repoRoot),
+      },
+      [`gh issue view 42 --repo jasonkuhrt/flo --json number,title,url,state`]: {
+        stdout: JSON.stringify({
+          number: 42,
+          title: `Add launcher`,
+          url: `https://github.com/jasonkuhrt/flo/issues/42`,
+          state: `OPEN`,
+        }),
+      },
+    })
+
+    const result = await resolveStartTarget({
+      context: {
+        cwd: tmpdir(),
+        env: fixture.env,
+      },
+      selector: `42`,
+      projectSelector: `flo`,
+      dependencies: { runner },
+    })
+
+    expect(result).toMatchObject({
+      project: {
+        name: `flo`,
+      },
+      checkout: {
+        branch: `issue/42-add-launcher`,
+      },
+    })
+  })
+
   it(`creates a new worktree and workspace for branch work`, async () => {
     const fixture = await makeRepoFixture()
     await mkdir(fixture.featureWorktreePath, { recursive: true })
@@ -211,29 +285,46 @@ describe(`flo runtime`, () => {
       const key = [command, ...args].join(` `)
       calls.push(key)
 
-      return (
-        {
-          [`git -C ${fixture.repoRoot} rev-parse --show-toplevel`]: ok(`${fixture.repoRoot}\n`),
-          [`git -C ${fixture.repoRoot} remote get-url origin`]: ok(
-            `git@github.com:jasonkuhrt/flo.git\n`,
-          ),
-          [`git -C ${fixture.repoRoot} worktree list --porcelain`]: {
-            ...ok(mainWorktreeList(fixture.repoRoot)),
-          },
-          [`git -C ${fixture.repoRoot} show-ref --verify --quiet refs/heads/feat/auth`]: fail(),
-          [`git -C ${fixture.repoRoot} worktree add -b feat/auth ${fixture.featureWorktreePath}`]:
-            ok(),
-          [`cmux ping`]: ok(),
-          [`cmux --json list-workspaces`]: { ...ok(JSON.stringify({ workspaces: [] })) },
-          [`cmux new-workspace`]: ok(),
-          [`cmux --json current-workspace`]: {
-            ...ok(JSON.stringify({ id: `workspace:4`, title: `untitled` })),
-          },
-          [`cmux rename-workspace --workspace workspace:4 flo:flo@feat/auth`]: ok(),
-          [`cmux send --workspace workspace:4 exec 'zmx' attach 'flo-flo-feat-auth-editor' '/bin/zsh' -lc 'cd '\\''${fixture.featureWorktreePath}'\\'' && exec nvim'\n`]:
-            ok(),
-        }[key] ?? fail()
-      )
+      if (key === `git -C ${fixture.repoRoot} rev-parse --show-toplevel`) {
+        return ok(`${fixture.repoRoot}\n`)
+      }
+
+      if (key === `git -C ${fixture.repoRoot} remote get-url origin`) {
+        return ok(`git@github.com:jasonkuhrt/flo.git\n`)
+      }
+
+      if (key === `git -C ${fixture.repoRoot} worktree list --porcelain`) {
+        return ok(mainWorktreeList(fixture.repoRoot))
+      }
+
+      if (key === `git -C ${fixture.repoRoot} show-ref --verify --quiet refs/heads/feat/auth`) {
+        return fail()
+      }
+
+      if (
+        key ===
+        `git -C ${fixture.repoRoot} worktree add -b feat/auth ${fixture.featureWorktreePath}`
+      ) {
+        return ok()
+      }
+
+      if (key === `cmux ping`) return ok()
+      if (key === `cmux --json list-workspaces`) return ok(JSON.stringify({ workspaces: [] }))
+      if (key === `cmux new-workspace`) return ok()
+      if (key === `cmux --json current-workspace`) {
+        return ok(JSON.stringify({ id: `workspace:4`, title: `untitled` }))
+      }
+
+      if (key === `cmux rename-workspace --workspace workspace:4 flo:flo@feat/auth`) return ok()
+      if (key.startsWith(`cmux set-status flo.`)) return ok()
+      if (key === `cmux new-pane --workspace workspace:4 --direction right`) return ok()
+      if (key === `cmux last-pane --workspace workspace:4`) return ok()
+
+      if (key.startsWith(`cmux send --workspace workspace:4 exec 'zmx' attach `)) {
+        return ok()
+      }
+
+      return fail()
     }
 
     const result = await startWork({
@@ -250,6 +341,8 @@ describe(`flo runtime`, () => {
     expect(calls).toContain(
       `git -C ${fixture.repoRoot} worktree add -b feat/auth ${fixture.featureWorktreePath}`,
     )
+    expect(calls).toContain(`cmux new-pane --workspace workspace:4 --direction right`)
+    expect(calls).toContain(`cmux last-pane --workspace workspace:4`)
   })
 
   it(`lists projects and marks matching workspaces as open`, async () => {
@@ -264,7 +357,10 @@ describe(`flo runtime`, () => {
       },
       [`cmux ping`]: {},
       [`cmux --json list-workspaces`]: {
-        stdout: JSON.stringify({ workspaces: [{ id: `workspace:3`, title: `flo:flo` }] }),
+        stdout: JSON.stringify({ workspaces: [{ id: `workspace:3`, title: `renamed-main` }] }),
+      },
+      [`cmux --json sidebar-state --workspace workspace:3`]: {
+        stdout: JSON.stringify({ cwd: fixture.repoRoot, statuses: [] }),
       },
     })
 
@@ -317,6 +413,170 @@ describe(`flo runtime`, () => {
 
     expect(result).toMatchObject({
       workspaceTitle: `flo:flo`,
+    })
+  })
+
+  it(`ends a feature checkout by closing the workspace and removing the worktree`, async () => {
+    const fixture = await makeRepoFixture()
+    const calls: string[] = []
+    const runner: CommandRunner = async (command, args = []) => {
+      const key = [command, ...args].join(` `)
+      calls.push(key)
+
+      if (key === `git -C ${fixture.featureWorktreePath} rev-parse --show-toplevel`) {
+        return ok(`${fixture.repoRoot}\n`)
+      }
+      if (key === `git -C ${fixture.repoRoot} rev-parse --show-toplevel`)
+        return ok(`${fixture.repoRoot}\n`)
+      if (key === `git -C ${fixture.repoRoot} remote get-url origin`) {
+        return ok(`git@github.com:jasonkuhrt/flo.git\n`)
+      }
+      if (key === `git -C ${fixture.repoRoot} worktree list --porcelain`) {
+        return ok(featureWorktreeList(fixture.repoRoot, fixture.featureWorktreePath))
+      }
+      if (key === `git -C ${fixture.featureWorktreePath} status --short`) return ok()
+      if (key === `cmux ping`) return ok()
+      if (key === `cmux --json list-workspaces`) {
+        return ok(JSON.stringify({ workspaces: [{ id: `workspace:8`, title: `feature` }] }))
+      }
+      if (key === `cmux --json sidebar-state --workspace workspace:8`) {
+        return ok(
+          JSON.stringify({
+            cwd: fixture.featureWorktreePath,
+            statuses: [],
+          }),
+        )
+      }
+      if (key === `cmux close-workspace --workspace workspace:8`) return ok()
+      if (key === `zmx list --short`) return ok(`flo-flo-feature-deadbeef0000-editor\n`)
+      if (key.startsWith(`zmx kill flo-flo-feature-`)) return ok()
+      if (key === `git -C ${fixture.repoRoot} worktree remove ${fixture.featureWorktreePath}`) {
+        return ok()
+      }
+
+      return fail()
+    }
+
+    const result = await endWork({
+      context: {
+        cwd: fixture.featureWorktreePath,
+        env: fixture.env,
+      },
+      dependencies: { runner },
+    })
+
+    expect(result.removedCheckout).toBe(true)
+    expect(result.closedWorkspace).toBe(true)
+    expect(calls).toContain(`cmux close-workspace --workspace workspace:8`)
+    expect(calls).toContain(
+      `git -C ${fixture.repoRoot} worktree remove ${fixture.featureWorktreePath}`,
+    )
+  })
+
+  it(`prunes orphaned Flo workspaces by identity`, async () => {
+    const fixture = await makeRepoFixture()
+    const calls: string[] = []
+    const runner: CommandRunner = async (command, args = []) => {
+      const key = [command, ...args].join(` `)
+      calls.push(key)
+
+      if (key === `git -C ${fixture.repoRoot} rev-parse --show-toplevel`)
+        return ok(`${fixture.repoRoot}\n`)
+      if (key === `git -C ${fixture.repoRoot} remote get-url origin`) {
+        return ok(`git@github.com:jasonkuhrt/flo.git\n`)
+      }
+      if (key === `git -C ${fixture.repoRoot} worktree prune`) return ok()
+      if (key === `git -C ${fixture.repoRoot} worktree list --porcelain`) {
+        return ok(mainWorktreeList(fixture.repoRoot))
+      }
+      if (key === `cmux ping`) return ok()
+      if (key === `cmux --json list-workspaces`) {
+        return ok(JSON.stringify({ workspaces: [{ id: `workspace:9`, title: `orphan` }] }))
+      }
+      if (key === `cmux --json sidebar-state --workspace workspace:9`) {
+        return ok(
+          JSON.stringify({
+            cwd: fixture.featureWorktreePath,
+            statuses: [
+              { key: `flo.identity`, value: `deadbeef0000` },
+              { key: `flo.project`, value: `flo` },
+              { key: `flo.kind`, value: `feature` },
+            ],
+          }),
+        )
+      }
+      if (key === `cmux close-workspace --workspace workspace:9`) return ok()
+      if (key === `zmx list --short`) return ok()
+
+      return fail()
+    }
+
+    const result = await pruneFloState({
+      context: {
+        cwd: fixture.repoRoot,
+        env: fixture.env,
+      },
+      dependencies: { runner },
+    })
+
+    expect(result.closedWorkspaces).toHaveLength(1)
+    expect(result.closedWorkspaces[0]).toMatchObject({
+      workspaceId: `workspace:9`,
+      closedWorkspace: true,
+    })
+    expect(calls).toContain(`git -C ${fixture.repoRoot} worktree prune`)
+  })
+
+  it(`returns typed checkout context for Claude-facing integrations`, async () => {
+    const fixture = await makeRepoFixture()
+    const runner = mockRunner({
+      [`git -C ${fixture.featureWorktreePath} rev-parse --show-toplevel`]: {
+        stdout: `${fixture.repoRoot}\n`,
+      },
+      [`git -C ${fixture.repoRoot} remote get-url origin`]: {
+        stdout: `git@github.com:jasonkuhrt/flo.git\n`,
+      },
+      [`git -C ${fixture.repoRoot} worktree list --porcelain`]: {
+        stdout: [
+          `worktree ${fixture.repoRoot}`,
+          `HEAD abc123`,
+          `branch refs/heads/main`,
+          ``,
+          `worktree ${fixture.featureWorktreePath}`,
+          `HEAD def456`,
+          `branch refs/heads/issue/42-add-launcher`,
+          ``,
+        ].join(`\n`),
+      },
+      [`gh issue view 42 --repo jasonkuhrt/flo --json number,title,url,state`]: {
+        stdout: JSON.stringify({
+          number: 42,
+          title: `Add launcher`,
+          url: `https://github.com/jasonkuhrt/flo/issues/42`,
+          state: `OPEN`,
+        }),
+      },
+    })
+
+    const result = await getFloContext({
+      context: {
+        cwd: fixture.featureWorktreePath,
+        env: fixture.env,
+      },
+      dependencies: { runner },
+    })
+
+    expect(result).toMatchObject({
+      project: {
+        name: `flo`,
+      },
+      checkout: {
+        path: fixture.featureWorktreePath,
+        branch: `issue/42-add-launcher`,
+      },
+      issue: {
+        number: 42,
+      },
     })
   })
 })

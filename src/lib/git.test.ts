@@ -1,12 +1,17 @@
 import { describe, expect, it } from 'bun:test'
 
 import {
+  buildClaudeBootstrapCommand,
   buildEditorBootstrapCommand,
+  isCheckoutDirty,
   issueBranchName,
   parseGitHubRepo,
   parseWorktreeList,
   planWorktreePath,
+  pruneWorktrees,
+  removeWorktree,
 } from '#lib/git'
+import type { CommandRunner } from '#lib/process'
 
 describe(`parseGitHubRepo`, () => {
   it(`parses ssh remotes`, () => {
@@ -83,5 +88,55 @@ describe(`buildEditorBootstrapCommand`, () => {
     ).toBe(
       `exec 'zmx' attach 'flo-dotfiles-main-editor' '/bin/zsh' -lc 'cd '\\''/repos/dotfiles'\\'' && exec nvim'`,
     )
+  })
+})
+
+describe(`buildClaudeBootstrapCommand`, () => {
+  it(`builds a zmx attach command for Claude Code`, () => {
+    expect(
+      buildClaudeBootstrapCommand({
+        zmxBin: `zmx`,
+        shellCommand: `/bin/zsh`,
+        sessionName: `flo-dotfiles-main-claude`,
+        cwd: `/repos/dotfiles`,
+        claudeCommand: `claude`,
+      }),
+    ).toBe(
+      `exec 'zmx' attach 'flo-dotfiles-main-claude' '/bin/zsh' -lc 'cd '\\''/repos/dotfiles'\\'' && exec claude'`,
+    )
+  })
+})
+
+describe(`worktree lifecycle helpers`, () => {
+  it(`detects dirty checkouts`, async () => {
+    const runner: CommandRunner = async () => ({
+      stdout: ` M README.md\n`,
+      stderr: ``,
+      exitCode: 0,
+    })
+
+    expect(await isCheckoutDirty(runner, `/repos/flo`)).toBe(true)
+  })
+
+  it(`removes and prunes worktrees`, async () => {
+    const calls: string[] = []
+    const runner: CommandRunner = async (command, args = []) => {
+      calls.push([command, ...args].join(` `))
+      return {
+        stdout: ``,
+        stderr: ``,
+        exitCode: 0,
+      }
+    }
+
+    await removeWorktree({
+      runner,
+      repositoryPath: `/repos/flo`,
+      checkoutPath: `/repos/.flo-checkouts/flo/feat/auth`,
+    })
+    await pruneWorktrees(runner, `/repos/flo`)
+
+    expect(calls).toContain(`git -C /repos/flo worktree remove /repos/.flo-checkouts/flo/feat/auth`)
+    expect(calls).toContain(`git -C /repos/flo worktree prune`)
   })
 })

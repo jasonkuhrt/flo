@@ -1,0 +1,60 @@
+{
+  "name": "flo",
+  "version": "0.0.0",
+  "description": "Open Flo workspaces and start scoped Flo work from Raycast.",
+  "license": "MIT",
+  "author": "thomas",
+  "scripts": {
+    "dev": "npx ray develop",
+    "build": "npx ray build",
+    "lint": "npx ray lint"
+  },
+  "dependencies": {
+    "@effect/platform": "^0.94.5",
+    "@effect/platform-node": "^0.104.1",
+    "@raycast/api": "1.102.7",
+    "effect": "^3.19.19",
+    "pathe": "^2.0.3",
+    "react": "18.3.1"
+  },
+  "devDependencies": {
+    "@raycast/eslint-config": "2.0.4",
+    "typescript": "5.9.3"
+  },
+  "icon": "icon.png",
+  "commands": [
+    {
+      "name": "open-workspace",
+      "title": "Open Flo Workspace",
+      "description": "Open or focus a Flo workspace",
+      "mode": "view",
+      "preferences": [
+        {
+          "name": "floBinary",
+          "type": "textfield",
+          "title": "Flo Binary",
+          "required": false,
+          "default": "flo",
+          "description": "Path or command name for the Flo CLI."
+        }
+      ]
+    },
+    {
+      "name": "start-work",
+      "title": "Start Flo Work",
+      "description": "Resolve a Flo selector into a checkout and workspace",
+      "mode": "view",
+      "preferences": [
+        {
+          "name": "floBinary",
+          "type": "textfield",
+          "title": "Flo Binary",
+          "required": false,
+          "default": "flo",
+          "description": "Path or command name for the Flo CLI."
+        }
+      ]
+    }
+  ],
+  "title": "Flo"
+}

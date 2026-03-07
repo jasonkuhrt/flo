@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os'
 import { afterEach, describe, expect, it } from 'bun:test'
 
 import {
+  doctorFlo,
   endWork,
   getFloContext,
   launchInteractive,
@@ -471,6 +472,52 @@ describe(`flo runtime`, () => {
     expect(calls).toContain(
       `git -C ${fixture.repoRoot} worktree remove ${fixture.featureWorktreePath}`,
     )
+  })
+
+  it(`reports doctor information for the current checkout`, async () => {
+    const fixture = await makeRepoFixture()
+    const runner = mockRunner({
+      [`/bin/zsh -lc command -v -- 'git'`]: ok(`/usr/bin/git\n`),
+      [`/bin/zsh -lc command -v -- 'cmux'`]: ok(`/opt/homebrew/bin/cmux\n`),
+      [`/bin/zsh -lc command -v -- 'zmx'`]: ok(`/opt/homebrew/bin/zmx\n`),
+      [`/bin/zsh -lc command -v -- 'fzf'`]: ok(`/opt/homebrew/bin/fzf\n`),
+      [`/bin/zsh -lc command -v -- 'claude'`]: ok(`/opt/homebrew/bin/claude\n`),
+      [`/bin/zsh -lc command -v -- 'nvim'`]: ok(`/opt/homebrew/bin/nvim\n`),
+      [`/bin/zsh -lc command -v -- 'gh'`]: ok(`/opt/homebrew/bin/gh\n`),
+      [`git -C ${fixture.repoRoot} rev-parse --show-toplevel`]: ok(`${fixture.repoRoot}\n`),
+      [`git -C ${fixture.repoRoot} remote get-url origin`]: ok(
+        `git@github.com:jasonkuhrt/flo.git\n`,
+      ),
+      [`git -C ${fixture.repoRoot} worktree list --porcelain`]: ok(
+        mainWorktreeList(fixture.repoRoot),
+      ),
+      [`cmux ping`]: ok(),
+    })
+
+    const result = await doctorFlo({
+      context: {
+        cwd: fixture.repoRoot,
+        env: fixture.env,
+      },
+      dependencies: { runner },
+    })
+
+    expect(result).toMatchObject({
+      configExists: false,
+      currentProject: {
+        name: `flo`,
+      },
+      currentCheckout: {
+        path: fixture.repoRoot,
+        isMain: true,
+      },
+      cmuxAvailable: true,
+    })
+    expect(result.commands.some((command) => command.key === `git` && command.available)).toBe(true)
+    expect(result.commands.some((command) => command.key === `cmux` && command.available)).toBe(
+      true,
+    )
+    expect(result.commands.some((command) => command.key === `gh` && command.available)).toBe(true)
   })
 
   it(`prunes orphaned Flo workspaces by identity`, async () => {

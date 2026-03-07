@@ -4,6 +4,7 @@ import { basename } from 'pathe'
 
 import { FloError } from '#lib/errors'
 import {
+  doctorFlo,
   endWork,
   getFloContext,
   launchInteractive,
@@ -22,6 +23,7 @@ Usage:
   flo start <selector> [--project <project>] [--dry-run] [--json]
   flo context [--json]
   flo list [--json]
+  flo doctor [--json]
   flo end [selector] [--dry-run] [--force] [--json]
   flo prune [--dry-run] [--json]
   flo ui sync [--workspace <id>] [--phase <value|clear>] [--agents <n|clear>] [--claude <value|clear>] [--json]
@@ -39,6 +41,7 @@ Examples:
   flo start gh:123
   flo start feat/cmux-launcher
   flo context --json
+  flo doctor --json
   flo end 123
   flo prune
   flo ui sync --phase compacting
@@ -139,6 +142,40 @@ const printList = async (json: boolean): Promise<void> => {
             : `cmux:closed`
       process.stdout.write(`  ${label}  ${checkout.path}  ${workspaceState}\n`)
     }
+  }
+}
+
+const printDoctor = async (
+  context: { cwd: string; env: NodeJS.ProcessEnv },
+  json: boolean,
+): Promise<void> => {
+  const result = await doctorFlo({ context })
+
+  if (json) {
+    printResult(result)
+    return
+  }
+
+  process.stdout.write(`cwd  ${result.currentDirectory}\n`)
+  process.stdout.write(
+    `config  ${result.configExists ? `present` : `missing`}  ${result.configPath}\n`,
+  )
+  process.stdout.write(`cmux  ${result.cmuxAvailable ? `available` : `unavailable`}\n`)
+  process.stdout.write(
+    `project  ${result.currentProject === null ? `none` : `${result.currentProject.name}  ${result.currentProject.path}`}\n`,
+  )
+  process.stdout.write(
+    `checkout  ${
+      result.currentCheckout === null
+        ? `none`
+        : `${result.currentCheckout.isMain ? `main` : (result.currentCheckout.branch ?? basename(result.currentCheckout.path))}  ${result.currentCheckout.path}`
+    }\n`,
+  )
+
+  for (const command of result.commands) {
+    process.stdout.write(
+      `command  ${command.key}  ${command.available ? `ok` : `missing`}  ${command.configured}\n`,
+    )
   }
 }
 
@@ -248,6 +285,9 @@ const main = async (): Promise<void> => {
       process.stdout.write(`${result.workspaceTitle}\n`)
       return
     }
+    case `doctor`:
+      await printDoctor(context, json)
+      return
     case `end`: {
       const [selector] = rest
       const result = await endWork({

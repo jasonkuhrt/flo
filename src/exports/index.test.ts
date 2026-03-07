@@ -11,3 +11,7 @@ test(`re-exports normalizeSelector`, () => {
 test(`re-exports syncFloUi`, () => {
   expect(typeof Lib.syncFloUi).toBe(`function`)
 })
+
+test(`re-exports doctorFlo`, () => {
+  expect(typeof Lib.doctorFlo).toBe(`function`)
+})

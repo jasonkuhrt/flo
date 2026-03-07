@@ -157,6 +157,30 @@ export interface FloListResult {
   projects: FloListProject[]
 }
 
+export interface FloDoctorCommand {
+  key: string
+  configured: string
+  executable: string
+  available: boolean
+}
+
+export interface FloDoctorResult {
+  configPath: string
+  configExists: boolean
+  currentDirectory: string
+  cmuxAvailable: boolean
+  currentProject: {
+    name: string
+    path: string
+  } | null
+  currentCheckout: {
+    path: string
+    branch: string | null
+    isMain: boolean
+  } | null
+  commands: FloDoctorCommand[]
+}
+
 export interface FloCommandContext {
   cwd: string
   env: NodeJS.ProcessEnv

@@ -139,6 +139,9 @@ flo list
 # Print the current checkout context for Claude or other tooling
 flo context --json
 
+# Diagnose config, project discovery, and runtime binaries
+flo doctor
+
 # End a piece of work
 flo end 123
 ```
@@ -474,6 +477,8 @@ The initial public command model is:
   Print the current project and checkout context, primarily for Claude and other automation.
 - `flo list`
   List active checkouts and workspace state.
+- `flo doctor`
+  Diagnose config resolution, project context, and required runtime binaries from the current working directory.
 - `flo end [selector]`
   Resolve or conclude a piece of work and clean up the checkout when appropriate.
 - `flo prune`

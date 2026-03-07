@@ -38,11 +38,13 @@ import {
   resolveProjectSelector,
 } from '#lib/projects'
 import { parseOpenSelector, parseStartSelector } from '#lib/selectors'
-import { sanitizeIdentifier } from '#lib/strings'
+import { sanitizeIdentifier, shellQuote } from '#lib/strings'
 import type {
   FloCheckout,
   FloCommandContext,
   FloContextResult,
+  FloDoctorCommand,
+  FloDoctorResult,
   FloEndResult,
   FloEndedTarget,
   FloListProject,
@@ -157,11 +159,11 @@ const buildOpenTarget = async (args: {
   }
 }
 
-const requireCurrentProject = async (args: {
+const findProjectForCwd = async (args: {
   projects: FloProject[]
   cwd: string
   runner: CommandRunner
-}): Promise<FloProject> => {
+}): Promise<FloProject | null> => {
   const projectFromRepoRoot = getCurrentProject(args.projects, args.cwd)
   if (projectFromRepoRoot !== null) {
     return projectFromRepoRoot
@@ -195,10 +197,46 @@ const requireCurrentProject = async (args: {
     return projectFromCheckout.project
   }
 
+  return null
+}
+
+const requireCurrentProject = async (args: {
+  projects: FloProject[]
+  cwd: string
+  runner: CommandRunner
+}): Promise<FloProject> => {
+  const project = await findProjectForCwd(args)
+  if (project !== null) {
+    return project
+  }
+
   throw new FloError(
     `PROJECT_CONTEXT_REQUIRED`,
     `No project matched the current directory. Run Flo inside a git project or pass an explicit project selector.`,
   )
+}
+
+const extractExecutable = (command: string): string =>
+  command.trim().split(/\s+/u)[0] ?? command.trim()
+
+const probeConfiguredCommand = async (args: {
+  runner: CommandRunner
+  shellCommand: string
+  key: string
+  configured: string
+}): Promise<FloDoctorCommand> => {
+  const executable = extractExecutable(args.configured)
+  const result = await args.runner(args.shellCommand, [
+    `-lc`,
+    `command -v -- ${shellQuote(executable)}`,
+  ])
+
+  return {
+    key: args.key,
+    configured: args.configured,
+    executable,
+    available: result.exitCode === 0,
+  }
 }
 
 const ensureCmuxAvailable = async (runner: CommandRunner, cmuxBin: string): Promise<void> => {
@@ -1013,6 +1051,103 @@ export const listFloState = async (args: {
     configExists: config.exists,
     cmuxAvailable,
     projects: projectResults,
+  }
+}
+
+export const doctorFlo = async (args: {
+  context: FloCommandContext
+  dependencies?: FloRuntimeDependencies
+}): Promise<FloDoctorResult> => {
+  const dependencies = { ...defaultDependencies, ...args.dependencies }
+  const { config, projects } = await loadFloContext({
+    context: args.context,
+    runner: dependencies.runner,
+  })
+  const currentProject = await findProjectForCwd({
+    projects,
+    cwd: args.context.cwd,
+    runner: dependencies.runner,
+  })
+  const currentCheckout =
+    currentProject === null
+      ? null
+      : resolveCurrentCheckout(
+          (await listProjectState(dependencies.runner, currentProject)).checkouts,
+          args.context.cwd,
+        )
+  const shouldProbeGitHub = projects.some(
+    (project) => project.defaultSource === `github` || project.githubRepo !== undefined,
+  )
+  const commands = await Promise.all([
+    probeConfiguredCommand({
+      runner: dependencies.runner,
+      shellCommand: config.runtime.shellCommand,
+      key: `git`,
+      configured: `git`,
+    }),
+    probeConfiguredCommand({
+      runner: dependencies.runner,
+      shellCommand: config.runtime.shellCommand,
+      key: `cmux`,
+      configured: config.runtime.cmuxBin,
+    }),
+    probeConfiguredCommand({
+      runner: dependencies.runner,
+      shellCommand: config.runtime.shellCommand,
+      key: `zmx`,
+      configured: config.runtime.zmxBin,
+    }),
+    probeConfiguredCommand({
+      runner: dependencies.runner,
+      shellCommand: config.runtime.shellCommand,
+      key: `fzf`,
+      configured: config.runtime.fzfBin,
+    }),
+    probeConfiguredCommand({
+      runner: dependencies.runner,
+      shellCommand: config.runtime.shellCommand,
+      key: `claude`,
+      configured: config.runtime.claudeCommand,
+    }),
+    probeConfiguredCommand({
+      runner: dependencies.runner,
+      shellCommand: config.runtime.shellCommand,
+      key: `editor`,
+      configured: config.runtime.editorCommand,
+    }),
+    ...(shouldProbeGitHub
+      ? [
+          probeConfiguredCommand({
+            runner: dependencies.runner,
+            shellCommand: config.runtime.shellCommand,
+            key: `gh`,
+            configured: `gh`,
+          }),
+        ]
+      : []),
+  ])
+
+  return {
+    configPath: config.configPath,
+    configExists: config.exists,
+    currentDirectory: resolve(args.context.cwd),
+    cmuxAvailable: await probeCmux(dependencies.runner, config.runtime.cmuxBin),
+    currentProject:
+      currentProject === null
+        ? null
+        : {
+            name: currentProject.name,
+            path: currentProject.path,
+          },
+    currentCheckout:
+      currentCheckout === null
+        ? null
+        : {
+            path: currentCheckout.path,
+            branch: currentCheckout.branch,
+            isMain: currentCheckout.isMain,
+          },
+    commands,
   }
 }
 

@@ -27,3 +27,7 @@ test(`re-exports listRecentWork`, () => {
 test(`re-exports openLastWorkspace`, () => {
   expect(typeof Lib.openLastWorkspace).toBe(`function`)
 })
+
+test(`re-exports initConfig`, () => {
+  expect(typeof Lib.initConfig).toBe(`function`)
+})

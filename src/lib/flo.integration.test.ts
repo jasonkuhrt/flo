@@ -8,6 +8,7 @@ import {
   doctorFlo,
   endWork,
   getFloContext,
+  initConfig,
   launchInteractive,
   listFloState,
   listRecentWork,
@@ -989,6 +990,33 @@ describe(`flo runtime`, () => {
         title: `renamed-main`,
       },
     })
+  })
+
+  it(`bootstraps a minimal config for the current project`, async () => {
+    const fixture = await makeRepoFixture()
+    const configPath = fixture.env[`FLO_CONFIG_PATH`]
+    if (configPath === undefined) {
+      throw new Error(`expected FLO_CONFIG_PATH in fixture env`)
+    }
+
+    const runner = mockRunner({
+      [`git -C ${fixture.repoRoot} rev-parse --show-toplevel`]: ok(`${fixture.repoRoot}\n`),
+      [`git -C ${fixture.repoRoot} remote get-url origin`]: ok(
+        `git@github.com:jasonkuhrt/flo.git\n`,
+      ),
+    })
+
+    const result = await initConfig({
+      context: {
+        cwd: fixture.repoRoot,
+        env: fixture.env,
+      },
+      dependencies: { runner },
+    })
+
+    expect(result.wroteConfig).toBe(true)
+    expect(await Bun.file(configPath).text()).toContain(`"name": "flo"`)
+    expect(await Bun.file(configPath).text()).toContain(`"repo": "jasonkuhrt/flo"`)
   })
 
   it(`prunes orphaned Flo workspaces by identity`, async () => {

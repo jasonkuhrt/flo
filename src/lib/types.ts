@@ -257,6 +257,17 @@ export interface FloRecentResult {
   items: FloRecentItem[]
 }
 
+export interface FloConfigInitResult {
+  configPath: string
+  configExists: boolean
+  wroteConfig: boolean
+  project?: {
+    name: string
+    path: string
+    githubRepo?: string
+  }
+}
+
 export interface FloCommandContext {
   cwd: string
   env: NodeJS.ProcessEnv

@@ -151,6 +151,9 @@ flo status
 # Diagnose config, project discovery, and runtime binaries
 flo doctor
 
+# Bootstrap a starter config from the current repo
+flo config init
+
 # End a piece of work
 flo end 123
 ```
@@ -492,6 +495,8 @@ The initial public command model is:
   Show the recent work Flo still considers actionable, ordered by recency.
 - `flo doctor`
   Diagnose config resolution, project context, and required runtime binaries from the current working directory.
+- `flo config init`
+  Scaffold a validated starter config at the resolved Flo config path.
 - `flo end [selector]`
   Resolve or conclude a piece of work and clean up the checkout when appropriate.
 - `flo prune`

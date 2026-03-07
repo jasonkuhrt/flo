@@ -1,4 +1,4 @@
-import { basename, resolve } from 'pathe'
+import { basename, dirname, resolve } from 'pathe'
 
 import {
   closeCmuxWorkspace,
@@ -16,7 +16,7 @@ import {
 } from '#lib/cmux'
 import { loadConfig } from '#lib/config'
 import { FloError } from '#lib/errors'
-import { realPath } from '#lib/filesystem'
+import { makeDirectoryRecursive, realPath, writeFileString } from '#lib/filesystem'
 import { runFzf, type LauncherItem } from '#lib/fzf'
 import {
   buildClaudeBootstrapCommand,
@@ -43,6 +43,7 @@ import { sanitizeIdentifier, shellQuote } from '#lib/strings'
 import type {
   FloCheckout,
   FloCommandContext,
+  FloConfigInitResult,
   FloContextResult,
   FloDoctorCommand,
   FloDoctorResult,
@@ -1347,6 +1348,85 @@ export const doctorFlo = async (args: {
             isMain: currentCheckout.isMain,
           },
     commands,
+  }
+}
+
+export const initConfig = async (args: {
+  context: FloCommandContext
+  force?: boolean
+  dependencies?: FloRuntimeDependencies
+}): Promise<FloConfigInitResult> => {
+  const dependencies = { ...defaultDependencies, ...args.dependencies }
+  const { config, projects } = await loadFloContext({
+    context: args.context,
+    runner: dependencies.runner,
+  })
+  const currentProject = await findProjectForCwd({
+    projects,
+    cwd: args.context.cwd,
+    runner: dependencies.runner,
+  })
+
+  if (config.exists && !args.force) {
+    return {
+      configPath: config.configPath,
+      configExists: true,
+      wroteConfig: false,
+      ...(currentProject === null
+        ? {}
+        : {
+            project: {
+              name: currentProject.name,
+              path: currentProject.path,
+              ...(currentProject.githubRepo === undefined
+                ? {}
+                : { githubRepo: currentProject.githubRepo }),
+            },
+          }),
+    }
+  }
+
+  const discoveryRoot =
+    currentProject === null ? resolve(args.context.cwd) : dirname(currentProject.path)
+  const nextConfig = {
+    discovery: {
+      roots: [discoveryRoot],
+    },
+    projects:
+      currentProject === null
+        ? []
+        : [
+            {
+              name: currentProject.name,
+              path: currentProject.path,
+              ...(currentProject.defaultSource === undefined
+                ? {}
+                : { defaultSource: currentProject.defaultSource }),
+              ...(currentProject.githubRepo === undefined
+                ? {}
+                : { github: { repo: currentProject.githubRepo } }),
+            },
+          ],
+  }
+
+  await makeDirectoryRecursive(dirname(config.configPath))
+  await writeFileString(config.configPath, `${JSON.stringify(nextConfig, null, 2)}\n`)
+
+  return {
+    configPath: config.configPath,
+    configExists: config.exists,
+    wroteConfig: true,
+    ...(currentProject === null
+      ? {}
+      : {
+          project: {
+            name: currentProject.name,
+            path: currentProject.path,
+            ...(currentProject.githubRepo === undefined
+              ? {}
+              : { githubRepo: currentProject.githubRepo }),
+          },
+        }),
   }
 }
 

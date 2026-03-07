@@ -7,6 +7,7 @@ import {
   doctorFlo,
   endWork,
   getFloContext,
+  initConfig,
   launchInteractive,
   listFloState,
   listRecentWork,
@@ -29,6 +30,7 @@ Usage:
   flo list [--json]
   flo recent [--json]
   flo doctor [--json]
+  flo config init [--force] [--json]
   flo end [selector] [--dry-run] [--force] [--json]
   flo prune [--dry-run] [--json]
   flo ui sync [--workspace <id>] [--phase <value|clear>] [--agents <n|clear>] [--claude <value|clear>] [--json]
@@ -50,6 +52,7 @@ Examples:
   flo status
   flo recent
   flo doctor --json
+  flo config init
   flo end 123
   flo prune
   flo ui sync --phase compacting
@@ -378,6 +381,19 @@ const main = async (): Promise<void> => {
     case `doctor`:
       await printDoctor(context, json)
       return
+    case `config`: {
+      const [subcommand] = rest
+      if (subcommand !== `init`) {
+        throw new FloError(`CLI_USAGE`, `Unknown flo config subcommand.\n\n${usage}`)
+      }
+
+      const result = await initConfig({
+        context,
+        force,
+      })
+      printResult(result)
+      return
+    }
     case `end`: {
       const [selector] = rest
       const result = await endWork({

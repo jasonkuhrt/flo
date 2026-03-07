@@ -86,6 +86,22 @@
           "description": "Path or command name for the Flo CLI."
         }
       ]
+    },
+    {
+      "name": "open-last",
+      "title": "Open Last Flo Workspace",
+      "description": "Reopen the most recent actionable Flo workspace",
+      "mode": "no-view",
+      "preferences": [
+        {
+          "name": "floBinary",
+          "type": "textfield",
+          "title": "Flo Binary",
+          "required": false,
+          "default": "flo",
+          "description": "Path or command name for the Flo CLI."
+        }
+      ]
     }
   ],
   "title": "Flo"

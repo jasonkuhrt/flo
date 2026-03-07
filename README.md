@@ -417,6 +417,7 @@ It should not become a separate workflow engine.
 The current adapter lives in `integrations/raycast` and delegates to the Flo CLI:
 
 - `Open Flo Workspace` consumes `flo list --json` and calls `flo open`
+- `Open Last Flo Workspace` calls `flo open --last`
 - `Start Flo Work` consumes the project list and calls `flo start --project ...`
 - `Recent Flo Work` consumes `flo recent --json` and reopens recent work directly
 - `End Flo Work` consumes `flo list --json` and can end feature work with or without reopening main

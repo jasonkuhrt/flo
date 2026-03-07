@@ -117,6 +117,9 @@ They do not redefine Flo behavior.
 # Open the interactive launcher
 flo
 
+# Open the main workspace for a project
+flo open dotfiles
+
 # Start work from the current project's default source
 flo start 123
 
@@ -128,8 +131,7 @@ flo start bead:parser/cleanup-import-resolution
 # Start work from a branch name
 flo start feat/cmux-launcher
 
-# Open an existing project or checkout
-flo open dotfiles
+# Open an existing checkout directly
 flo open heartbeat@feat-auth
 
 # List active checkouts and workspaces
@@ -139,7 +141,21 @@ flo list
 flo end 123
 ```
 
-## What Happens When Flo Starts Work
+## What Happens When Flo Opens Main Project Work
+
+When you run `flo open [project]`, Flo:
+
+1. resolves the project, using the current directory first when possible
+2. resolves that project's main checkout
+3. focuses or creates the main `cmux` workspace for that checkout
+4. restores workspace state through `zmx` if a saved workspace already exists
+5. otherwise runs the project's first-open init flow
+6. lands you in the expected editor/runtime state
+
+This is the home-base path.
+It is intentionally different from starting scoped feature work.
+
+## What Happens When Flo Starts Scoped Work
 
 When you run `flo start <selector>`, Flo:
 
@@ -150,7 +166,15 @@ When you run `flo start <selector>`, Flo:
 5. opens or focuses the right `cmux` workspace
 6. lands you in the project with the expected editor/runtime state
 
-That sequence is the product.
+That is the scoped-work path.
+It should usually land in a feature checkout rather than the main checkout.
+
+Together, `flo open` and `flo start` define the main product shape:
+
+- `flo open` gets you to the project's home base
+- `flo start` gets you to a scoped checkout for active work
+
+That split is the product.
 Specific sources and entrypoints plug into it.
 
 ## Smart Routing
@@ -207,6 +231,17 @@ The feature workspace is the dedicated execution context for the work you are do
 
 Flo should keep both easy to reach and safe to restore.
 
+### Init vs Restore
+
+Flo should be strict about the difference between first open and return:
+
+- on restore, `zmx` owns the workspace state
+- on first open, Flo owns the init flow
+
+Flo should not fight restored state.
+If `zmx` can restore a workspace, Flo should restore it and stop being clever.
+If there is no saved workspace yet, Flo should initialize one intentionally.
+
 ## nvim Integration
 
 `nvim` should be tightly woven into Flo's default flow.
@@ -219,6 +254,30 @@ It means the first-class experience is intentionally:
 - land in `nvim` inside the correct checkout
 
 Editor integration can remain modular in architecture while still making `nvim` the default, built-in editor experience.
+
+### nvim Init Profiles
+
+The first-open `nvim` experience should be project-aware.
+
+Main checkout init can bias toward orientation:
+
+- open `nvim`
+- open a project view
+- show `snacks.explorer` or a Flo-specific dashboard
+
+Feature checkout init can bias toward execution:
+
+- open `nvim`
+- bias toward the active work context
+- preload work-item context when available
+- optionally open a narrower project view than the main checkout
+
+The important boundary is:
+
+- Flo owns init behavior
+- `zmx` owns restore behavior
+
+That keeps the first-open experience intentional without clobbering a restored workspace.
 
 ## Work Sources
 
@@ -300,7 +359,7 @@ The initial public command model is:
 - `flo start <selector>`
   Resolve work, create or reuse a checkout, prepare context, and open it.
 - `flo open [selector]`
-  Open or focus an existing project or checkout.
+  Open or focus a project's main checkout workspace, or an existing checkout when a more specific selector is given.
 - `flo list`
   List active checkouts and workspace state.
 - `flo end [selector]`
@@ -344,19 +403,30 @@ Expected behavior:
 5. create or focus the right `cmux` workspace
 6. land in the expected editor/runtime state
 
-### Open Existing Work
+### Open Main Project
 
 ```bash
 flo open dotfiles
+```
+
+Expected behavior:
+
+- resolve a project target
+- resolve that project's main checkout
+- focus the existing main `cmux` workspace when one exists
+- otherwise create the main workspace and run the init flow
+
+### Open Existing Checkout
+
+```bash
 flo open heartbeat@feat-auth
 ```
 
 Expected behavior:
 
-- resolve a project or checkout target
-- present an interactive picker if needed
-- focus the existing `cmux` workspace when one exists
-- otherwise create/open the target workspace
+- resolve a more specific checkout target
+- focus the existing checkout workspace when one exists
+- otherwise create/open that checkout workspace
 
 ### End Work
 
@@ -421,6 +491,7 @@ Initial slice:
 - GitHub source
 - checkout and worktree orchestration
 - `cmux` plus `zmx` integration
+- main-checkout `flo open` flow distinct from scoped `flo start`
 - canonical CLI commands: `flo`, `flo start`, `flo open`, `flo list`
 
 ### Follow-On Slices

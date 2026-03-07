@@ -35,3 +35,7 @@ test(`re-exports initConfig`, () => {
 test(`re-exports installClaudeHooks`, () => {
   expect(typeof Lib.installClaudeHooks).toBe(`function`)
 })
+
+test(`re-exports formatFloContextEnv`, () => {
+  expect(typeof Lib.formatFloContextEnv).toBe(`function`)
+})

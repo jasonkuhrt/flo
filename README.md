@@ -145,6 +145,9 @@ flo recent
 # Print the current checkout context for Claude or other tooling
 flo context --json
 
+# Export the current context as shell env vars
+flo context --env
+
 # Show current project, checkout, and workspace state
 flo status
 
@@ -488,7 +491,7 @@ The initial public command model is:
 - `flo open [selector]`
   Open or focus a project's main checkout workspace, or an existing checkout when a more specific selector is given. `flo open --last` reopens the most recent actionable workspace directly.
 - `flo context`
-  Print the current project and checkout context, primarily for Claude and other automation.
+  Print the current project and checkout context, primarily for Claude and other automation. `flo context --env` emits a shell-safe export block.
 - `flo status`
   Show the current project, checkout, expected workspace, and whether that workspace is already open.
 - `flo list`

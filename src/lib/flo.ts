@@ -909,6 +909,31 @@ export const getFloContext = async (args: {
   }
 }
 
+export const formatFloContextEnv = (context: FloContextResult): string => {
+  const entries: Array<readonly [string, string]> = [
+    [`FLO_PROJECT_NAME`, context.project.name] as const,
+    [`FLO_PROJECT_PATH`, context.project.path] as const,
+    [`FLO_CHECKOUT_PATH`, context.checkout.path] as const,
+    [`FLO_WORKSPACE_TITLE`, context.workspaceTitle] as const,
+    [`FLO_WORKSPACE_IDENTITY`, context.workspaceMetadata.identity] as const,
+    [`FLO_WORKSPACE_KIND`, context.workspaceMetadata.kind] as const,
+    ...(context.checkout.branch === null
+      ? []
+      : [[`FLO_CHECKOUT_BRANCH`, context.checkout.branch] as const]),
+    ...(context.issue === undefined
+      ? []
+      : [
+          [`FLO_ISSUE_NUMBER`, String(context.issue.number)] as const,
+          [`FLO_ISSUE_TITLE`, context.issue.title] as const,
+          [`FLO_ISSUE_URL`, context.issue.url] as const,
+          [`FLO_ISSUE_STATE`, context.issue.state] as const,
+          [`FLO_ISSUE_REPO`, context.issue.repo] as const,
+        ]),
+  ]
+
+  return entries.map(([key, value]) => `export ${key}=${shellQuote(value)}`).join(`\n`)
+}
+
 export const statusFlo = async (args: {
   context: FloCommandContext
   dependencies?: FloRuntimeDependencies

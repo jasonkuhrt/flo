@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test'
-import { normalizeSelector } from '#lib/flo'
+import { formatFloContextEnv, normalizeSelector } from '#lib/flo'
 
 describe('normalizeSelector', () => {
   it('trims surrounding whitespace', () => {
@@ -7,5 +7,45 @@ describe('normalizeSelector', () => {
       raw: '  gh:123  ',
       value: 'gh:123',
     })
+  })
+})
+
+describe(`formatFloContextEnv`, () => {
+  it(`renders a shell-safe export block`, () => {
+    expect(
+      formatFloContextEnv({
+        project: {
+          name: `flo`,
+          path: `/tmp/flo`,
+          aliases: [],
+          worktreeRoot: `/tmp/.flo-checkouts/flo`,
+          workspaceProfiles: {},
+        },
+        checkout: {
+          path: `/tmp/flo`,
+          branch: `issue/42-add-launcher`,
+          headSha: `abc123`,
+          isMain: false,
+        },
+        workspaceTitle: `flo:flo@issue/42-add-launcher`,
+        workspaceMetadata: {
+          identity: `deadbeef0000`,
+          project: `flo`,
+          kind: `feature`,
+        },
+        claudePaneDirection: `right`,
+        editorSessionName: `editor`,
+        claudeSessionName: `claude`,
+        editorBootstrapCommand: `nvim`,
+        claudeBootstrapCommand: `claude`,
+        issue: {
+          number: 42,
+          title: `Add launcher`,
+          url: `https://github.com/jasonkuhrt/flo/issues/42`,
+          state: `OPEN`,
+          repo: `jasonkuhrt/flo`,
+        },
+      }),
+    ).toContain(`export FLO_ISSUE_NUMBER='42'`)
   })
 })

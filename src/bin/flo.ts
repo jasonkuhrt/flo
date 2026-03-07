@@ -6,6 +6,7 @@ import { installClaudeHooks } from '#lib/claude'
 import { FloError } from '#lib/errors'
 import {
   doctorFlo,
+  formatFloContextEnv,
   endWork,
   getFloContext,
   initConfig,
@@ -26,7 +27,7 @@ Usage:
   flo
   flo open [selector] [--last] [--dry-run] [--json]
   flo start <selector> [--project <project>] [--dry-run] [--json]
-  flo context [--json]
+  flo context [--json|--env]
   flo status [--json]
   flo list [--json]
   flo recent [--json]
@@ -51,6 +52,7 @@ Examples:
   flo start gh:123
   flo start feat/cmux-launcher
   flo context --json
+  flo context --env
   flo status
   flo recent
   flo doctor --json
@@ -368,10 +370,19 @@ const main = async (): Promise<void> => {
       await printRecents(context, json)
       return
     case `context`: {
+      if (json && parsed.booleans.has(`env`)) {
+        throw new FloError(`CLI_USAGE`, `flo context accepts either --json or --env, not both.`)
+      }
+
       const result = await getFloContext({ context })
 
       if (json) {
         printResult(result)
+        return
+      }
+
+      if (parsed.booleans.has(`env`)) {
+        process.stdout.write(`${formatFloContextEnv(result)}\n`)
         return
       }
 

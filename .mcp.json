@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "effect-docs": {
+      "command": "npx",
+      "args": ["effect-mcp@latest"]
+    }
+  }
+}

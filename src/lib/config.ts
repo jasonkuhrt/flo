@@ -3,7 +3,13 @@ import { resolve } from 'pathe'
 import { FloError } from '#lib/errors'
 import { pathExists, readFileString } from '#lib/filesystem'
 import { expandHome } from '#lib/strings'
-import type { FloConfig, FloProjectConfig, FloRuntimeConfig, ResolvedFloConfig } from '#lib/types'
+import type {
+  FloConfig,
+  FloProjectConfig,
+  FloRuntimeConfig,
+  FloWorkspaceProfileConfig,
+  ResolvedFloConfig,
+} from '#lib/types'
 
 const defaultRuntimeConfig = (env: NodeJS.ProcessEnv): FloRuntimeConfig => ({
   editorCommand: env[`EDITOR`] ?? `nvim`,
@@ -13,6 +19,14 @@ const defaultRuntimeConfig = (env: NodeJS.ProcessEnv): FloRuntimeConfig => ({
   zmxBin: `zmx`,
   fzfBin: `fzf`,
   workspacePrefix: `flo`,
+  profiles: {
+    main: {
+      splitDirection: `right`,
+    },
+    feature: {
+      splitDirection: `right`,
+    },
+  },
 })
 
 export const getDefaultConfigPath = (env: NodeJS.ProcessEnv): string => {
@@ -57,11 +71,37 @@ const ensureStringArray = (value: unknown, path: string): string[] => {
   return value.map((entry, index) => ensureString(entry, `${path}[${index}]`))
 }
 
+const parseWorkspaceProfile = (value: unknown, path: string): FloWorkspaceProfileConfig => {
+  if (!isRecord(value)) {
+    throw new FloError(`CONFIG_INVALID`, `Flo config field ${path} must be an object.`)
+  }
+
+  const splitDirection = value[`splitDirection`]
+  if (splitDirection !== undefined && splitDirection !== `right` && splitDirection !== `bottom`) {
+    throw new FloError(
+      `CONFIG_INVALID`,
+      `Flo config field ${path}.splitDirection must be right or bottom.`,
+    )
+  }
+
+  const editorCommand = ensureOptionalString(value[`editorCommand`], `${path}.editorCommand`)
+  const claudeCommand = ensureOptionalString(value[`claudeCommand`], `${path}.claudeCommand`)
+
+  return {
+    ...(editorCommand === undefined ? {} : { editorCommand }),
+    ...(claudeCommand === undefined ? {} : { claudeCommand }),
+    ...(splitDirection === undefined ? {} : { splitDirection }),
+  }
+}
+
 const parseProjectConfig = (value: unknown, path: string): FloProjectConfig => {
   if (!isRecord(value)) {
     throw new FloError(`CONFIG_INVALID`, `Flo config field ${path} must be an object.`)
   }
-  const aliases = value[`aliases`] === undefined ? undefined : ensureStringArray(value[`aliases`], `${path}.aliases`)
+  const aliases =
+    value[`aliases`] === undefined
+      ? undefined
+      : ensureStringArray(value[`aliases`], `${path}.aliases`)
   const worktreeRoot = ensureOptionalString(value[`worktreeRoot`], `${path}.worktreeRoot`)
 
   const github =
@@ -131,6 +171,37 @@ const parseConfig = (text: string, configPath: string): FloConfig => {
           }
 
           const runtimeConfig = parsed[`runtime`]
+          const profiles =
+            runtimeConfig[`profiles`] === undefined
+              ? undefined
+              : (() => {
+                  if (!isRecord(runtimeConfig[`profiles`])) {
+                    throw new FloError(
+                      `CONFIG_INVALID`,
+                      `Flo config field runtime.profiles must be an object.`,
+                    )
+                  }
+
+                  return {
+                    ...(runtimeConfig[`profiles`][`main`] === undefined
+                      ? {}
+                      : {
+                          main: parseWorkspaceProfile(
+                            runtimeConfig[`profiles`][`main`],
+                            `runtime.profiles.main`,
+                          ),
+                        }),
+                    ...(runtimeConfig[`profiles`][`feature`] === undefined
+                      ? {}
+                      : {
+                          feature: parseWorkspaceProfile(
+                            runtimeConfig[`profiles`][`feature`],
+                            `runtime.profiles.feature`,
+                          ),
+                        }),
+                  }
+                })()
+
           return {
             ...(ensureOptionalString(runtimeConfig[`editorCommand`], `runtime.editorCommand`) ===
             undefined
@@ -176,7 +247,8 @@ const parseConfig = (text: string, configPath: string): FloConfig => {
                     `runtime.workspacePrefix`,
                   ),
                 }),
-          } satisfies Partial<FloRuntimeConfig>
+            ...(profiles === undefined ? {} : { profiles }),
+          } satisfies NonNullable<FloConfig[`runtime`]>
         })()
   const projects =
     parsed[`projects`] === undefined
@@ -232,6 +304,18 @@ export const loadConfig = async (env: NodeJS.ProcessEnv): Promise<ResolvedFloCon
   const runtime = {
     ...defaultRuntimeConfig(env),
     ...parsed.runtime,
+    profiles: {
+      ...defaultRuntimeConfig(env).profiles,
+      ...parsed.runtime?.profiles,
+      main: {
+        ...defaultRuntimeConfig(env).profiles.main,
+        ...parsed.runtime?.profiles?.main,
+      },
+      feature: {
+        ...defaultRuntimeConfig(env).profiles.feature,
+        ...parsed.runtime?.profiles?.feature,
+      },
+    },
   }
 
   const projects = (parsed.projects ?? []).map((project) =>

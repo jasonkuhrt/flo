@@ -53,6 +53,7 @@ const makeTarget = (path: string, identity: string, actionTitle: string): OpenTa
     project: `flo`,
     kind: `main`,
   },
+  claudePaneDirection: `right`,
   editorSessionName: `flo-editor`,
   claudeSessionName: `flo-claude`,
   editorBootstrapCommand: `zmx attach editor`,

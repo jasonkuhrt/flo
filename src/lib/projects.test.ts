@@ -140,6 +140,14 @@ describe(`discoverProjects`, () => {
         zmxBin: `zmx`,
         fzfBin: `fzf`,
         workspacePrefix: `flo`,
+        profiles: {
+          main: {
+            splitDirection: `right`,
+          },
+          feature: {
+            splitDirection: `right`,
+          },
+        },
       },
       projects: [
         {

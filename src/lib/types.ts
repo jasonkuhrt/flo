@@ -1,5 +1,17 @@
 export type FloSourceKind = `github` | `linear` | `bead`
 export type FloWorkspaceKind = `main` | `feature`
+export type FloSplitDirection = `right` | `bottom`
+
+export interface FloWorkspaceProfileConfig {
+  editorCommand?: string
+  claudeCommand?: string
+  splitDirection?: FloSplitDirection
+}
+
+export interface FloWorkspaceProfiles {
+  main: FloWorkspaceProfileConfig
+  feature: FloWorkspaceProfileConfig
+}
 
 export interface FloRuntimeConfig {
   editorCommand: string
@@ -9,6 +21,7 @@ export interface FloRuntimeConfig {
   zmxBin: string
   fzfBin: string
   workspacePrefix: string
+  profiles: FloWorkspaceProfiles
 }
 
 export interface FloProjectConfig {
@@ -26,7 +39,9 @@ export interface FloConfig {
   discovery?: {
     roots?: string[]
   }
-  runtime?: Partial<FloRuntimeConfig>
+  runtime?: Partial<Omit<FloRuntimeConfig, `profiles`>> & {
+    profiles?: Partial<FloWorkspaceProfiles>
+  }
   projects?: FloProjectConfig[]
 }
 
@@ -101,6 +116,7 @@ export interface OpenTarget {
   checkout: FloCheckout
   workspaceTitle: string
   workspaceMetadata: FloWorkspaceMetadata
+  claudePaneDirection: FloSplitDirection
   editorSessionName: string
   claudeSessionName: string
   editorBootstrapCommand: string

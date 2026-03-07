@@ -592,6 +592,8 @@ Flo has two configuration scopes:
 
 The config format is JSON and validated at load time.
 The model will continue to grow, but malformed fields should fail fast with precise config-path errors instead of surfacing later during runtime.
+Runtime config can define global `main` and `feature` workspace profiles.
+These profiles override bootstrap commands and split direction for the corresponding workspace kind.
 
 The current config file is JSON at `~/.config/flo/config.json`.
 
@@ -601,6 +603,14 @@ Minimal example:
 {
   "discovery": {
     "roots": ["~/projects/jasonkuhrt"]
+  },
+  "runtime": {
+    "profiles": {
+      "feature": {
+        "splitDirection": "bottom",
+        "editorCommand": "nvim +FloFeatureInit"
+      }
+    }
   },
   "projects": [
     {

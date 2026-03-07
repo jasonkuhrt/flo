@@ -171,6 +171,7 @@ const buildOpenTarget = async (args: {
         }
   const identity = await workspaceIdentity(canonicalCheckoutPath)
   const title = workspaceTitle(args.runtime.workspacePrefix, args.project, normalizedCheckout)
+  const profile = args.runtime.profiles[workspaceKind(normalizedCheckout)]
   const stem = sessionStem({
     prefix: args.runtime.workspacePrefix,
     project: args.project,
@@ -187,6 +188,7 @@ const buildOpenTarget = async (args: {
       project: args.project.name,
       kind: workspaceKind(normalizedCheckout),
     },
+    claudePaneDirection: profile.splitDirection ?? `right`,
     editorSessionName: `${stem}-editor`,
     claudeSessionName: `${stem}-claude`,
     editorBootstrapCommand: buildEditorBootstrapCommand({
@@ -194,14 +196,14 @@ const buildOpenTarget = async (args: {
       shellCommand: args.runtime.shellCommand,
       sessionName: `${stem}-editor`,
       cwd: normalizedCheckout.path,
-      editorCommand: args.runtime.editorCommand,
+      editorCommand: profile.editorCommand ?? args.runtime.editorCommand,
     }),
     claudeBootstrapCommand: buildClaudeBootstrapCommand({
       zmxBin: args.runtime.zmxBin,
       shellCommand: args.runtime.shellCommand,
       sessionName: `${stem}-claude`,
       cwd: normalizedCheckout.path,
-      claudeCommand: args.runtime.claudeCommand,
+      claudeCommand: profile.claudeCommand ?? args.runtime.claudeCommand,
     }),
   }
 }
@@ -434,7 +436,8 @@ const initializeWorkspace = async (args: {
     runner: args.runner,
     cmuxBin: args.cmuxBin,
     workspaceId: args.workspaceId,
-    direction: `right`,
+    direction:
+      args.target.claudePaneDirection === `bottom` ? `down` : args.target.claudePaneDirection,
   })
   await sendToCmuxWorkspace({
     runner: args.runner,

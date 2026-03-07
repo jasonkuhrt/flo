@@ -52,6 +52,12 @@ describe(`config`, () => {
         },
         runtime: {
           editorCommand: `hx`,
+          profiles: {
+            feature: {
+              splitDirection: `bottom`,
+              claudeCommand: `claude --dangerously-skip-permissions`,
+            },
+          },
         },
         projects: [
           {
@@ -71,6 +77,10 @@ describe(`config`, () => {
     expect(result.exists).toBe(true)
     expect(result.discoveryRoots).toEqual([join(homedir(), `projects`)])
     expect(result.runtime.editorCommand).toBe(`hx`)
+    expect(result.runtime.profiles.feature.splitDirection).toBe(`bottom`)
+    expect(result.runtime.profiles.feature.claudeCommand).toBe(
+      `claude --dangerously-skip-permissions`,
+    )
     expect(result.projects).toEqual([
       {
         name: `dotfiles`,

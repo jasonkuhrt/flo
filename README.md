@@ -630,6 +630,7 @@ Implemented now:
 - `flo context` for Claude-facing checkout context
 - `flo ui` for Claude hook -> Flo -> `cmux` integration
 - local workspace activity state for recency-aware flows
+- recency-aware ordering in `flo` launcher and `flo list`
 - experimental Raycast adapter over the Flo CLI
 
 Deferred for later:

@@ -101,6 +101,49 @@ const workspaceIdentity = async (checkoutPath: string): Promise<string> => {
     .slice(0, 12)
 }
 
+const recencyScore = (timestamp: string | undefined): number =>
+  timestamp === undefined ? Number.NEGATIVE_INFINITY : Date.parse(timestamp)
+
+const compareCheckoutsForDisplay = (
+  left: FloListProject[`checkouts`][number],
+  right: FloListProject[`checkouts`][number],
+): number => {
+  if (left.workspaceOpen !== right.workspaceOpen) {
+    return left.workspaceOpen === true ? -1 : 1
+  }
+
+  const recencyDelta = recencyScore(right.lastOpenedAt) - recencyScore(left.lastOpenedAt)
+  if (recencyDelta !== 0) return recencyDelta
+
+  if (left.isMain !== right.isMain) {
+    return left.isMain ? -1 : 1
+  }
+
+  return (left.branch ?? basename(left.path)).localeCompare(right.branch ?? basename(right.path))
+}
+
+const compareProjectsForDisplay = (left: FloListProject, right: FloListProject): number => {
+  const leftOpen = left.checkouts.some((checkout) => checkout.workspaceOpen === true)
+  const rightOpen = right.checkouts.some((checkout) => checkout.workspaceOpen === true)
+  if (leftOpen !== rightOpen) {
+    return leftOpen ? -1 : 1
+  }
+
+  const leftRecent = Math.max(
+    ...left.checkouts.map((checkout) => recencyScore(checkout.lastOpenedAt)),
+    Number.NEGATIVE_INFINITY,
+  )
+  const rightRecent = Math.max(
+    ...right.checkouts.map((checkout) => recencyScore(checkout.lastOpenedAt)),
+    Number.NEGATIVE_INFINITY,
+  )
+  if (leftRecent !== rightRecent) {
+    return rightRecent - leftRecent
+  }
+
+  return left.name.localeCompare(right.name)
+}
+
 const sessionStem = (args: {
   prefix: string
   project: FloProject
@@ -1126,22 +1169,24 @@ export const listFloState = async (args: {
         path: project.path,
         ...(project.defaultSource === undefined ? {} : { defaultSource: project.defaultSource }),
         ...(project.githubRepo === undefined ? {} : { githubRepo: project.githubRepo }),
-        checkouts: checkoutTargets.map((target) => {
-          const lastOpenedAt = recentByIdentity.get(target.workspaceMetadata.identity)
+        checkouts: checkoutTargets
+          .map((target) => {
+            const lastOpenedAt = recentByIdentity.get(target.workspaceMetadata.identity)
 
-          return {
-            path: target.checkout.path,
-            branch: target.checkout.branch,
-            isMain: target.checkout.isMain,
-            workspaceIdentity: target.workspaceMetadata.identity,
-            workspaceTitle: target.workspaceTitle,
-            ...(lastOpenedAt === undefined ? {} : { lastOpenedAt }),
-            workspaceOpen: cmuxAvailable
-              ? openWorkspaceIdentities.has(target.workspaceMetadata.identity) ||
-                openWorkspacePaths.has(target.checkout.path)
-              : null,
-          }
-        }),
+            return {
+              path: target.checkout.path,
+              branch: target.checkout.branch,
+              isMain: target.checkout.isMain,
+              workspaceIdentity: target.workspaceMetadata.identity,
+              workspaceTitle: target.workspaceTitle,
+              ...(lastOpenedAt === undefined ? {} : { lastOpenedAt }),
+              workspaceOpen: cmuxAvailable
+                ? openWorkspaceIdentities.has(target.workspaceMetadata.identity) ||
+                  openWorkspacePaths.has(target.checkout.path)
+                : null,
+            }
+          })
+          .sort(compareCheckoutsForDisplay),
       }
     }),
   )
@@ -1150,7 +1195,7 @@ export const listFloState = async (args: {
     configPath: config.configPath,
     configExists: config.exists,
     cmuxAvailable,
-    projects: projectResults,
+    projects: projectResults.sort(compareProjectsForDisplay),
   }
 }
 

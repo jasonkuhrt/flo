@@ -18,7 +18,7 @@ import {
   startWork,
 } from '#lib/flo'
 import type { CommandRunner } from '#lib/process'
-import { getDefaultStatePath, loadState } from '#lib/state'
+import { getDefaultStatePath, loadState, saveState } from '#lib/state'
 
 const tempPaths: string[] = []
 
@@ -397,6 +397,83 @@ describe(`flo runtime`, () => {
         },
       ],
     })
+  })
+
+  it(`sorts checkouts by recency when listing state`, async () => {
+    const fixture = await makeRepoFixture()
+    const planningRunner = mockRunner({
+      [`git -C ${fixture.repoRoot} rev-parse --show-toplevel`]: { stdout: `${fixture.repoRoot}\n` },
+      [`git -C ${fixture.repoRoot} remote get-url origin`]: {
+        stdout: `git@github.com:jasonkuhrt/flo.git\n`,
+      },
+      [`git -C ${fixture.repoRoot} worktree list --porcelain`]: {
+        stdout: featureWorktreeList(fixture.repoRoot, fixture.featureWorktreePath),
+      },
+    })
+    const mainTarget = await resolveOpenTarget({
+      context: {
+        cwd: fixture.repoRoot,
+        env: fixture.env,
+      },
+      dependencies: { runner: planningRunner },
+    })
+    const featureTarget = await resolveStartTarget({
+      context: {
+        cwd: fixture.repoRoot,
+        env: fixture.env,
+      },
+      selector: `feat/auth`,
+      dependencies: { runner: planningRunner },
+    })
+
+    await saveState(fixture.env, {
+      version: 1,
+      workspaces: [
+        {
+          workspaceIdentity: mainTarget.workspaceMetadata.identity,
+          workspaceTitle: mainTarget.workspaceTitle,
+          projectName: `flo`,
+          checkoutPath: fixture.repoRoot,
+          branch: null,
+          isMain: true,
+          lastOpenedAt: `2026-03-06T10:00:00.000Z`,
+          lastAction: `open`,
+        },
+        {
+          workspaceIdentity: featureTarget.workspaceMetadata.identity,
+          workspaceTitle: featureTarget.workspaceTitle,
+          projectName: `flo`,
+          checkoutPath: fixture.featureWorktreePath,
+          branch: `feat/auth`,
+          isMain: false,
+          lastOpenedAt: `2026-03-07T10:00:00.000Z`,
+          lastAction: `start`,
+        },
+      ],
+    })
+
+    const runner = mockRunner({
+      [`git -C ${fixture.repoRoot} rev-parse --show-toplevel`]: { stdout: `${fixture.repoRoot}\n` },
+      [`git -C ${fixture.repoRoot} remote get-url origin`]: {
+        stdout: `git@github.com:jasonkuhrt/flo.git\n`,
+      },
+      [`git -C ${fixture.repoRoot} worktree list --porcelain`]: {
+        stdout: featureWorktreeList(fixture.repoRoot, fixture.featureWorktreePath),
+      },
+      [`cmux ping`]: { exitCode: 1 },
+    })
+
+    const result = await listFloState({
+      context: {
+        cwd: fixture.repoRoot,
+        env: fixture.env,
+      },
+      dependencies: { runner },
+    })
+
+    expect(result.projects[0]?.checkouts[0]?.branch).toBe(`feat/auth`)
+    expect(result.projects[0]?.checkouts[0]?.lastOpenedAt).toBe(`2026-03-07T10:00:00.000Z`)
+    expect(result.projects[0]?.checkouts[1]?.isMain).toBe(true)
   })
 
   it(`launches through fzf and returns the selected open target`, async () => {

@@ -140,6 +140,7 @@ export interface FloListCheckout {
   workspaceIdentity: string
   workspaceTitle: string
   workspaceOpen: boolean | null
+  lastOpenedAt?: string
 }
 
 export interface FloListProject {
@@ -202,6 +203,22 @@ export interface FloStatusResult {
     title: string
   } | null
   issue?: GitHubIssue
+}
+
+export interface FloWorkspaceStateRecord {
+  workspaceIdentity: string
+  workspaceTitle: string
+  projectName: string
+  checkoutPath: string
+  branch: string | null
+  isMain: boolean
+  lastOpenedAt: string
+  lastAction: `open` | `start`
+}
+
+export interface FloState {
+  version: 1
+  workspaces: FloWorkspaceStateRecord[]
 }
 
 export interface FloCommandContext {

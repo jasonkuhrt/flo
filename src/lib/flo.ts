@@ -38,6 +38,7 @@ import {
   resolveProjectSelector,
 } from '#lib/projects'
 import { parseOpenSelector, parseStartSelector } from '#lib/selectors'
+import { loadState, touchWorkspaceState } from '#lib/state'
 import { sanitizeIdentifier, shellQuote } from '#lib/strings'
 import type {
   FloCheckout,
@@ -724,6 +725,11 @@ export const openWorkspace = async (args: {
     cmuxBin: config.runtime.cmuxBin,
     target,
   })
+  await touchWorkspaceState({
+    env: args.context.env,
+    target,
+    action: `open`,
+  })
 
   return {
     ...target,
@@ -781,6 +787,11 @@ export const startWork = async (args: {
     runner: dependencies.runner,
     cmuxBin: plan.config.runtime.cmuxBin,
     target,
+  })
+  await touchWorkspaceState({
+    env: args.context.env,
+    target,
+    action: `start`,
   })
 
   return {
@@ -1077,6 +1088,13 @@ export const listFloState = async (args: {
         cmuxBin: config.runtime.cmuxBin,
       })
     : []
+  const persistedState = await loadState(args.context.env)
+  const recentByIdentity = new Map(
+    persistedState.workspaces.map((workspace) => [
+      workspace.workspaceIdentity,
+      workspace.lastOpenedAt,
+    ]),
+  )
   const openWorkspaceIdentities = new Set(
     inspectedWorkspaces.flatMap((workspace) => {
       const identity = statusEntryValue(workspace.sidebarState, `flo.identity`)
@@ -1108,17 +1126,22 @@ export const listFloState = async (args: {
         path: project.path,
         ...(project.defaultSource === undefined ? {} : { defaultSource: project.defaultSource }),
         ...(project.githubRepo === undefined ? {} : { githubRepo: project.githubRepo }),
-        checkouts: checkoutTargets.map((target) => ({
-          path: target.checkout.path,
-          branch: target.checkout.branch,
-          isMain: target.checkout.isMain,
-          workspaceIdentity: target.workspaceMetadata.identity,
-          workspaceTitle: target.workspaceTitle,
-          workspaceOpen: cmuxAvailable
-            ? openWorkspaceIdentities.has(target.workspaceMetadata.identity) ||
-              openWorkspacePaths.has(target.checkout.path)
-            : null,
-        })),
+        checkouts: checkoutTargets.map((target) => {
+          const lastOpenedAt = recentByIdentity.get(target.workspaceMetadata.identity)
+
+          return {
+            path: target.checkout.path,
+            branch: target.checkout.branch,
+            isMain: target.checkout.isMain,
+            workspaceIdentity: target.workspaceMetadata.identity,
+            workspaceTitle: target.workspaceTitle,
+            ...(lastOpenedAt === undefined ? {} : { lastOpenedAt }),
+            workspaceOpen: cmuxAvailable
+              ? openWorkspaceIdentities.has(target.workspaceMetadata.identity) ||
+                openWorkspacePaths.has(target.checkout.path)
+              : null,
+          }
+        }),
       }
     }),
   )

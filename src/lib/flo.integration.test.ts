@@ -18,6 +18,7 @@ import {
   startWork,
 } from '#lib/flo'
 import type { CommandRunner } from '#lib/process'
+import { getDefaultStatePath, loadState } from '#lib/state'
 
 const tempPaths: string[] = []
 
@@ -185,6 +186,15 @@ describe(`flo runtime`, () => {
     expect(result.createdWorkspace).toBe(false)
     expect(result.workspaceId).toBe(`workspace:3`)
     expect(calls).toContain(`cmux select-workspace --workspace workspace:3`)
+
+    const statePath = getDefaultStatePath(fixture.env)
+    expect(await Bun.file(statePath).exists()).toBe(true)
+    const state = await loadState(fixture.env)
+    const record = state.workspaces[0]
+    expect(record).toBeDefined()
+    expect(record?.workspaceTitle).toBe(`flo:flo`)
+    expect(record?.checkoutPath).toBe(fixture.repoRoot)
+    expect(record?.lastAction).toBe(`open`)
   })
 
   it(`starts GitHub issue work by planning a feature checkout`, async () => {

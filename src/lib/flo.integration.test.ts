@@ -810,6 +810,21 @@ describe(`flo runtime`, () => {
 
   it(`prunes orphaned Flo workspaces by identity`, async () => {
     const fixture = await makeRepoFixture()
+    await saveState(fixture.env, {
+      version: 1,
+      workspaces: [
+        {
+          workspaceIdentity: `deadbeef0000`,
+          workspaceTitle: `flo:flo@old`,
+          projectName: `flo`,
+          checkoutPath: fixture.featureWorktreePath,
+          branch: `old`,
+          isMain: false,
+          lastOpenedAt: `2026-03-07T10:00:00.000Z`,
+          lastAction: `start`,
+        },
+      ],
+    })
     const calls: string[] = []
     const runner: CommandRunner = async (command, args = []) => {
       const key = [command, ...args].join(` `)
@@ -859,6 +874,14 @@ describe(`flo runtime`, () => {
       workspaceId: `workspace:9`,
       closedWorkspace: true,
     })
+    expect(result.prunedRecents).toEqual([
+      {
+        workspaceIdentity: `deadbeef0000`,
+        workspaceTitle: `flo:flo@old`,
+        checkoutPath: fixture.featureWorktreePath,
+      },
+    ])
+    expect((await loadState(fixture.env)).workspaces).toHaveLength(0)
     expect(calls).toContain(`git -C ${fixture.repoRoot} worktree prune`)
   })
 

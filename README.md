@@ -495,7 +495,7 @@ The initial public command model is:
 - `flo end [selector]`
   Resolve or conclude a piece of work and clean up the checkout when appropriate.
 - `flo prune`
-  Clean up stale local state.
+  Clean up stale local workspace, worktree, and recent-state records.
 - `flo ui ...`
   Bridge Claude and other automation into Flo-owned `cmux` status, log, and notification behavior.
 

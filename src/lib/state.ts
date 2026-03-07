@@ -104,3 +104,26 @@ export const touchWorkspaceState = async (args: {
     workspaces,
   })
 }
+
+export const pruneWorkspaceState = async (args: {
+  env: NodeJS.ProcessEnv
+  activeWorkspaceIdentities: ReadonlySet<string>
+  activeCheckoutPaths: ReadonlySet<string>
+  dryRun?: boolean
+}): Promise<FloWorkspaceStateRecord[]> => {
+  const state = await loadState(args.env)
+  const staleRecords = state.workspaces.filter(
+    (record) =>
+      !args.activeWorkspaceIdentities.has(record.workspaceIdentity) &&
+      !args.activeCheckoutPaths.has(record.checkoutPath),
+  )
+
+  if (!args.dryRun && staleRecords.length > 0) {
+    await saveState(args.env, {
+      version: 1,
+      workspaces: state.workspaces.filter((record) => !staleRecords.includes(record)),
+    })
+  }
+
+  return staleRecords
+}

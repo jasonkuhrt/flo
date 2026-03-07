@@ -38,7 +38,7 @@ import {
   resolveProjectSelector,
 } from '#lib/projects'
 import { parseOpenSelector, parseStartSelector } from '#lib/selectors'
-import { loadState, touchWorkspaceState } from '#lib/state'
+import { loadState, pruneWorkspaceState, touchWorkspaceState } from '#lib/state'
 import { sanitizeIdentifier, shellQuote } from '#lib/strings'
 import type {
   FloCheckout,
@@ -1042,6 +1042,7 @@ export const pruneFloState = async (args: {
     runner: dependencies.runner,
   })
   const activeIdentities = new Set<string>()
+  const activeCheckoutPaths = new Set<string>()
   const projectResults = await Promise.all(
     projects.map(async (project): Promise<FloPruneProjectResult> => {
       if (!args.dryRun) {
@@ -1061,6 +1062,7 @@ export const pruneFloState = async (args: {
 
       for (const target of targets) {
         activeIdentities.add(target.workspaceMetadata.identity)
+        activeCheckoutPaths.add(target.checkout.path)
       }
 
       return {
@@ -1075,6 +1077,18 @@ export const pruneFloState = async (args: {
     return {
       projects: projectResults,
       closedWorkspaces: [],
+      prunedRecents: await pruneWorkspaceState({
+        env: args.context.env,
+        activeWorkspaceIdentities: activeIdentities,
+        activeCheckoutPaths: activeCheckoutPaths,
+        ...(args.dryRun === undefined ? {} : { dryRun: args.dryRun }),
+      }).then((records) =>
+        records.map((record) => ({
+          workspaceIdentity: record.workspaceIdentity,
+          workspaceTitle: record.workspaceTitle,
+          checkoutPath: record.checkoutPath,
+        })),
+      ),
     }
   }
 
@@ -1130,9 +1144,21 @@ export const pruneFloState = async (args: {
     )
   ).filter((workspace) => workspace !== null)
 
+  const prunedRecents = await pruneWorkspaceState({
+    env: args.context.env,
+    activeWorkspaceIdentities: activeIdentities,
+    activeCheckoutPaths: activeCheckoutPaths,
+    ...(args.dryRun === undefined ? {} : { dryRun: args.dryRun }),
+  })
+
   return {
     projects: projectResults,
     closedWorkspaces,
+    prunedRecents: prunedRecents.map((record) => ({
+      workspaceIdentity: record.workspaceIdentity,
+      workspaceTitle: record.workspaceTitle,
+      checkoutPath: record.checkoutPath,
+    })),
   }
 }
 

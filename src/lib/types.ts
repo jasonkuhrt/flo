@@ -276,9 +276,16 @@ export interface FloPruneProjectResult {
   path: string
 }
 
+export interface FloPrunedRecentResult {
+  workspaceIdentity: string
+  workspaceTitle: string
+  checkoutPath: string
+}
+
 export interface FloPruneResult {
   projects: FloPruneProjectResult[]
   closedWorkspaces: FloPruneWorkspaceResult[]
+  prunedRecents: FloPrunedRecentResult[]
 }
 
 export interface FloUiSyncResult {

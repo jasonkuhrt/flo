@@ -11,6 +11,7 @@ import {
   launchInteractive,
   listFloState,
   listRecentWork,
+  openLastWorkspace,
   openWorkspace,
   pruneFloState,
   resolveOpenTarget,
@@ -558,6 +559,73 @@ describe(`flo runtime`, () => {
       selector: `flo`,
       lastAction: `open`,
     })
+  })
+
+  it(`opens the most recent workspace`, async () => {
+    const fixture = await makeRepoFixture()
+    const runner = mockRunner({
+      [`git -C ${fixture.repoRoot} rev-parse --show-toplevel`]: { stdout: `${fixture.repoRoot}\n` },
+      [`git -C ${fixture.repoRoot} remote get-url origin`]: {
+        stdout: `git@github.com:jasonkuhrt/flo.git\n`,
+      },
+      [`git -C ${fixture.repoRoot} worktree list --porcelain`]: {
+        stdout: featureWorktreeList(fixture.repoRoot, fixture.featureWorktreePath),
+      },
+      [`cmux ping`]: { exitCode: 1 },
+    })
+    const mainTarget = await resolveOpenTarget({
+      context: {
+        cwd: fixture.repoRoot,
+        env: fixture.env,
+      },
+      dependencies: { runner },
+    })
+    const featureTarget = await resolveStartTarget({
+      context: {
+        cwd: fixture.repoRoot,
+        env: fixture.env,
+      },
+      selector: `feat/auth`,
+      dependencies: { runner },
+    })
+
+    await saveState(fixture.env, {
+      version: 1,
+      workspaces: [
+        {
+          workspaceIdentity: featureTarget.workspaceMetadata.identity,
+          workspaceTitle: featureTarget.workspaceTitle,
+          projectName: `flo`,
+          checkoutPath: fixture.featureWorktreePath,
+          branch: `feat/auth`,
+          isMain: false,
+          lastOpenedAt: `2026-03-07T10:00:00.000Z`,
+          lastAction: `start`,
+        },
+        {
+          workspaceIdentity: mainTarget.workspaceMetadata.identity,
+          workspaceTitle: mainTarget.workspaceTitle,
+          projectName: `flo`,
+          checkoutPath: fixture.repoRoot,
+          branch: null,
+          isMain: true,
+          lastOpenedAt: `2026-03-06T10:00:00.000Z`,
+          lastAction: `open`,
+        },
+      ],
+    })
+
+    const result = await openLastWorkspace({
+      context: {
+        cwd: fixture.repoRoot,
+        env: fixture.env,
+      },
+      dryRun: true,
+      dependencies: { runner },
+    })
+
+    expect(result.checkout.branch).toBe(`feat/auth`)
+    expect(result.workspaceTitle).toBe(`flo:flo@feat/auth`)
   })
 
   it(`launches through fzf and returns the selected open target`, async () => {

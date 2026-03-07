@@ -783,6 +783,25 @@ export const openWorkspace = async (args: {
   }
 }
 
+export const openLastWorkspace = async (args: {
+  context: FloCommandContext
+  dryRun?: boolean
+  dependencies?: FloRuntimeDependencies
+}): Promise<OpenTarget & { createdWorkspace?: boolean; workspaceId?: string }> => {
+  const recent = await listRecentWork(args)
+  const item = recent.items[0]
+  if (item === undefined) {
+    throw new FloError(`RECENT_WORK_EMPTY`, `Flo has no recent work to reopen yet.`)
+  }
+
+  return openWorkspace({
+    context: args.context,
+    selector: item.selector,
+    ...(args.dryRun === undefined ? {} : { dryRun: args.dryRun }),
+    ...(args.dependencies === undefined ? {} : { dependencies: args.dependencies }),
+  })
+}
+
 export const startWork = async (args: {
   context: FloCommandContext
   selector: string

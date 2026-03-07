@@ -118,6 +118,9 @@ flo
 # Open the main workspace for a project
 flo open dotfiles
 
+# Reopen the most recent actionable workspace
+flo open --last
+
 # Start work from the current project's default source
 flo start 123
 
@@ -478,7 +481,7 @@ The initial public command model is:
 - `flo start <selector> [--project <project>]`
   Resolve work, create or reuse a checkout, prepare context, and open it. `--project` is the global-launcher path.
 - `flo open [selector]`
-  Open or focus a project's main checkout workspace, or an existing checkout when a more specific selector is given.
+  Open or focus a project's main checkout workspace, or an existing checkout when a more specific selector is given. `flo open --last` reopens the most recent actionable workspace directly.
 - `flo context`
   Print the current project and checkout context, primarily for Claude and other automation.
 - `flo status`

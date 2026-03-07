@@ -10,6 +10,7 @@ import {
   launchInteractive,
   listFloState,
   listRecentWork,
+  openLastWorkspace,
   openWorkspace,
   pruneFloState,
   statusFlo,
@@ -21,7 +22,7 @@ const usage = `flo
 
 Usage:
   flo
-  flo open [selector] [--dry-run] [--json]
+  flo open [selector] [--last] [--dry-run] [--json]
   flo start <selector> [--project <project>] [--dry-run] [--json]
   flo context [--json]
   flo status [--json]
@@ -39,6 +40,7 @@ Usage:
 Examples:
   flo
   flo open dotfiles
+  flo open --last
   flo open heartbeat@feat-auth
   flo start 123
   flo start 123 --project dotfiles
@@ -310,11 +312,19 @@ const main = async (): Promise<void> => {
     }
     case `open`: {
       const [selector] = rest
-      const result = await openWorkspace({
-        context,
-        ...(selector === undefined ? {} : { selector }),
-        dryRun,
-      })
+      if (selector !== undefined && parsed.booleans.has(`last`)) {
+        throw new FloError(`CLI_USAGE`, `flo open accepts either a selector or --last, not both.`)
+      }
+      const result = parsed.booleans.has(`last`)
+        ? await openLastWorkspace({
+            context,
+            dryRun,
+          })
+        : await openWorkspace({
+            context,
+            ...(selector === undefined ? {} : { selector }),
+            dryRun,
+          })
 
       if (json || dryRun) {
         printResult(result)

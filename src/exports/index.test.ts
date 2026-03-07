@@ -23,3 +23,7 @@ test(`re-exports statusFlo`, () => {
 test(`re-exports listRecentWork`, () => {
   expect(typeof Lib.listRecentWork).toBe(`function`)
 })
+
+test(`re-exports openLastWorkspace`, () => {
+  expect(typeof Lib.openLastWorkspace).toBe(`function`)
+})

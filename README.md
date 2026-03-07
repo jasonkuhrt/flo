@@ -619,6 +619,11 @@ Minimal example:
       "defaultSource": "github",
       "github": {
         "repo": "jasonkuhrt/dotfiles"
+      },
+      "workspaceProfiles": {
+        "main": {
+          "editorCommand": "nvim +FloMainInit"
+        }
       }
     }
   ]

@@ -444,6 +444,104 @@ describe(`flo runtime`, () => {
     expect(calls.some((call) => call.includes(`claude --resume`))).toBe(true)
   })
 
+  it(`applies project workspace profile overrides on top of runtime defaults`, async () => {
+    const fixture = await makeRepoFixture()
+    await mkdir(fixture.featureWorktreePath, { recursive: true })
+    const configPath = fixture.env[`FLO_CONFIG_PATH`]
+    if (configPath === undefined) {
+      throw new Error(`expected FLO_CONFIG_PATH in fixture env`)
+    }
+
+    await writeFile(
+      configPath,
+      JSON.stringify({
+        runtime: {
+          profiles: {
+            feature: {
+              splitDirection: `bottom`,
+              editorCommand: `nvim +RuntimeFeatureInit`,
+            },
+          },
+        },
+        projects: [
+          {
+            name: `flo`,
+            path: fixture.repoRoot,
+            workspaceProfiles: {
+              feature: {
+                splitDirection: `right`,
+                editorCommand: `nvim +ProjectFeatureInit`,
+                claudeCommand: `claude --print`,
+              },
+            },
+          },
+        ],
+      }),
+    )
+
+    const calls: string[] = []
+    const runner: CommandRunner = async (command, args = []) => {
+      const key = [command, ...args].join(` `)
+      calls.push(key)
+
+      if (key === `git -C ${fixture.repoRoot} rev-parse --show-toplevel`) {
+        return ok(`${fixture.repoRoot}\n`)
+      }
+
+      if (key === `git -C ${fixture.repoRoot} remote get-url origin`) {
+        return ok(`git@github.com:jasonkuhrt/flo.git\n`)
+      }
+
+      if (key === `git -C ${fixture.repoRoot} worktree list --porcelain`) {
+        return ok(mainWorktreeList(fixture.repoRoot))
+      }
+
+      if (key === `git -C ${fixture.repoRoot} show-ref --verify --quiet refs/heads/feat/auth`) {
+        return fail()
+      }
+
+      if (
+        key ===
+        `git -C ${fixture.repoRoot} worktree add -b feat/auth ${fixture.featureWorktreePath}`
+      ) {
+        return ok()
+      }
+
+      if (key === `cmux ping`) return ok()
+      if (key === `cmux --json list-workspaces`) return ok(JSON.stringify({ workspaces: [] }))
+      if (key === `cmux new-workspace`) return ok()
+      if (key === `cmux --json current-workspace`) {
+        return ok(JSON.stringify({ id: `workspace:4`, title: `untitled` }))
+      }
+
+      if (key === `cmux rename-workspace --workspace workspace:4 flo:flo@feat/auth`) return ok()
+      if (key.startsWith(`cmux set-status flo.`)) return ok()
+      if (key === `cmux new-pane --workspace workspace:4 --direction right`) return ok()
+      if (key === `cmux last-pane --workspace workspace:4`) return ok()
+
+      if (key.startsWith(`cmux send --workspace workspace:4 exec 'zmx' attach `)) {
+        return ok()
+      }
+
+      return fail()
+    }
+
+    const result = await startWork({
+      context: {
+        cwd: fixture.repoRoot,
+        env: fixture.env,
+      },
+      selector: `feat/auth`,
+      dependencies: { runner },
+    })
+
+    expect(result.claudePaneDirection).toBe(`right`)
+    expect(calls).toContain(`cmux new-pane --workspace workspace:4 --direction right`)
+    expect(calls.some((call) => call.includes(`ProjectFeatureInit`))).toBe(true)
+    expect(calls.some((call) => call.includes(`RuntimeFeatureInit`))).toBe(false)
+    expect(calls.some((call) => call.includes(`claude --print`))).toBe(true)
+  })
+
   it(`lists projects and marks matching workspaces as open`, async () => {
     const fixture = await makeRepoFixture()
     const runner = mockRunner({

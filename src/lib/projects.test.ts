@@ -32,6 +32,7 @@ const projects: FloProject[] = [
     defaultSource: `github`,
     githubRepo: `jasonkuhrt/dotfiles`,
     worktreeRoot: `/Users/jasonkuhrt/projects/jasonkuhrt/.flo-checkouts/dotfiles`,
+    workspaceProfiles: {},
   },
   {
     name: `flo`,
@@ -40,6 +41,7 @@ const projects: FloProject[] = [
     defaultSource: `github`,
     githubRepo: `jasonkuhrt/flo`,
     worktreeRoot: `/Users/jasonkuhrt/projects/jasonkuhrt/.flo-checkouts/flo`,
+    workspaceProfiles: {},
   },
 ]
 const [dotfilesProject, floProject] = projects
@@ -78,6 +80,7 @@ describe(`resolveProjectSelector`, () => {
             path: `/Users/jasonkuhrt/projects/jasonkuhrt/flow`,
             aliases: [],
             worktreeRoot: `/Users/jasonkuhrt/projects/jasonkuhrt/.flo-checkouts/flow`,
+            workspaceProfiles: {},
           },
         ],
         `lo`,
@@ -198,6 +201,7 @@ describe(`discoverProjects`, () => {
         defaultSource: `github`,
         githubRepo: `jasonkuhrt/flo`,
         worktreeRoot: join(dirname(repoRoot), `.flo-checkouts`, `flo`),
+        workspaceProfiles: {},
       },
     ])
   })

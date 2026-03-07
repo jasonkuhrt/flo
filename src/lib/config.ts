@@ -132,6 +132,36 @@ const parseProjectConfig = (value: unknown, path: string): FloProjectConfig => {
       `Flo config field ${path}.defaultSource must be github, linear, or bead.`,
     )
   }
+  const workspaceProfiles =
+    value[`workspaceProfiles`] === undefined
+      ? undefined
+      : (() => {
+          if (!isRecord(value[`workspaceProfiles`])) {
+            throw new FloError(
+              `CONFIG_INVALID`,
+              `Flo config field ${path}.workspaceProfiles must be an object.`,
+            )
+          }
+
+          return {
+            ...(value[`workspaceProfiles`][`main`] === undefined
+              ? {}
+              : {
+                  main: parseWorkspaceProfile(
+                    value[`workspaceProfiles`][`main`],
+                    `${path}.workspaceProfiles.main`,
+                  ),
+                }),
+            ...(value[`workspaceProfiles`][`feature`] === undefined
+              ? {}
+              : {
+                  feature: parseWorkspaceProfile(
+                    value[`workspaceProfiles`][`feature`],
+                    `${path}.workspaceProfiles.feature`,
+                  ),
+                }),
+          }
+        })()
 
   return {
     name: ensureString(value[`name`], `${path}.name`),
@@ -140,6 +170,7 @@ const parseProjectConfig = (value: unknown, path: string): FloProjectConfig => {
     ...(defaultSource === undefined ? {} : { defaultSource }),
     ...(github === undefined ? {} : { github }),
     ...(worktreeRoot === undefined ? {} : { worktreeRoot }),
+    ...(workspaceProfiles === undefined ? {} : { workspaceProfiles }),
   }
 }
 

@@ -171,7 +171,11 @@ const buildOpenTarget = async (args: {
         }
   const identity = await workspaceIdentity(canonicalCheckoutPath)
   const title = workspaceTitle(args.runtime.workspacePrefix, args.project, normalizedCheckout)
-  const profile = args.runtime.profiles[workspaceKind(normalizedCheckout)]
+  const kind = workspaceKind(normalizedCheckout)
+  const profile = {
+    ...args.runtime.profiles[kind],
+    ...args.project.workspaceProfiles[kind],
+  }
   const stem = sessionStem({
     prefix: args.runtime.workspacePrefix,
     project: args.project,
@@ -186,7 +190,7 @@ const buildOpenTarget = async (args: {
     workspaceMetadata: {
       identity,
       project: args.project.name,
-      kind: workspaceKind(normalizedCheckout),
+      kind,
     },
     claudePaneDirection: profile.splitDirection ?? `right`,
     editorSessionName: `${stem}-editor`,

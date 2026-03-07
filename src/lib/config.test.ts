@@ -64,6 +64,11 @@ describe(`config`, () => {
             name: `dotfiles`,
             path: join(path, `projects`, `dotfiles`),
             worktreeRoot: join(path, `checkouts`, `dotfiles`),
+            workspaceProfiles: {
+              main: {
+                editorCommand: `nvim +FloMainInit`,
+              },
+            },
           },
         ],
       }),
@@ -86,6 +91,11 @@ describe(`config`, () => {
         name: `dotfiles`,
         path: join(path, `projects`, `dotfiles`),
         worktreeRoot: join(path, `checkouts`, `dotfiles`),
+        workspaceProfiles: {
+          main: {
+            editorCommand: `nvim +FloMainInit`,
+          },
+        },
       },
     ])
   })

@@ -33,6 +33,7 @@ export interface FloProjectConfig {
     repo: string
   }
   worktreeRoot?: string
+  workspaceProfiles?: Partial<FloWorkspaceProfiles>
 }
 
 export interface FloConfig {
@@ -60,6 +61,7 @@ export interface FloProject {
   defaultSource?: FloSourceKind
   githubRepo?: string
   worktreeRoot: string
+  workspaceProfiles: Partial<FloWorkspaceProfiles>
 }
 
 export interface FloCheckout {

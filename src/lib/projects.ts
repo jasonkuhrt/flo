@@ -55,6 +55,7 @@ const inferProject = async (
       : { defaultSource: config.defaultSource }),
     ...(githubRepo === undefined ? {} : { githubRepo }),
     worktreeRoot: config?.worktreeRoot ?? deriveDefaultWorktreeRoot(repositoryPath),
+    workspaceProfiles: config?.workspaceProfiles ?? {},
   }
 }
 

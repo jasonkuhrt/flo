@@ -40,6 +40,7 @@ const makeTarget = (path: string, identity: string, actionTitle: string): OpenTa
     defaultSource: `github`,
     githubRepo: `jasonkuhrt/flo`,
     worktreeRoot: join(path, `.flo-checkouts`),
+    workspaceProfiles: {},
   },
   checkout: {
     path,

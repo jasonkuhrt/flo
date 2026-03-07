@@ -23,6 +23,21 @@ declare namespace Preferences {
   /** Flo Binary - Path or command name for the Flo CLI. */
   "floBinary": string
 }
+  /** Preferences accessible in the `recent-work` command */
+  export type RecentWork = ExtensionPreferences & {
+  /** Flo Binary - Path or command name for the Flo CLI. */
+  "floBinary": string
+}
+  /** Preferences accessible in the `end-work` command */
+  export type EndWork = ExtensionPreferences & {
+  /** Flo Binary - Path or command name for the Flo CLI. */
+  "floBinary": string
+}
+  /** Preferences accessible in the `open-last` command */
+  export type OpenLast = ExtensionPreferences & {
+  /** Flo Binary - Path or command name for the Flo CLI. */
+  "floBinary": string
+}
 }
 
 declare namespace Arguments {
@@ -30,5 +45,11 @@ declare namespace Arguments {
   export type OpenWorkspace = {}
   /** Arguments passed to the `start-work` command */
   export type StartWork = {}
+  /** Arguments passed to the `recent-work` command */
+  export type RecentWork = {}
+  /** Arguments passed to the `end-work` command */
+  export type EndWork = {}
+  /** Arguments passed to the `open-last` command */
+  export type OpenLast = {}
 }
 

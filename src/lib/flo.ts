@@ -54,6 +54,8 @@ import type {
   FloPruneProjectResult,
   FloPruneResult,
   FloPruneWorkspaceResult,
+  FloRecentItem,
+  FloRecentResult,
   FloStatusResult,
   FloWorkspaceKind,
   OpenTarget,
@@ -1331,4 +1333,62 @@ export const launchInteractive = async (args: {
     selector: selection.selector,
     dependencies,
   })
+}
+
+export const listRecentWork = async (args: {
+  context: FloCommandContext
+  dependencies?: FloRuntimeDependencies
+}): Promise<FloRecentResult> => {
+  const state = await listFloState(args)
+  const persistedState = await loadState(args.context.env)
+  const checkoutByIdentity = new Map<
+    string,
+    {
+      selector: string
+      projectName: string
+      checkoutPath: string
+      branch: string | null
+      isMain: boolean
+      workspaceIdentity: string
+      workspaceTitle: string
+      workspaceOpen: boolean | null
+    }
+  >()
+
+  for (const project of state.projects) {
+    for (const checkout of project.checkouts) {
+      checkoutByIdentity.set(checkout.workspaceIdentity, {
+        selector: checkout.isMain
+          ? project.name
+          : `${project.name}@${checkout.branch ?? basename(checkout.path)}`,
+        projectName: project.name,
+        checkoutPath: checkout.path,
+        branch: checkout.branch,
+        isMain: checkout.isMain,
+        workspaceIdentity: checkout.workspaceIdentity,
+        workspaceTitle: checkout.workspaceTitle,
+        workspaceOpen: checkout.workspaceOpen,
+      })
+    }
+  }
+
+  const items = persistedState.workspaces.flatMap((workspace): FloRecentItem[] => {
+    const activeCheckout = checkoutByIdentity.get(workspace.workspaceIdentity)
+    if (activeCheckout === undefined) {
+      return []
+    }
+
+    return [
+      {
+        ...activeCheckout,
+        lastOpenedAt: workspace.lastOpenedAt,
+        lastAction: workspace.lastAction,
+      },
+    ]
+  })
+
+  return {
+    cmuxAvailable: state.cmuxAvailable,
+    items,
+  }
 }

@@ -136,6 +136,9 @@ flo open heartbeat@feat-auth
 # List active checkouts and workspaces
 flo list
 
+# Show the recent active work that still exists locally
+flo recent
+
 # Print the current checkout context for Claude or other tooling
 flo context --json
 
@@ -482,6 +485,8 @@ The initial public command model is:
   Show the current project, checkout, expected workspace, and whether that workspace is already open.
 - `flo list`
   List active checkouts and workspace state.
+- `flo recent`
+  Show the recent work Flo still considers actionable, ordered by recency.
 - `flo doctor`
   Diagnose config resolution, project context, and required runtime binaries from the current working directory.
 - `flo end [selector]`

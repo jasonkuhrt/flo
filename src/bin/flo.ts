@@ -9,6 +9,7 @@ import {
   getFloContext,
   launchInteractive,
   listFloState,
+  listRecentWork,
   openWorkspace,
   pruneFloState,
   statusFlo,
@@ -25,6 +26,7 @@ Usage:
   flo context [--json]
   flo status [--json]
   flo list [--json]
+  flo recent [--json]
   flo doctor [--json]
   flo end [selector] [--dry-run] [--force] [--json]
   flo prune [--dry-run] [--json]
@@ -44,6 +46,7 @@ Examples:
   flo start feat/cmux-launcher
   flo context --json
   flo status
+  flo recent
   flo doctor --json
   flo end 123
   flo prune
@@ -145,6 +148,31 @@ const printList = async (json: boolean): Promise<void> => {
             : `cmux:closed`
       process.stdout.write(`  ${label}  ${checkout.path}  ${workspaceState}\n`)
     }
+  }
+}
+
+const printRecents = async (
+  context: { cwd: string; env: NodeJS.ProcessEnv },
+  json: boolean,
+): Promise<void> => {
+  const result = await listRecentWork({ context })
+
+  if (json) {
+    printResult(result)
+    return
+  }
+
+  for (const item of result.items) {
+    const checkoutLabel = item.isMain ? `main` : (item.branch ?? basename(item.checkoutPath))
+    const workspaceState =
+      item.workspaceOpen === null
+        ? `cmux:unknown`
+        : item.workspaceOpen
+          ? `cmux:open`
+          : `cmux:closed`
+    process.stdout.write(
+      `${item.lastOpenedAt}  ${item.selector}  [${checkoutLabel}]  ${workspaceState}\n`,
+    )
   }
 }
 
@@ -319,6 +347,9 @@ const main = async (): Promise<void> => {
     }
     case `list`:
       await printList(json)
+      return
+    case `recent`:
+      await printRecents(context, json)
       return
     case `context`: {
       const result = await getFloContext({ context })

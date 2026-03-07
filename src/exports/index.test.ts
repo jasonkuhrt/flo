@@ -19,3 +19,7 @@ test(`re-exports doctorFlo`, () => {
 test(`re-exports statusFlo`, () => {
   expect(typeof Lib.statusFlo).toBe(`function`)
 })
+
+test(`re-exports listRecentWork`, () => {
+  expect(typeof Lib.listRecentWork).toBe(`function`)
+})

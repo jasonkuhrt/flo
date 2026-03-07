@@ -221,6 +221,24 @@ export interface FloState {
   workspaces: FloWorkspaceStateRecord[]
 }
 
+export interface FloRecentItem {
+  selector: string
+  projectName: string
+  checkoutPath: string
+  branch: string | null
+  isMain: boolean
+  workspaceIdentity: string
+  workspaceTitle: string
+  workspaceOpen: boolean | null
+  lastOpenedAt: string
+  lastAction: `open` | `start`
+}
+
+export interface FloRecentResult {
+  cmuxAvailable: boolean
+  items: FloRecentItem[]
+}
+
 export interface FloCommandContext {
   cwd: string
   env: NodeJS.ProcessEnv

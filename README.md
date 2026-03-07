@@ -1,27 +1,27 @@
 # Flo
 
-Work items -> checkouts -> launchers -> agent context
+Start work, continue work, and finish work without rebuilding your environment by hand.
+
+Flo resolves a task or branch, finds the owning project, creates or reuses the right checkout, restores the right workspace state, and opens the project with context ready for you and your tools.
+
+By default, that means:
+
+- `cmux` manages workspaces
+- `zmx` restores persisted workspace state
+- `nvim` is the default editor inside a checkout workspace
+
+Raycast and the Claude skill are optional ways to invoke Flo.
+They are not separate workflow engines.
 
 This README currently doubles as the product spec for the initial release.
-It is written as near-final end-user documentation on purpose.
 Only the final section, "Temporary Implementation Notes", is intentionally non-final.
-
-## What Flo Is
-
-Flo is a work orchestration tool for source-controlled projects.
-
-It resolves a piece of work from a backend such as GitHub, Linear, or Beads, creates or reuses the right checkout for that work, prepares context for humans and agents, and opens that checkout in the right launcher surface.
-
-The primary runtime surface is `cmux`.
-The CLI is canonical.
-Raycast is an experimental frontend over the same core.
 
 ## Why Flo Exists
 
 Starting real work usually means doing the same setup every time:
 
 - figure out which project the work belongs to
-- resolve the work item from some backend
+- resolve the work item from the right system
 - create or find the right branch or worktree
 - move into the correct checkout
 - open the right workspace
@@ -29,13 +29,87 @@ Starting real work usually means doing the same setup every time:
 
 Flo turns that from a pile of shell habits into one coherent system.
 
+## The Flo Model
+
+Flo is easiest to understand in this order:
+
+### 1. Work Source
+
+A work source is where work comes from.
+
+Examples:
+
+- GitHub issues
+- Linear issues
+- Beads
+
+Flo does not assume one source forever.
+A source resolves a selector, returns metadata, and provides context for the work.
+
+### 2. Project
+
+A project is a long-lived codebase.
+
+Examples:
+
+- `dotfiles`
+- `heartbeat`
+- `graphql-kit`
+
+Projects define defaults such as:
+
+- which work source to use by default
+- how to bootstrap a new checkout
+- how Flo should open that project
+
+### 3. Checkout
+
+A checkout is the concrete directory where work actually happens.
+
+Examples:
+
+- the main checkout for a project
+- a feature branch worktree
+- a spike worktree
+
+Flo opens checkouts, not abstract repos.
+
+### 4. Workspace
+
+A workspace is the running terminal environment attached to a checkout.
+
+In Flo, `cmux` is the workspace runtime.
+`zmx` persists and restores workspace state.
+
+### 5. Editor
+
+`nvim` is the default editor inside a checkout workspace.
+
+Editor integration should stay modular, but `nvim` is intentionally first-class in Flo.
+It is part of the normal working environment, not an afterthought.
+
+### 6. Entrypoint
+
+An entrypoint is how you ask Flo to do work.
+
+Examples:
+
+- the CLI
+- Raycast
+- a Claude skill
+- an editor command later
+
+Entrypoints call Flo core.
+They do not redefine Flo behavior.
+
 ## Core Ideas
 
-- Work items are modular. GitHub issues are one backend, not the product.
+- Flo is project-oriented. Work should resolve into a real project and a real checkout quickly.
 - Checkouts are first-class. A repo and a checkout are not the same thing.
-- Worktrees are normal. Flo expects multiple active checkouts per repo.
-- Launchers are adapters. `cmux`, Raycast, and editor surfaces sit on top of the same core.
-- Agent context is generated. Flo produces context from the work item and checkout instead of relying on manual repetition.
+- Worktrees are normal. Flo expects multiple active checkouts per project.
+- `cmux` is the runtime. Raycast and the Claude skill are entrypoints into that runtime.
+- `nvim` is the default editor experience inside a workspace.
+- Work context is generated from the source item and checkout instead of being repeated by hand.
 
 ## Quick Examples
 
@@ -43,13 +117,16 @@ Flo turns that from a pile of shell habits into one coherent system.
 # Open the interactive launcher
 flo
 
-# Start work from the default backend
+# Start work from the current project's default source
 flo start 123
 
-# Start work from an explicit backend
+# Start work from an explicit source
 flo start gh:123
 flo start linear:ENG-241
 flo start bead:parser/cleanup-import-resolution
+
+# Start work from a branch name
+flo start feat/cmux-launcher
 
 # Open an existing project or checkout
 flo open dotfiles
@@ -59,112 +136,110 @@ flo open heartbeat@feat-auth
 flo list
 
 # End a piece of work
-flo end gh:123
+flo end 123
 ```
 
-## What Flo Does
+## What Happens When Flo Starts Work
 
-When you ask Flo to start or open work, it:
+When you run `flo start <selector>`, Flo:
 
-1. Resolves the selector into a canonical work item or checkout target.
-2. Resolves the owning project.
-3. Creates or reuses the correct checkout.
-4. Synchronizes work context for humans and agents.
-5. Opens or focuses the checkout in the selected launcher surface.
+1. resolves the selector using the current project context and source rules
+2. resolves the owning project
+3. creates or reuses the correct checkout
+4. prepares work context for humans and agents
+5. opens or focuses the right `cmux` workspace
+6. lands you in the project with the expected editor/runtime state
 
 That sequence is the product.
-Specific backends and launchers plug into it.
+Specific sources and entrypoints plug into it.
 
-## Concepts
+## Smart Routing
 
-### Work Item
+Flo should feel smart by default.
+Explicit source prefixes should exist, but they should be the exception rather than the main thing users think about.
 
-A work item is a backend-owned unit of work.
+The intended routing model is:
 
-Examples:
-
-- GitHub issue
-- Linear issue
-- Bead in a local planning system
-
-Flo treats all of these as the same category of thing:
-something that can produce a title, canonical ID, branch hint, project association, and context payload.
-
-### Project
-
-A project is the long-lived source repository or working directory family.
+- if you are already inside a configured project, Flo uses that project as the first routing hint
+- a numeric selector like `123` routes to that project's default issue source
+- a selector that matches a Linear-style pattern routes to Linear
+- an explicit source selector like `gh:123` or `bead:core/parser-cleanup` always wins
+- a general string that does not look like a source item can be treated as a branch name or fuzzy project/checkout target
 
 Examples:
 
-- `dotfiles`
-- `heartbeat`
-- `graphql-kit`
+```bash
+# Inside a project with GitHub as the default source
+flo start 123
 
-Projects own checkouts.
-Projects can declare defaults such as backend routing, bootstrap commands, and launcher preferences.
+# Inside a project with Linear as the default source
+flo start ENG-241
 
-### Checkout
+# Force a specific source
+flo start gh:123
+flo start linear:ENG-241
 
-A checkout is a concrete filesystem root that work actually runs in.
+# Branch-oriented work
+flo start feat/cmx-launcher
+```
 
-Examples:
+## cmux Integration
 
-- main checkout
-- feature branch worktree
-- spike worktree
+`cmux` is not just a place Flo opens terminals.
+It is the runtime Flo manages.
 
-Flo opens checkouts, not abstract repos.
-Every launcher integration keys off checkout identity.
+The intended behavior is:
 
-### Launcher
+- every configured project has a main workspace bound to its main checkout
+- every active feature checkout has its own sibling workspace
+- Flo uses `zmx` to persist and restore workspace state for both main and feature workspaces
+- workspace identity is tied to checkout identity, not just repo name or branch name
+- if a workspace already exists, Flo focuses and restores it
+- if a workspace does not exist, Flo creates it and applies the project's expected startup behavior
 
-A launcher is a surface that opens or focuses work.
+In practice, starting feature work usually means two important workspaces exist:
 
-Examples:
+- the main workspace for the project's main checkout
+- the feature workspace for the active feature checkout
 
-- CLI interactive picker
-- `cmux`
-- Raycast
-- editor command palette
+The main workspace is the stable home base for the project.
+The feature workspace is the dedicated execution context for the work you are doing now.
 
-Launchers do not own discovery or workflow rules.
-They call Flo core.
+Flo should keep both easy to reach and safe to restore.
 
-### Context Bundle
+## nvim Integration
 
-A context bundle is the generated work context Flo attaches to a checkout.
+`nvim` should be tightly woven into Flo's default flow.
 
-It may include:
+That does not mean editor support has to be hardcoded forever.
+It means the first-class experience is intentionally:
 
-- work item metadata
-- links back to the source backend
-- a normalized summary of the task
-- local project guidance
-- agent-oriented context files
+- resolve work
+- open or restore the correct workspace
+- land in `nvim` inside the correct checkout
 
-The exact file layout is implementation detail.
-The product guarantee is that context is reproducible and backend-driven.
+Editor integration can remain modular in architecture while still making `nvim` the default, built-in editor experience.
 
-## Work Item Backends
+## Work Sources
 
-Flo supports multiple backends through one interface.
+Flo supports multiple work sources through one core interface.
 
-Initial backend set:
+Initial source set:
 
 - GitHub issues
 - Linear issues
 - Beads
 
-Backend responsibilities:
+A work source is responsible for:
 
-- resolve user selectors
-- fetch work item metadata
-- derive a branch or checkout hint
-- produce normalized context
-- optionally perform backend-specific actions such as assignment or completion
+- resolving selectors into canonical work items
+- fetching metadata about the work
+- providing a branch or checkout hint
+- producing normalized context for the checkout
+- optionally performing source-specific actions such as assignment, claiming, or completion
 
-Flo core is intentionally backend-agnostic.
-No backend-specific assumptions should leak into checkout or launcher orchestration.
+Flo core is intentionally source-agnostic.
+No source-specific assumptions should leak into checkout orchestration or workspace behavior.
 
 ## Checkouts and Worktrees
 
@@ -173,90 +248,67 @@ Worktrees are first-class in Flo.
 The core model is:
 
 - a project owns many checkouts
-- a work item usually maps to one checkout
-- a launcher opens a checkout
+- a piece of work usually maps to one checkout
+- a workspace runs against one checkout
 
 This means:
 
-- multiple active worktrees in one repo are expected
+- multiple active worktrees in one project are expected
 - checkout identity is path-based, not branch-name-only
-- workspace identity in `cmux` is tied to the checkout, not just the repo
+- workspace identity in `cmux` follows the checkout
 
 If a matching checkout already exists, Flo reuses it.
-If not, Flo can create the right checkout for the requested work.
+If not, Flo creates the right checkout for the requested work.
 
-## Launchers
+## Entrypoints
 
 ### CLI
 
 The CLI is the canonical interface.
 
-Commands are designed so every higher-level surface can delegate to them rather than reimplementing logic.
-
-### cmux
-
-`cmux` is the primary runtime surface.
-
-Flo can:
-
-- create or focus a workspace for a checkout
-- keep one workspace per checkout
-- make checkout-oriented work navigation fast
-
-`cmux` is not the source of truth for discovery or work state.
-It is a launcher target.
+Every other entrypoint should delegate to it or to the same Flo core APIs.
 
 ### Raycast
 
-Raycast is an experimental frontend.
+Raycast is an experimental global entrypoint.
 
-Its job is to provide a global macOS picker and action surface for Flo.
-It should sit on top of the same Flo core and command model, not introduce its own workflow rules.
+Its job is to let you invoke Flo from anywhere on macOS:
+
+- find a project
+- find a checkout
+- start work
+- resume recent work
+
+It should not become a separate workflow engine.
 
 ### Claude Skill
 
-Flo should integrate with a Claude skill, but the skill is not a second workflow engine.
+The Claude skill should consume Flo state and Flo context.
 
 The intended relationship is:
 
-- Flo owns work resolution, checkout orchestration, and context generation.
-- The Claude skill consumes Flo state and context.
-- Backend logic lives in Flo, not inside the skill.
+- Flo owns source resolution, checkout orchestration, and context generation
+- the Claude skill consumes that state and context
+- backend logic lives in Flo, not inside the skill
 
 ## Command Model
 
 The initial public command model is:
 
 - `flo`
-  Opens the interactive launcher.
+  Open the interactive launcher.
 - `flo start <selector>`
   Resolve work, create or reuse a checkout, prepare context, and open it.
 - `flo open [selector]`
   Open or focus an existing project or checkout.
 - `flo list`
-  List active checkouts and launcher state.
+  List active checkouts and workspace state.
 - `flo end [selector]`
   Resolve or conclude a piece of work and clean up the checkout when appropriate.
 - `flo prune`
   Clean up stale local state.
 
-### Selector Model
-
-Flo accepts both explicit and implicit selectors.
-
-Examples:
-
-- `gh:123`
-- `gh:owner/repo#123`
-- `linear:ENG-241`
-- `bead:parser/cleanup-import-resolution`
-- `branch:feat/spike-cmux-launcher`
-- `dotfiles`
-- `heartbeat@feat-auth`
-
-Bare selectors can be resolved through project defaults when unambiguous.
-
-## Project Discovery
+## Project Discovery and Defaults
 
 Flo discovers projects from configured roots.
 
@@ -265,36 +317,34 @@ Discovery should support:
 - fuzzy resolution by project name
 - explicit paths
 - per-project defaults
-- backend routing
+- source routing
 
-Examples of useful defaults:
+Useful project defaults include:
 
-- default backend for bare selectors
+- default work source
 - bootstrap command for new checkouts
-- preferred launcher
+- workspace behavior
+- preferred editor
 - project-specific context files
 
 ## End-to-End Flows
 
-### Start From a Work Item
-
-Example:
+### Start Work
 
 ```bash
-flo start linear:ENG-241
+flo start 123
 ```
 
 Expected behavior:
 
-1. Resolve `ENG-241` through the Linear backend.
-2. Resolve the owning project.
-3. Create or reuse the correct checkout.
-4. Generate normalized work context.
-5. Open or focus the checkout in `cmux`.
+1. use the current directory to narrow project resolution when possible
+2. resolve the selector with smart routing rules
+3. create or reuse the correct checkout
+4. generate normalized work context
+5. create or focus the right `cmux` workspace
+6. land in the expected editor/runtime state
 
 ### Open Existing Work
-
-Example:
 
 ```bash
 flo open dotfiles
@@ -306,44 +356,42 @@ Expected behavior:
 - resolve a project or checkout target
 - present an interactive picker if needed
 - focus the existing `cmux` workspace when one exists
-- otherwise open the target checkout in `cmux`
+- otherwise create/open the target workspace
 
 ### End Work
 
-Example:
-
 ```bash
-flo end gh:123
+flo end 123
 ```
 
 Expected behavior:
 
 - resolve the active work item and checkout
-- perform backend-specific completion or closure when requested
+- perform source-specific completion or closure when requested
 - clean up or keep the checkout based on explicit policy
 - update local Flo state
 
-The exact cleanup policy is backend-aware, but Flo should remain explicit and safe.
+The cleanup policy is source-aware, but Flo should remain explicit and safe.
 
 ## Configuration
 
 Flo has two configuration scopes:
 
 - global configuration
-  Defines project roots, launcher defaults, and backend credentials or endpoints.
+  Defines project roots, default runtime behavior, and source credentials or endpoints.
 - project configuration
-  Defines project-level defaults such as backend routing, bootstrap commands, and context imports.
+  Defines project-level defaults such as source routing, bootstrap commands, editor/runtime behavior, and context imports.
 
 The config format is intentionally not finalized in this spec.
 What is fixed is the configuration model.
 
 ## Non-Goals
 
-- Shell-specific implementation as part of the product contract
+- shell-specific implementation as part of the product contract
 - GitHub-specific behavior baked into Flo core
 - `cmux` becoming the source of truth for work state
-- A second workflow engine inside the Claude skill
-- Forcing Raycast as the primary interface
+- a second workflow engine inside the Claude skill
+- forcing Raycast as the primary interface
 
 ## Temporary Implementation Notes
 
@@ -358,7 +406,7 @@ This section is temporary and exists only to align on the initial build plan.
 ### Legacy Concepts Worth Preserving
 
 - project-root discovery and fuzzy project resolution
-- issue-or-branch style selection, generalized into backend selectors
+- issue-or-branch style selection, generalized into source selectors
 - worktree-first workflow
 - active checkout listing and pruning
 - generated Claude context for a checkout
@@ -370,15 +418,15 @@ The first meaningful slice should prove the new architecture, not just recreate 
 Initial slice:
 
 - typed Flo core
-- GitHub backend
+- GitHub source
 - checkout and worktree orchestration
-- `cmux` launcher integration
+- `cmux` plus `zmx` integration
 - canonical CLI commands: `flo`, `flo start`, `flo open`, `flo list`
 
 ### Follow-On Slices
 
 - Claude skill integration on top of Flo state and context
-- experimental Raycast extension as a frontend over Flo core
-- Linear backend
-- Beads backend
+- experimental Raycast extension as an entrypoint over Flo core
+- Linear source
+- Beads source
 - end-of-work lifecycle and cleanup policy

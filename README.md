@@ -139,6 +139,9 @@ flo open heartbeat@feat-auth
 # List active checkouts and workspaces
 flo list
 
+# Narrow list output to one project
+flo list --project flo
+
 # Show the recent active work that still exists locally
 flo recent
 
@@ -495,7 +498,7 @@ The initial public command model is:
 - `flo status`
   Show the current project, checkout, expected workspace, and whether that workspace is already open.
 - `flo list`
-  List active checkouts and workspace state.
+  List active checkouts and workspace state. `--project` narrows the result to one resolved project.
 - `flo recent`
   Show the recent work Flo still considers actionable, ordered by recency.
 - `flo doctor`

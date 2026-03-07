@@ -586,6 +586,54 @@ describe(`flo runtime`, () => {
     })
   })
 
+  it(`filters list output to a single project`, async () => {
+    const fixture = await makeRepoFixture()
+    const siblingRepo = join(dirname(fixture.repoRoot), `dotfiles`)
+    await mkdir(siblingRepo, { recursive: true })
+    const configPath = fixture.env[`FLO_CONFIG_PATH`]
+    if (configPath === undefined) {
+      throw new Error(`expected FLO_CONFIG_PATH in fixture env`)
+    }
+
+    await writeFile(
+      configPath,
+      JSON.stringify({
+        projects: [
+          { name: `flo`, path: fixture.repoRoot },
+          { name: `dotfiles`, path: siblingRepo },
+        ],
+      }),
+    )
+
+    const runner = mockRunner({
+      [`git -C ${fixture.repoRoot} rev-parse --show-toplevel`]: ok(`${fixture.repoRoot}\n`),
+      [`git -C ${siblingRepo} rev-parse --show-toplevel`]: ok(`${siblingRepo}\n`),
+      [`git -C ${fixture.repoRoot} remote get-url origin`]: ok(
+        `git@github.com:jasonkuhrt/flo.git\n`,
+      ),
+      [`git -C ${siblingRepo} remote get-url origin`]: ok(
+        `git@github.com:jasonkuhrt/dotfiles.git\n`,
+      ),
+      [`git -C ${fixture.repoRoot} worktree list --porcelain`]: ok(
+        mainWorktreeList(fixture.repoRoot),
+      ),
+      [`git -C ${siblingRepo} worktree list --porcelain`]: ok(mainWorktreeList(siblingRepo)),
+      [`cmux ping`]: fail(),
+    })
+
+    const result = await listFloState({
+      context: {
+        cwd: fixture.repoRoot,
+        env: fixture.env,
+      },
+      projectSelector: `flo`,
+      dependencies: { runner },
+    })
+
+    expect(result.projects).toHaveLength(1)
+    expect(result.projects[0]?.name).toBe(`flo`)
+  })
+
   it(`sorts checkouts by recency when listing state`, async () => {
     const fixture = await makeRepoFixture()
     const planningRunner = mockRunner({

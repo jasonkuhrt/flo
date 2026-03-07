@@ -1197,13 +1197,18 @@ export const pruneFloState = async (args: {
 
 export const listFloState = async (args: {
   context: FloCommandContext
+  projectSelector?: string
   dependencies?: FloRuntimeDependencies
 }): Promise<FloListResult> => {
   const dependencies = { ...defaultDependencies, ...args.dependencies }
-  const { config, projects } = await loadFloContext({
+  const { config, projects: discoveredProjects } = await loadFloContext({
     context: args.context,
     runner: dependencies.runner,
   })
+  const projects =
+    args.projectSelector === undefined
+      ? discoveredProjects
+      : [resolveProjectSelector(discoveredProjects, args.projectSelector)]
   const cmuxAvailable = await probeCmux(dependencies.runner, config.runtime.cmuxBin)
   const inspectedWorkspaces = cmuxAvailable
     ? await inspectCmuxWorkspaces({

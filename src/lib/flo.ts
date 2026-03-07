@@ -53,6 +53,7 @@ import type {
   FloPruneProjectResult,
   FloPruneResult,
   FloPruneWorkspaceResult,
+  FloStatusResult,
   FloWorkspaceKind,
   OpenTarget,
   StartSelector,
@@ -822,6 +823,82 @@ export const getFloContext = async (args: {
   return {
     ...target,
     issue,
+  }
+}
+
+export const statusFlo = async (args: {
+  context: FloCommandContext
+  dependencies?: FloRuntimeDependencies
+}): Promise<FloStatusResult> => {
+  const dependencies = { ...defaultDependencies, ...args.dependencies }
+  const { config, projects } = await loadFloContext({
+    context: args.context,
+    runner: dependencies.runner,
+  })
+  const currentProject = await findProjectForCwd({
+    projects,
+    cwd: args.context.cwd,
+    runner: dependencies.runner,
+  })
+
+  if (currentProject === null) {
+    return {
+      currentDirectory: resolve(args.context.cwd),
+      cmuxAvailable: await probeCmux(dependencies.runner, config.runtime.cmuxBin),
+      currentProject: null,
+      currentCheckout: null,
+      expectedWorkspace: null,
+      activeWorkspace: null,
+    }
+  }
+
+  const currentCheckout = resolveCurrentCheckout(
+    (await listProjectState(dependencies.runner, currentProject)).checkouts,
+    args.context.cwd,
+  )
+  const target = await buildOpenTarget({
+    project: currentProject,
+    checkout: currentCheckout,
+    runtime: config.runtime,
+  })
+  const cmuxAvailable = await probeCmux(dependencies.runner, config.runtime.cmuxBin)
+  const activeWorkspace = cmuxAvailable
+    ? await findWorkspaceForTarget({
+        runner: dependencies.runner,
+        cmuxBin: config.runtime.cmuxBin,
+        target,
+      })
+    : null
+  const issueNumber = parseIssueNumberFromBranch(currentCheckout.branch)
+  const issue =
+    issueNumber === null || currentProject.githubRepo === undefined
+      ? undefined
+      : await fetchGitHubIssue(dependencies.runner, currentProject.githubRepo, issueNumber)
+
+  return {
+    currentDirectory: resolve(args.context.cwd),
+    cmuxAvailable,
+    currentProject: {
+      name: currentProject.name,
+      path: currentProject.path,
+    },
+    currentCheckout: {
+      path: currentCheckout.path,
+      branch: currentCheckout.branch,
+      isMain: currentCheckout.isMain,
+    },
+    expectedWorkspace: {
+      title: target.workspaceTitle,
+      identity: target.workspaceMetadata.identity,
+    },
+    activeWorkspace:
+      activeWorkspace === null
+        ? null
+        : {
+            id: activeWorkspace.id,
+            title: activeWorkspace.title,
+          },
+    ...(issue === undefined ? {} : { issue }),
   }
 }
 

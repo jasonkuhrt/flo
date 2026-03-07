@@ -181,6 +181,29 @@ export interface FloDoctorResult {
   commands: FloDoctorCommand[]
 }
 
+export interface FloStatusResult {
+  currentDirectory: string
+  cmuxAvailable: boolean
+  currentProject: {
+    name: string
+    path: string
+  } | null
+  currentCheckout: {
+    path: string
+    branch: string | null
+    isMain: boolean
+  } | null
+  expectedWorkspace: {
+    title: string
+    identity: string
+  } | null
+  activeWorkspace: {
+    id: string
+    title: string
+  } | null
+  issue?: GitHubIssue
+}
+
 export interface FloCommandContext {
   cwd: string
   env: NodeJS.ProcessEnv

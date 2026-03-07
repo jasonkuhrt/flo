@@ -139,6 +139,9 @@ flo list
 # Print the current checkout context for Claude or other tooling
 flo context --json
 
+# Show current project, checkout, and workspace state
+flo status
+
 # Diagnose config, project discovery, and runtime binaries
 flo doctor
 
@@ -475,6 +478,8 @@ The initial public command model is:
   Open or focus a project's main checkout workspace, or an existing checkout when a more specific selector is given.
 - `flo context`
   Print the current project and checkout context, primarily for Claude and other automation.
+- `flo status`
+  Show the current project, checkout, expected workspace, and whether that workspace is already open.
 - `flo list`
   List active checkouts and workspace state.
 - `flo doctor`

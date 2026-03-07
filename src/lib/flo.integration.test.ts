@@ -14,6 +14,7 @@ import {
   pruneFloState,
   resolveOpenTarget,
   resolveStartTarget,
+  statusFlo,
   startWork,
 } from '#lib/flo'
 import type { CommandRunner } from '#lib/process'
@@ -518,6 +519,54 @@ describe(`flo runtime`, () => {
       true,
     )
     expect(result.commands.some((command) => command.key === `gh` && command.available)).toBe(true)
+  })
+
+  it(`reports status for the current checkout and matching workspace`, async () => {
+    const fixture = await makeRepoFixture()
+    const runner = mockRunner({
+      [`git -C ${fixture.repoRoot} rev-parse --show-toplevel`]: ok(`${fixture.repoRoot}\n`),
+      [`git -C ${fixture.repoRoot} remote get-url origin`]: ok(
+        `git@github.com:jasonkuhrt/flo.git\n`,
+      ),
+      [`git -C ${fixture.repoRoot} worktree list --porcelain`]: ok(
+        mainWorktreeList(fixture.repoRoot),
+      ),
+      [`cmux ping`]: ok(),
+      [`cmux --json list-workspaces`]: ok(
+        JSON.stringify({ workspaces: [{ id: `workspace:3`, title: `renamed-main` }] }),
+      ),
+      [`cmux --json sidebar-state --workspace workspace:3`]: ok(
+        JSON.stringify({
+          cwd: fixture.repoRoot,
+          statuses: [{ key: `flo.identity`, value: `4f1e7d7dbf9a` }],
+        }),
+      ),
+    })
+
+    const result = await statusFlo({
+      context: {
+        cwd: fixture.repoRoot,
+        env: fixture.env,
+      },
+      dependencies: { runner },
+    })
+
+    expect(result).toMatchObject({
+      currentProject: {
+        name: `flo`,
+      },
+      currentCheckout: {
+        path: fixture.repoRoot,
+        isMain: true,
+      },
+      expectedWorkspace: {
+        title: `flo:flo`,
+      },
+      activeWorkspace: {
+        id: `workspace:3`,
+        title: `renamed-main`,
+      },
+    })
   })
 
   it(`prunes orphaned Flo workspaces by identity`, async () => {

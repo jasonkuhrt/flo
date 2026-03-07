@@ -15,3 +15,7 @@ test(`re-exports syncFloUi`, () => {
 test(`re-exports doctorFlo`, () => {
   expect(typeof Lib.doctorFlo).toBe(`function`)
 })
+
+test(`re-exports statusFlo`, () => {
+  expect(typeof Lib.statusFlo).toBe(`function`)
+})

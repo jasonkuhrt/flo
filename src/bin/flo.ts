@@ -11,6 +11,7 @@ import {
   listFloState,
   openWorkspace,
   pruneFloState,
+  statusFlo,
   startWork,
 } from '#lib/flo'
 import { handleClaudeHook, logFloUi, notifyFloUi, syncFloUi } from '#lib/ui'
@@ -22,6 +23,7 @@ Usage:
   flo open [selector] [--dry-run] [--json]
   flo start <selector> [--project <project>] [--dry-run] [--json]
   flo context [--json]
+  flo status [--json]
   flo list [--json]
   flo doctor [--json]
   flo end [selector] [--dry-run] [--force] [--json]
@@ -41,6 +43,7 @@ Examples:
   flo start gh:123
   flo start feat/cmux-launcher
   flo context --json
+  flo status
   flo doctor --json
   flo end 123
   flo prune
@@ -179,6 +182,49 @@ const printDoctor = async (
   }
 }
 
+const printStatus = async (
+  context: { cwd: string; env: NodeJS.ProcessEnv },
+  json: boolean,
+): Promise<void> => {
+  const result = await statusFlo({ context })
+
+  if (json) {
+    printResult(result)
+    return
+  }
+
+  process.stdout.write(`cwd  ${result.currentDirectory}\n`)
+  process.stdout.write(`cmux  ${result.cmuxAvailable ? `available` : `unavailable`}\n`)
+  process.stdout.write(
+    `project  ${result.currentProject === null ? `none` : `${result.currentProject.name}  ${result.currentProject.path}`}\n`,
+  )
+  process.stdout.write(
+    `checkout  ${
+      result.currentCheckout === null
+        ? `none`
+        : `${result.currentCheckout.isMain ? `main` : (result.currentCheckout.branch ?? basename(result.currentCheckout.path))}  ${result.currentCheckout.path}`
+    }\n`,
+  )
+  process.stdout.write(
+    `workspace  ${
+      result.expectedWorkspace === null
+        ? `none`
+        : `${result.expectedWorkspace.title}  ${result.expectedWorkspace.identity}`
+    }\n`,
+  )
+  process.stdout.write(
+    `active  ${
+      result.activeWorkspace === null
+        ? `closed`
+        : `${result.activeWorkspace.id}  ${result.activeWorkspace.title}`
+    }\n`,
+  )
+
+  if (result.issue !== undefined) {
+    process.stdout.write(`issue  #${result.issue.number}  ${result.issue.title}\n`)
+  }
+}
+
 const parseAgentsOption = (value: string): number | null => {
   if (value === `clear`) return null
 
@@ -285,6 +331,9 @@ const main = async (): Promise<void> => {
       process.stdout.write(`${result.workspaceTitle}\n`)
       return
     }
+    case `status`:
+      await printStatus(context, json)
+      return
     case `doctor`:
       await printDoctor(context, json)
       return

@@ -360,7 +360,7 @@ The skill and Claude hooks should call a small Flo UI layer such as:
 - `flo ui notify`
 - `flo ui log`
 
-That layer owns the mapping into `cmux` status, progress, log, and notification APIs.
+That layer owns the mapping into `cmux` status, log, and notification APIs.
 Claude hooks should not call `cmux` directly.
 
 The initial Claude-to-Flo signal contract should use only real Claude Code hooks:
@@ -372,13 +372,12 @@ The initial Claude-to-Flo signal contract should use only real Claude Code hooks
 - `PreCompact(manual)` routes to a Flo log entry only
 - `SessionStart(startup|resume|compact)` routes to Flo status synchronization
 - `SubagentStart` and `SubagentStop` route to Flo status and short log updates
-- `PostToolUseFailure` routes to Flo log updates
-- `InstructionsLoaded` can route to a low-noise Flo status or log update
 
 The initial policy should be strict:
 
 - notifications are for attention-worthy events only
-- normal progress belongs in status and logs
+- status is for ambient state such as compaction or active subagent count
+- logs are for milestone-grade events only
 - compaction is visible, but only automatic compaction should interrupt
 
 Flo should also avoid pretending Claude exposes hooks it does not.
@@ -387,6 +386,7 @@ In particular:
 - `Stop` should not drive default notifications because it is too noisy in an interactive session
 - `WorktreeCreate` and `WorktreeRemove` should not be used as passive observability hooks because they replace Claude's default worktree lifecycle
 - `TaskCompleted` and `TeammateIdle` are better treated as future integrations once Flo deliberately supports Claude team workflows
+- the `cmux` progress bar should stay unused until Flo has a first-class task model with real completion semantics
 
 ## Command Model
 

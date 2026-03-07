@@ -30,7 +30,7 @@ Usage:
   flo context [--json|--env]
   flo status [--json]
   flo list [--project <project>] [--open] [--json]
-  flo recent [--json]
+  flo recent [--project <project>] [--limit <n>] [--json]
   flo doctor [--json]
   flo config init [--force] [--json]
   flo claude install-hooks [--json]
@@ -74,6 +74,7 @@ interface ParsedArgs {
 const valueFlags = new Set([
   `--workspace`,
   `--project`,
+  `--limit`,
   `--phase`,
   `--agents`,
   `--claude`,
@@ -168,8 +169,14 @@ const printList = async (
 const printRecents = async (
   context: { cwd: string; env: NodeJS.ProcessEnv },
   json: boolean,
+  projectSelector?: string,
+  limit?: number,
 ): Promise<void> => {
-  const result = await listRecentWork({ context })
+  const result = await listRecentWork({
+    context,
+    ...(projectSelector === undefined ? {} : { projectSelector }),
+    ...(limit === undefined ? {} : { limit }),
+  })
 
   if (json) {
     printResult(result)
@@ -278,6 +285,15 @@ const parseAgentsOption = (value: string): number | null => {
   return parsed
 }
 
+const parseLimitOption = (value: string): number => {
+  const parsed = Number.parseInt(value, 10)
+  if (Number.isNaN(parsed) || parsed <= 0) {
+    throw new FloError(`CLI_USAGE`, `--limit must be a positive integer.`)
+  }
+
+  return parsed
+}
+
 const normalizeOptionalStatus = (value: string): string | null => (value === `clear` ? null : value)
 
 const main = async (): Promise<void> => {
@@ -286,6 +302,7 @@ const main = async (): Promise<void> => {
   const dryRun = parsed.booleans.has(`dry-run`)
   const force = parsed.booleans.has(`force`)
   const projectSelector = parsed.named.get(`project`)
+  const limit = parsed.named.get(`limit`)
   const phase = parsed.named.get(`phase`)
   const agents = parsed.named.get(`agents`)
   const claude = parsed.named.get(`claude`)
@@ -371,7 +388,12 @@ const main = async (): Promise<void> => {
       await printList(context, json, projectSelector, parsed.booleans.has(`open`))
       return
     case `recent`:
-      await printRecents(context, json)
+      await printRecents(
+        context,
+        json,
+        projectSelector,
+        limit === undefined ? undefined : parseLimitOption(limit),
+      )
       return
     case `context`: {
       if (json && parsed.booleans.has(`env`)) {

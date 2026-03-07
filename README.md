@@ -148,6 +148,9 @@ flo list --open
 # Show the recent active work that still exists locally
 flo recent
 
+# Limit recents to one project and a short list
+flo recent --project flo --limit 3
+
 # Print the current checkout context for Claude or other tooling
 flo context --json
 
@@ -503,7 +506,7 @@ The initial public command model is:
 - `flo list`
   List active checkouts and workspace state. `--project` narrows the result to one resolved project and `--open` keeps only currently open workspaces.
 - `flo recent`
-  Show the recent work Flo still considers actionable, ordered by recency.
+  Show the recent work Flo still considers actionable, ordered by recency. `--project` narrows the source set and `--limit` trims the result.
 - `flo doctor`
   Diagnose config resolution, project context, and required runtime binaries from the current working directory.
 - `flo config init`

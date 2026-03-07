@@ -1509,9 +1509,15 @@ export const launchInteractive = async (args: {
 
 export const listRecentWork = async (args: {
   context: FloCommandContext
+  projectSelector?: string
+  limit?: number
   dependencies?: FloRuntimeDependencies
 }): Promise<FloRecentResult> => {
-  const state = await listFloState(args)
+  const state = await listFloState({
+    context: args.context,
+    ...(args.projectSelector === undefined ? {} : { projectSelector: args.projectSelector }),
+    ...(args.dependencies === undefined ? {} : { dependencies: args.dependencies }),
+  })
   const persistedState = await loadState(args.context.env)
   const checkoutByIdentity = new Map<
     string,
@@ -1561,6 +1567,6 @@ export const listRecentWork = async (args: {
 
   return {
     cmuxAvailable: state.cmuxAvailable,
-    items,
+    items: args.limit === undefined ? items : items.slice(0, args.limit),
   }
 }

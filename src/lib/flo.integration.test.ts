@@ -634,6 +634,39 @@ describe(`flo runtime`, () => {
     expect(result.projects[0]?.name).toBe(`flo`)
   })
 
+  it(`filters list output to only open workspaces`, async () => {
+    const fixture = await makeRepoFixture()
+    const runner = mockRunner({
+      [`git -C ${fixture.repoRoot} rev-parse --show-toplevel`]: { stdout: `${fixture.repoRoot}\n` },
+      [`git -C ${fixture.repoRoot} remote get-url origin`]: {
+        stdout: `git@github.com:jasonkuhrt/flo.git\n`,
+      },
+      [`git -C ${fixture.repoRoot} worktree list --porcelain`]: {
+        stdout: featureWorktreeList(fixture.repoRoot, fixture.featureWorktreePath),
+      },
+      [`cmux ping`]: ok(),
+      [`cmux --json list-workspaces`]: {
+        stdout: JSON.stringify({ workspaces: [{ id: `workspace:3`, title: `flo:flo` }] }),
+      },
+      [`cmux --json sidebar-state --workspace workspace:3`]: {
+        stdout: JSON.stringify({ cwd: fixture.repoRoot, statuses: [] }),
+      },
+    })
+
+    const result = await listFloState({
+      context: {
+        cwd: fixture.repoRoot,
+        env: fixture.env,
+      },
+      openOnly: true,
+      dependencies: { runner },
+    })
+
+    expect(result.projects).toHaveLength(1)
+    expect(result.projects[0]?.checkouts).toHaveLength(1)
+    expect(result.projects[0]?.checkouts[0]?.isMain).toBe(true)
+  })
+
   it(`sorts checkouts by recency when listing state`, async () => {
     const fixture = await makeRepoFixture()
     const planningRunner = mockRunner({

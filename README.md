@@ -142,6 +142,9 @@ flo list
 # Narrow list output to one project
 flo list --project flo
 
+# Show only currently open work
+flo list --open
+
 # Show the recent active work that still exists locally
 flo recent
 
@@ -498,7 +501,7 @@ The initial public command model is:
 - `flo status`
   Show the current project, checkout, expected workspace, and whether that workspace is already open.
 - `flo list`
-  List active checkouts and workspace state. `--project` narrows the result to one resolved project.
+  List active checkouts and workspace state. `--project` narrows the result to one resolved project and `--open` keeps only currently open workspaces.
 - `flo recent`
   Show the recent work Flo still considers actionable, ordered by recency.
 - `flo doctor`

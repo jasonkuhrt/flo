@@ -29,7 +29,7 @@ Usage:
   flo start <selector> [--project <project>] [--dry-run] [--json]
   flo context [--json|--env]
   flo status [--json]
-  flo list [--project <project>] [--json]
+  flo list [--project <project>] [--open] [--json]
   flo recent [--json]
   flo doctor [--json]
   flo config init [--force] [--json]
@@ -137,10 +137,12 @@ const printList = async (
   context: { cwd: string; env: NodeJS.ProcessEnv },
   json: boolean,
   projectSelector?: string,
+  openOnly?: boolean,
 ): Promise<void> => {
   const result = await listFloState({
     context,
     ...(projectSelector === undefined ? {} : { projectSelector }),
+    ...(openOnly === undefined ? {} : { openOnly }),
   })
 
   if (json) {
@@ -366,7 +368,7 @@ const main = async (): Promise<void> => {
       return
     }
     case `list`:
-      await printList(context, json, projectSelector)
+      await printList(context, json, projectSelector, parsed.booleans.has(`open`))
       return
     case `recent`:
       await printRecents(context, json)

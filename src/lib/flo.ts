@@ -1198,6 +1198,7 @@ export const pruneFloState = async (args: {
 export const listFloState = async (args: {
   context: FloCommandContext
   projectSelector?: string
+  openOnly?: boolean
   dependencies?: FloRuntimeDependencies
 }): Promise<FloListResult> => {
   const dependencies = { ...defaultDependencies, ...args.dependencies }
@@ -1236,45 +1237,54 @@ export const listFloState = async (args: {
     }),
   )
 
-  const projectResults = await Promise.all(
-    projects.map(async (project): Promise<FloListProject> => {
-      const state = await listProjectState(dependencies.runner, project)
-      const checkoutTargets = await Promise.all(
-        state.checkouts.map((checkout) =>
-          buildOpenTarget({
-            project,
-            checkout,
-            runtime: config.runtime,
-          }),
-        ),
-      )
+  const projectResults = (
+    await Promise.all(
+      projects.map(async (project): Promise<FloListProject> => {
+        const state = await listProjectState(dependencies.runner, project)
+        const checkoutTargets = await Promise.all(
+          state.checkouts.map((checkout) =>
+            buildOpenTarget({
+              project,
+              checkout,
+              runtime: config.runtime,
+            }),
+          ),
+        )
 
-      return {
-        name: project.name,
-        path: project.path,
-        ...(project.defaultSource === undefined ? {} : { defaultSource: project.defaultSource }),
-        ...(project.githubRepo === undefined ? {} : { githubRepo: project.githubRepo }),
-        checkouts: checkoutTargets
-          .map((target) => {
-            const lastOpenedAt = recentByIdentity.get(target.workspaceMetadata.identity)
+        return {
+          name: project.name,
+          path: project.path,
+          ...(project.defaultSource === undefined ? {} : { defaultSource: project.defaultSource }),
+          ...(project.githubRepo === undefined ? {} : { githubRepo: project.githubRepo }),
+          checkouts: checkoutTargets
+            .map((target) => {
+              const lastOpenedAt = recentByIdentity.get(target.workspaceMetadata.identity)
 
-            return {
-              path: target.checkout.path,
-              branch: target.checkout.branch,
-              isMain: target.checkout.isMain,
-              workspaceIdentity: target.workspaceMetadata.identity,
-              workspaceTitle: target.workspaceTitle,
-              ...(lastOpenedAt === undefined ? {} : { lastOpenedAt }),
-              workspaceOpen: cmuxAvailable
-                ? openWorkspaceIdentities.has(target.workspaceMetadata.identity) ||
-                  openWorkspacePaths.has(target.checkout.path)
-                : null,
-            }
-          })
-          .sort(compareCheckoutsForDisplay),
-      }
-    }),
+              return {
+                path: target.checkout.path,
+                branch: target.checkout.branch,
+                isMain: target.checkout.isMain,
+                workspaceIdentity: target.workspaceMetadata.identity,
+                workspaceTitle: target.workspaceTitle,
+                ...(lastOpenedAt === undefined ? {} : { lastOpenedAt }),
+                workspaceOpen: cmuxAvailable
+                  ? openWorkspaceIdentities.has(target.workspaceMetadata.identity) ||
+                    openWorkspacePaths.has(target.checkout.path)
+                  : null,
+              }
+            })
+            .sort(compareCheckoutsForDisplay),
+        }
+      }),
+    )
   )
+    .map((project) => ({
+      ...project,
+      checkouts: args.openOnly
+        ? project.checkouts.filter((checkout) => checkout.workspaceOpen === true)
+        : project.checkouts,
+    }))
+    .filter((project) => project.checkouts.length > 0)
 
   return {
     configPath: config.configPath,

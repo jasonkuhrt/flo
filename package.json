@@ -1,13 +1,16 @@
 {
-  "name": "template-typescript-lib",
+  "name": "flo",
   "version": "0.0.0-dripip",
+  "description": "Work items -> checkouts -> launchers -> agent context",
   "keywords": [
-    "bar",
-    "foo",
-    "qux"
+    "agents",
+    "cmux",
+    "git-worktree",
+    "raycast",
+    "workflow"
   ],
   "bugs": {
-    "url": "https://github.com/jasonkuhrt/template-typescript-lib/issues"
+    "url": "https://github.com/jasonkuhrt/flo/issues"
   },
   "license": "MIT",
   "author": {
@@ -16,7 +19,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+ssh://git@github.com/jasonkuhrt/template-typescript-lib.git"
+    "url": "git+ssh://git@github.com/jasonkuhrt/flo.git"
   },
   "files": [
     "build",
@@ -32,7 +35,6 @@
     ".": "./build/exports/index.js"
   },
   "scripts": {
-    "bootstrap": "bun scripts/bootstrap.ts",
     "build:toc": "markdown-toc README.md -i --maxdepth 4 && oxfmt --write README.md",
     "build:watch:emit": "bun run build --noCheck --watch",
     "build:watch": "bun run build --watch",
@@ -68,9 +70,7 @@
     "dripip": "0.10.0",
     "execa": "9.6.1",
     "fast-glob": "3.3.3",
-    "floggy": "0.3.5",
     "fs-jetpack": "5.1.0",
-    "inquirer": "13.3.0",
     "markdown-toc": "1.2.0",
     "oxfmt": "^0.36.0",
     "oxlint": "^1.51.0",

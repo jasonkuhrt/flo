@@ -1,8 +1,9 @@
-import { Effect } from 'effect'
 import { expect, test } from 'bun:test'
 import * as Lib from './index.ts'
 
-test(`greet returns effectful greeting`, () => {
-  const result = Effect.runSync(Lib.greet('World'))
-  expect(result).toEqual('Hello, World!')
+test(`re-exports normalizeSelector`, () => {
+  expect(Lib.normalizeSelector(' linear:ENG-241 ')).toEqual({
+    raw: ' linear:ENG-241 ',
+    value: 'linear:ENG-241',
+  })
 })

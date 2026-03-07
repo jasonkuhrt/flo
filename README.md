@@ -1,218 +1,384 @@
-# template-typescript-lib
+# Flo
 
-[![trunk](https://github.com/jasonkuhrt/template-typescript-lib/actions/workflows/trunk.yaml/badge.svg)](https://github.com/jasonkuhrt/template-typescript-lib/actions/workflows/trunk.yaml)
+Work items -> checkouts -> launchers -> agent context
 
-Project template for TypeScript libraries built with [Effect](https://effect.website), optimized for tree-shaking and agentic engineering.
+This README currently doubles as the product spec for the initial release.
+It is written as near-final end-user documentation on purpose.
+Only the final section, "Temporary Implementation Notes", is intentionally non-final.
 
-## Features
+## What Flo Is
 
-- ESM-only with proper [`exports`](https://nodejs.org/api/packages.html#exports) configuration
-- Tree-shaking optimized (see [Tree Shaking](#tree-shaking))
-- [Effect](https://effect.website) as peer dependency
-- Types: [tsgo](https://github.com/nicolo-ribaudo/tsgo) (Go-based TypeScript compiler)
-- Tests: [bun test](https://bun.sh/docs/cli/test) with 90% coverage gating
-- Linting: [oxlint](https://oxc.rs/docs/guide/usage/linter) (type-aware) + [actionlint](https://github.com/rhysd/actionlint)
-- Formatting: [oxfmt](https://oxc.rs/docs/guide/usage/formatter)
-- Package validation: [publint](https://publint.dev) + [attw](https://github.com/arethetypeswrong/arethetypeswrong.github.io)
-- Publishing: [Dripip](https://github.com/prisma-labs/dripip)
-- CI: GitHub Actions
-- AI: [Effect MCP](#claude-code) for docs, [hookify rule](#claude-code) blocking `tsc`
+Flo is a work orchestration tool for source-controlled projects.
 
-## Quick Start
+It resolves a piece of work from a backend such as GitHub, Linear, or Beads, creates or reuses the right checkout for that work, prepares context for humans and agents, and opens that checkout in the right launcher surface.
 
-```sh
-gh repo create mylib --template jasonkuhrt/template-typescript-lib --clone --public && \
-cd mylib && \
-bun install && \
-bun run bootstrap
+The primary runtime surface is `cmux`.
+The CLI is canonical.
+Raycast is an experimental frontend over the same core.
+
+## Why Flo Exists
+
+Starting real work usually means doing the same setup every time:
+
+- figure out which project the work belongs to
+- resolve the work item from some backend
+- create or find the right branch or worktree
+- move into the correct checkout
+- open the right workspace
+- make the work context visible to Claude or other agents
+
+Flo turns that from a pile of shell habits into one coherent system.
+
+## Core Ideas
+
+- Work items are modular. GitHub issues are one backend, not the product.
+- Checkouts are first-class. A repo and a checkout are not the same thing.
+- Worktrees are normal. Flo expects multiple active checkouts per repo.
+- Launchers are adapters. `cmux`, Raycast, and editor surfaces sit on top of the same core.
+- Agent context is generated. Flo produces context from the work item and checkout instead of relying on manual repetition.
+
+## Quick Examples
+
+```bash
+# Open the interactive launcher
+flo
+
+# Start work from the default backend
+flo start 123
+
+# Start work from an explicit backend
+flo start gh:123
+flo start linear:ENG-241
+flo start bead:parser/cleanup-import-resolution
+
+# Open an existing project or checkout
+flo open dotfiles
+flo open heartbeat@feat-auth
+
+# List active checkouts and workspaces
+flo list
+
+# End a piece of work
+flo end gh:123
 ```
 
-Then [setup a repo secret](https://docs.github.com/en/actions/security-guides/encrypted-secrets) called `NPM_TOKEN` for CI publishing.
+## What Flo Does
 
-To enable the local Git hooks in your clone:
+When you ask Flo to start or open work, it:
 
-```sh
-git config core.hooksPath .beads/hooks
+1. Resolves the selector into a canonical work item or checkout target.
+2. Resolves the owning project.
+3. Creates or reuses the correct checkout.
+4. Synchronizes work context for humans and agents.
+5. Opens or focuses the checkout in the selected launcher surface.
+
+That sequence is the product.
+Specific backends and launchers plug into it.
+
+## Concepts
+
+### Work Item
+
+A work item is a backend-owned unit of work.
+
+Examples:
+
+- GitHub issue
+- Linear issue
+- Bead in a local planning system
+
+Flo treats all of these as the same category of thing:
+something that can produce a title, canonical ID, branch hint, project association, and context payload.
+
+### Project
+
+A project is the long-lived source repository or working directory family.
+
+Examples:
+
+- `dotfiles`
+- `heartbeat`
+- `graphql-kit`
+
+Projects own checkouts.
+Projects can declare defaults such as backend routing, bootstrap commands, and launcher preferences.
+
+### Checkout
+
+A checkout is a concrete filesystem root that work actually runs in.
+
+Examples:
+
+- main checkout
+- feature branch worktree
+- spike worktree
+
+Flo opens checkouts, not abstract repos.
+Every launcher integration keys off checkout identity.
+
+### Launcher
+
+A launcher is a surface that opens or focuses work.
+
+Examples:
+
+- CLI interactive picker
+- `cmux`
+- Raycast
+- editor command palette
+
+Launchers do not own discovery or workflow rules.
+They call Flo core.
+
+### Context Bundle
+
+A context bundle is the generated work context Flo attaches to a checkout.
+
+It may include:
+
+- work item metadata
+- links back to the source backend
+- a normalized summary of the task
+- local project guidance
+- agent-oriented context files
+
+The exact file layout is implementation detail.
+The product guarantee is that context is reproducible and backend-driven.
+
+## Work Item Backends
+
+Flo supports multiple backends through one interface.
+
+Initial backend set:
+
+- GitHub issues
+- Linear issues
+- Beads
+
+Backend responsibilities:
+
+- resolve user selectors
+- fetch work item metadata
+- derive a branch or checkout hint
+- produce normalized context
+- optionally perform backend-specific actions such as assignment or completion
+
+Flo core is intentionally backend-agnostic.
+No backend-specific assumptions should leak into checkout or launcher orchestration.
+
+## Checkouts and Worktrees
+
+Worktrees are first-class in Flo.
+
+The core model is:
+
+- a project owns many checkouts
+- a work item usually maps to one checkout
+- a launcher opens a checkout
+
+This means:
+
+- multiple active worktrees in one repo are expected
+- checkout identity is path-based, not branch-name-only
+- workspace identity in `cmux` is tied to the checkout, not just the repo
+
+If a matching checkout already exists, Flo reuses it.
+If not, Flo can create the right checkout for the requested work.
+
+## Launchers
+
+### CLI
+
+The CLI is the canonical interface.
+
+Commands are designed so every higher-level surface can delegate to them rather than reimplementing logic.
+
+### cmux
+
+`cmux` is the primary runtime surface.
+
+Flo can:
+
+- create or focus a workspace for a checkout
+- keep one workspace per checkout
+- make checkout-oriented work navigation fast
+
+`cmux` is not the source of truth for discovery or work state.
+It is a launcher target.
+
+### Raycast
+
+Raycast is an experimental frontend.
+
+Its job is to provide a global macOS picker and action surface for Flo.
+It should sit on top of the same Flo core and command model, not introduce its own workflow rules.
+
+### Claude Skill
+
+Flo should integrate with a Claude skill, but the skill is not a second workflow engine.
+
+The intended relationship is:
+
+- Flo owns work resolution, checkout orchestration, and context generation.
+- The Claude skill consumes Flo state and context.
+- Backend logic lives in Flo, not inside the skill.
+
+## Command Model
+
+The initial public command model is:
+
+- `flo`
+  Opens the interactive launcher.
+- `flo start <selector>`
+  Resolve work, create or reuse a checkout, prepare context, and open it.
+- `flo open [selector]`
+  Open or focus an existing project or checkout.
+- `flo list`
+  List active checkouts and launcher state.
+- `flo end [selector]`
+  Resolve or conclude a piece of work and clean up the checkout when appropriate.
+- `flo prune`
+  Clean up stale local state.
+
+### Selector Model
+
+Flo accepts both explicit and implicit selectors.
+
+Examples:
+
+- `gh:123`
+- `gh:owner/repo#123`
+- `linear:ENG-241`
+- `bead:parser/cleanup-import-resolution`
+- `branch:feat/spike-cmux-launcher`
+- `dotfiles`
+- `heartbeat@feat-auth`
+
+Bare selectors can be resolved through project defaults when unambiguous.
+
+## Project Discovery
+
+Flo discovers projects from configured roots.
+
+Discovery should support:
+
+- fuzzy resolution by project name
+- explicit paths
+- per-project defaults
+- backend routing
+
+Examples of useful defaults:
+
+- default backend for bare selectors
+- bootstrap command for new checkouts
+- preferred launcher
+- project-specific context files
+
+## End-to-End Flows
+
+### Start From a Work Item
+
+Example:
+
+```bash
+flo start linear:ENG-241
 ```
 
-The pre-commit hook formats the staged JS/TS/JSON changeset with `oxfmt` before lint, types, and tests.
+Expected behavior:
 
-## Effect
+1. Resolve `ENG-241` through the Linear backend.
+2. Resolve the owning project.
+3. Create or reuse the correct checkout.
+4. Generate normalized work context.
+5. Open or focus the checkout in `cmux`.
 
-This template uses [Effect](https://effect.website) as a peer dependency. Consumers of your library must install Effect themselves.
+### Open Existing Work
 
-> **Building an app instead of a library?** Move `effect` from `peerDependencies` to `dependencies` in `package.json`.
+Example:
 
-The project includes an `.mcp.json` configuring the [Effect MCP server](https://www.npmjs.com/package/effect-mcp) by tim-smart for Claude Code, giving AI agents access to Effect documentation.
-
-## Tree Shaking
-
-This template is configured for aggressive tree-shaking. Bundlers (webpack, esbuild, rollup, vite) can eliminate unused code when consumers import from your library.
-
-### Configuration
-
-| Field                                                                                          | Value                 | Purpose                                |
-| ---------------------------------------------------------------------------------------------- | --------------------- | -------------------------------------- |
-| [`type`](https://nodejs.org/api/packages.html#type)                                            | `"module"`            | ESM output (required for tree-shaking) |
-| [`sideEffects`](https://webpack.js.org/guides/tree-shaking/#mark-the-file-as-side-effect-free) | `false`               | Tells bundlers all modules are pure    |
-| [`exports`](https://nodejs.org/api/packages.html#exports)                                      | Explicit entry points | Black-boxes package internals          |
-
-### TypeScript Settings
-
-| Option                                                                                 | Purpose                                                 |
-| -------------------------------------------------------------------------------------- | ------------------------------------------------------- |
-| [`verbatimModuleSyntax`](https://www.typescriptlang.org/tsconfig#verbatimModuleSyntax) | Preserves ES module syntax for bundlers                 |
-| [`isolatedModules`](https://www.typescriptlang.org/tsconfig#isolatedModules)           | Ensures code is compatible with single-file transpilers |
-
-### Validation
-
-Two tools validate your package works correctly for consumers:
-
-- **[publint](https://publint.dev)** - Checks packaging for compatibility across environments
-- **[attw](https://arethetypeswrong.github.io)** - Checks TypeScript types resolve correctly across module resolution modes
-
-Run both with `bun run check`.
-
-### Code Patterns
-
-#### Prefer named exports
-
-Named exports tree-shake more reliably than default exports. Default exports can cause issues with [CommonJS interop](https://github.com/arethetypeswrong/arethetypeswrong.github.io/blob/main/docs/problems/FalseExportDefault.md).
-
-```ts
-// Preferred
-export const foo = () => {}
-export const bar = () => {}
-
-// Avoid
-export default { foo, bar }
+```bash
+flo open dotfiles
+flo open heartbeat@feat-auth
 ```
 
-#### Pure annotations
+Expected behavior:
 
-For module-level function calls (HOCs, factories), the [`/*#__PURE__*/`](https://webpack.js.org/guides/tree-shaking/#mark-a-function-call-as-side-effect-free) annotation tells bundlers the call is side-effect free. See [Terser](https://github.com/terser/terser#annotations) and [UglifyJS](https://github.com/nicolo-ribaudo/uglify-js#annotations) docs.
+- resolve a project or checkout target
+- present an interactive picker if needed
+- focus the existing `cmux` workspace when one exists
+- otherwise open the target checkout in `cmux`
 
-### sideEffects
+### End Work
 
-Bundlers cannot always statically determine if code has side effects. The `sideEffects` field [hints to bundlers](https://webpack.js.org/guides/tree-shaking/#mark-the-file-as-side-effect-free) that your modules are "pure" and safe to prune if unused.
+Example:
 
-**Important**: If you add modules with side effects (e.g., CSS imports, polyfills, or code that runs on import), update `sideEffects` to an array:
-
-```json
-{
-  "sideEffects": ["./src/polyfill.js", "**/*.css"]
-}
+```bash
+flo end gh:123
 ```
 
-### Barrel Files
+Expected behavior:
 
-[Barrel files](https://basarat.gitbook.io/typescript/main-1/barrel) (index.ts files that re-export from other modules) can [inhibit tree-shaking](https://github.com/vercel/next.js/issues/12557) in some bundlers. This template uses a single entry point which is acceptable for small libraries.
+- resolve the active work item and checkout
+- perform backend-specific completion or closure when requested
+- clean up or keep the checkout based on explicit policy
+- update local Flo state
 
-For larger libraries, consider:
+The exact cleanup policy is backend-aware, but Flo should remain explicit and safe.
 
-- Multiple entry points via `exports` field
-- Avoiding deep re-export chains
-- Testing your bundle size with [bundlephobia](https://bundlephobia.com) or [pkg-size](https://pkg-size.dev)
+## Configuration
 
-### References
+Flo has two configuration scopes:
 
-- [Webpack Tree Shaking Guide](https://webpack.js.org/guides/tree-shaking/)
-- [Tree-Shaking: A Reference Guide (Smashing Magazine)](https://www.smashingmagazine.com/2021/05/tree-shaking-reference-guide/)
-- [package.json exports field (Node.js)](https://nodejs.org/api/packages.html#exports)
-- [Building TypeScript Libraries (Arrange Act Assert)](https://arrangeactassert.com/posts/building-typescript-libraries/)
-- [Are The Types Wrong?](https://arethetypeswrong.github.io)
+- global configuration
+  Defines project roots, launcher defaults, and backend credentials or endpoints.
+- project configuration
+  Defines project-level defaults such as backend routing, bootstrap commands, and context imports.
 
-## Details
+The config format is intentionally not finalized in this spec.
+What is fixed is the configuration model.
 
-<!-- toc -->
+## Non-Goals
 
-- [TypeScript](#typescript)
-- [Linting](#linting)
-- [Testing](#testing)
-- [Formatting](#formatting)
-- [npm Scripts](#npm-scripts)
-- [CI](#ci)
-- [Claude Code](#claude-code)
-- [Zed Settings](#zed-settings)
+- Shell-specific implementation as part of the product contract
+- GitHub-specific behavior baked into Flo core
+- `cmux` becoming the source of truth for work state
+- A second workflow engine inside the Claude skill
+- Forcing Raycast as the primary interface
 
-<!-- tocstop -->
+## Temporary Implementation Notes
 
-### TypeScript
+This section is temporary and exists only to align on the initial build plan.
 
-- Strict settings via [`@tsconfig/strictest`](https://github.com/tsconfig/bases)
-- Node 24 target via [`@tsconfig/node24`](https://github.com/tsconfig/bases)
-- Build cache in `node_modules/.cache`
-- Output includes `declaration`, `declarationMap`, `sourceMap` for optimal consumer DX
-- Source published for go-to-definition support
-- `.ts` import specifiers with `rewriteRelativeImportExtensions` at build time
-- [Subpath imports](https://nodejs.org/api/packages.html#subpath-imports) (`#lib/*`) for clean internal paths
+### Clean-Slate Direction
 
-### Linting
+- archive the existing `jasonkuhrt/flo` repo as `flo-legacy`
+- create a new `flo` project from the template repo
+- port concepts and test intent from legacy Flo, not the Fish implementation
 
-- [oxlint](https://oxc.rs/docs/guide/usage/linter): Rust-based, type-aware with `--deny-warnings`
-- [oxlint-tsgolint](https://github.com/nicolo-ribaudo/oxlint-tsgolint): Enables type-aware rules via tsgo
-- [actionlint](https://github.com/rhysd/actionlint): GitHub Actions workflow validation
-- `--fix-dangerously` enabled for auto-fix (safe with strict types + high coverage)
+### Legacy Concepts Worth Preserving
 
-### Testing
+- project-root discovery and fuzzy project resolution
+- issue-or-branch style selection, generalized into backend selectors
+- worktree-first workflow
+- active checkout listing and pruning
+- generated Claude context for a checkout
 
-[bun test](https://bun.sh/docs/cli/test) with coverage gating at 90% lines / 90% functions.
+### Initial Delivery Slice
 
-### Formatting
+The first meaningful slice should prove the new architecture, not just recreate the old CLI.
 
-[oxfmt](https://oxc.rs/docs/guide/usage/formatter) - Rust-based formatter from the oxc project.
+Initial slice:
 
-### npm Scripts
+- typed Flo core
+- GitHub backend
+- checkout and worktree orchestration
+- `cmux` launcher integration
+- canonical CLI commands: `flo`, `flo start`, `flo open`, `flo list`
 
-| Script          | Description                              |
-| --------------- | ---------------------------------------- |
-| `check`         | Run all checks sequentially              |
-| `check:format`  | Verify formatting                        |
-| `check:lint`    | Run oxlint (type-aware)                  |
-| `check:types`   | Type check with tsgo                     |
-| `check:cov`     | Run tests + enforce coverage thresholds  |
-| `check:package` | Validate package with publint            |
-| `check:exports` | Validate exports with attw               |
-| `check:ci`      | Lint GitHub Actions workflows            |
-| `fix`           | Auto-fix format + lint                   |
-| `fix:format`    | Fix formatting                           |
-| `fix:lint`      | Auto-fix lint issues (--fix-dangerously) |
-| `build`         | Build with tsgo                          |
-| `test`          | Run tests                                |
+### Follow-On Slices
 
-### CI
-
-**PR workflow:**
-
-- actionlint, format, lint, types, publint, exports checks
-- Tests on ubuntu/macos/windows
-- Coverage gating
-
-**Trunk workflow:**
-
-- Automated canary release via [Dripip](https://github.com/prisma-labs/dripip)
-
-### Claude Code
-
-This template includes AI tooling for [Claude Code](https://docs.anthropic.com/en/docs/claude-code):
-
-- **Effect MCP** (`.mcp.json`): Provides Effect documentation access to Claude Code agents
-- **Hookify rule** (`.claude/hookify.use-tsgo.md`): Blocks `tsc` usage, directs agents to use `tsgo` instead
-
-### Zed Settings
-
-Configure [tsgo](https://zed.dev/extensions/tsgo) globally in `~/.config/zed/settings.json`:
-
-```json
-{
-  "languages": {
-    "TypeScript": {
-      "language_servers": ["tsgo", "!vtsls", "oxc"]
-    }
-  }
-}
-```
-
----
-
-![Repobeats](https://repobeats.axiom.co/api/embed/3c932f1cb76da4ad21328bfdd0ad1c6fbbe76a0b.svg)
+- Claude skill integration on top of Flo state and context
+- experimental Raycast extension as a frontend over Flo core
+- Linear backend
+- Beads backend
+- end-of-work lifecycle and cleanup policy

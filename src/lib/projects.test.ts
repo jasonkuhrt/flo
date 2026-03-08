@@ -145,10 +145,18 @@ describe(`discoverProjects`, () => {
         workspacePrefix: `flo`,
         profiles: {
           main: {
-            splitDirection: `right`,
+            layout: {
+              splitDirection: `right`,
+              secondaryPane: `claude`,
+              focus: `editor`,
+            },
           },
           feature: {
-            splitDirection: `right`,
+            layout: {
+              splitDirection: `right`,
+              secondaryPane: `claude`,
+              focus: `editor`,
+            },
           },
         },
       },

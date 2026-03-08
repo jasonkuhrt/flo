@@ -6,10 +6,17 @@ import { expandHome } from '#lib/strings'
 import type {
   FloConfig,
   FloProjectConfig,
+  FloWorkspaceLayoutConfig,
   FloRuntimeConfig,
   FloWorkspaceProfileConfig,
   ResolvedFloConfig,
 } from '#lib/types'
+
+const defaultWorkspaceLayout = (): FloWorkspaceLayoutConfig => ({
+  splitDirection: `right`,
+  secondaryPane: `claude`,
+  focus: `editor`,
+})
 
 const defaultRuntimeConfig = (env: NodeJS.ProcessEnv): FloRuntimeConfig => ({
   editorCommand: env[`EDITOR`] ?? `nvim`,
@@ -21,10 +28,10 @@ const defaultRuntimeConfig = (env: NodeJS.ProcessEnv): FloRuntimeConfig => ({
   workspacePrefix: `flo`,
   profiles: {
     main: {
-      splitDirection: `right`,
+      layout: defaultWorkspaceLayout(),
     },
     feature: {
-      splitDirection: `right`,
+      layout: defaultWorkspaceLayout(),
     },
   },
 })
@@ -71,7 +78,7 @@ const ensureStringArray = (value: unknown, path: string): string[] => {
   return value.map((entry, index) => ensureString(entry, `${path}[${index}]`))
 }
 
-const parseWorkspaceProfile = (value: unknown, path: string): FloWorkspaceProfileConfig => {
+const parseWorkspaceLayout = (value: unknown, path: string): Partial<FloWorkspaceLayoutConfig> => {
   if (!isRecord(value)) {
     throw new FloError(`CONFIG_INVALID`, `Flo config field ${path} must be an object.`)
   }
@@ -84,14 +91,69 @@ const parseWorkspaceProfile = (value: unknown, path: string): FloWorkspaceProfil
     )
   }
 
+  const secondaryPane = value[`secondaryPane`]
+  if (secondaryPane !== undefined && secondaryPane !== `claude` && secondaryPane !== null) {
+    throw new FloError(
+      `CONFIG_INVALID`,
+      `Flo config field ${path}.secondaryPane must be claude or null.`,
+    )
+  }
+
+  const focus = value[`focus`]
+  if (focus !== undefined && focus !== `editor` && focus !== `claude`) {
+    throw new FloError(`CONFIG_INVALID`, `Flo config field ${path}.focus must be editor or claude.`)
+  }
+
+  if ((secondaryPane === null || secondaryPane === undefined) && focus === `claude`) {
+    throw new FloError(
+      `CONFIG_INVALID`,
+      `Flo config field ${path}.focus cannot be claude when ${path}.secondaryPane is null.`,
+    )
+  }
+
+  return {
+    ...(splitDirection === undefined ? {} : { splitDirection }),
+    ...(secondaryPane === undefined ? {} : { secondaryPane }),
+    ...(focus === undefined ? {} : { focus }),
+  }
+}
+
+const parseWorkspaceProfile = (value: unknown, path: string): FloWorkspaceProfileConfig => {
+  if (!isRecord(value)) {
+    throw new FloError(`CONFIG_INVALID`, `Flo config field ${path} must be an object.`)
+  }
+
   const editorCommand = ensureOptionalString(value[`editorCommand`], `${path}.editorCommand`)
   const claudeCommand = ensureOptionalString(value[`claudeCommand`], `${path}.claudeCommand`)
+  const layout =
+    value[`layout`] === undefined
+      ? undefined
+      : parseWorkspaceLayout(value[`layout`], `${path}.layout`)
 
   return {
     ...(editorCommand === undefined ? {} : { editorCommand }),
     ...(claudeCommand === undefined ? {} : { claudeCommand }),
-    ...(splitDirection === undefined ? {} : { splitDirection }),
+    ...(layout === undefined ? {} : { layout }),
   }
+}
+
+const resolveWorkspaceLayout = (
+  base: FloWorkspaceLayoutConfig,
+  override?: Partial<FloWorkspaceLayoutConfig>,
+): FloWorkspaceLayoutConfig => {
+  const layout = {
+    ...base,
+    ...override,
+  }
+
+  if (layout.secondaryPane === null && layout.focus === `claude`) {
+    throw new FloError(
+      `CONFIG_INVALID`,
+      `Flo workspace layouts cannot focus the claude pane when secondaryPane is null.`,
+    )
+  }
+
+  return layout
 }
 
 const parseProjectConfig = (value: unknown, path: string): FloProjectConfig => {
@@ -304,13 +366,14 @@ const parseConfig = (text: string, configPath: string): FloConfig => {
 export const loadConfig = async (env: NodeJS.ProcessEnv): Promise<ResolvedFloConfig> => {
   const configPath = resolve(env[`FLO_CONFIG_PATH`] ?? getDefaultConfigPath(env))
   const exists = await pathExists(configPath)
+  const defaultRuntime = defaultRuntimeConfig(env)
 
   if (!exists) {
     return {
       configPath,
       exists: false,
       discoveryRoots: [],
-      runtime: defaultRuntimeConfig(env),
+      runtime: defaultRuntime,
       projects: [],
     }
   }
@@ -333,18 +396,26 @@ export const loadConfig = async (env: NodeJS.ProcessEnv): Promise<ResolvedFloCon
   )
 
   const runtime = {
-    ...defaultRuntimeConfig(env),
+    ...defaultRuntime,
     ...parsed.runtime,
     profiles: {
-      ...defaultRuntimeConfig(env).profiles,
+      ...defaultRuntime.profiles,
       ...parsed.runtime?.profiles,
       main: {
-        ...defaultRuntimeConfig(env).profiles.main,
+        ...defaultRuntime.profiles.main,
         ...parsed.runtime?.profiles?.main,
+        layout: resolveWorkspaceLayout(
+          defaultWorkspaceLayout(),
+          parsed.runtime?.profiles?.main?.layout,
+        ),
       },
       feature: {
-        ...defaultRuntimeConfig(env).profiles.feature,
+        ...defaultRuntime.profiles.feature,
         ...parsed.runtime?.profiles?.feature,
+        layout: resolveWorkspaceLayout(
+          defaultWorkspaceLayout(),
+          parsed.runtime?.profiles?.feature?.layout,
+        ),
       },
     },
   }

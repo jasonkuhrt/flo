@@ -33,7 +33,11 @@ describe(`formatFloContextEnv`, () => {
           project: `flo`,
           kind: `feature`,
         },
-        claudePaneDirection: `right`,
+        workspaceLayout: {
+          splitDirection: `right`,
+          secondaryPane: `claude`,
+          focus: `editor`,
+        },
         editorSessionName: `editor`,
         claudeSessionName: `claude`,
         editorBootstrapCommand: `nvim`,

@@ -287,7 +287,7 @@ describe(`flo runtime`, () => {
       id: `workspace:3`,
       title: `renamed-main`,
     })
-    expect(result.init.focus).toBe(`editor`)
+    expect(result.init.layout.focus).toBe(`editor`)
   })
 
   it(`explains start with checkout creation and init steps`, async () => {
@@ -323,7 +323,7 @@ describe(`flo runtime`, () => {
 
     expect(result.createdCheckout).toBe(true)
     expect(result.workspace.action).toBe(`create-and-init`)
-    expect(result.init.claude.sessionName).toContain(`claude`)
+    expect(result.init.claude?.sessionName).toContain(`claude`)
     expect(result.issue?.number).toBe(42)
   })
 
@@ -574,7 +574,9 @@ describe(`flo runtime`, () => {
         runtime: {
           profiles: {
             feature: {
-              splitDirection: `bottom`,
+              layout: {
+                splitDirection: `bottom`,
+              },
               editorCommand: `nvim +'FloFeatureInit'`,
               claudeCommand: `claude --resume`,
             },
@@ -639,7 +641,7 @@ describe(`flo runtime`, () => {
       dependencies: { runner },
     })
 
-    expect(result.claudePaneDirection).toBe(`bottom`)
+    expect(result.workspaceLayout.splitDirection).toBe(`bottom`)
     expect(calls).toContain(`cmux new-pane --workspace workspace:4 --direction down`)
     expect(calls.some((call) => call.includes(`FloFeatureInit`))).toBe(true)
     expect(calls.some((call) => call.includes(`claude --resume`))).toBe(true)
@@ -659,7 +661,9 @@ describe(`flo runtime`, () => {
         runtime: {
           profiles: {
             feature: {
-              splitDirection: `bottom`,
+              layout: {
+                splitDirection: `bottom`,
+              },
               editorCommand: `nvim +RuntimeFeatureInit`,
             },
           },
@@ -670,7 +674,9 @@ describe(`flo runtime`, () => {
             path: fixture.repoRoot,
             workspaceProfiles: {
               feature: {
-                splitDirection: `right`,
+                layout: {
+                  splitDirection: `right`,
+                },
                 editorCommand: `nvim +ProjectFeatureInit`,
                 claudeCommand: `claude --print`,
               },
@@ -736,7 +742,7 @@ describe(`flo runtime`, () => {
       dependencies: { runner },
     })
 
-    expect(result.claudePaneDirection).toBe(`right`)
+    expect(result.workspaceLayout.splitDirection).toBe(`right`)
     expect(calls).toContain(`cmux new-pane --workspace workspace:4 --direction right`)
     expect(calls.some((call) => call.includes(`ProjectFeatureInit`))).toBe(true)
     expect(calls.some((call) => call.includes(`RuntimeFeatureInit`))).toBe(false)

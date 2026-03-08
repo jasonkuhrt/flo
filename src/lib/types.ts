@@ -1,6 +1,7 @@
 export type FloSourceKind = `github` | `linear` | `bead`
 export type FloWorkspaceKind = `main` | `feature`
 export type FloSplitDirection = `right` | `bottom`
+export type FloWorkspacePaneRole = `editor` | `claude`
 export type FloWorkspacePlanAction =
   | `create-and-init`
   | `focus-existing`
@@ -8,10 +9,16 @@ export type FloWorkspacePlanAction =
   | `no-open-workspace`
   | `cmux-unavailable`
 
+export interface FloWorkspaceLayoutConfig {
+  splitDirection: FloSplitDirection
+  secondaryPane: `claude` | null
+  focus: FloWorkspacePaneRole
+}
+
 export interface FloWorkspaceProfileConfig {
+  layout?: Partial<FloWorkspaceLayoutConfig>
   editorCommand?: string
   claudeCommand?: string
-  splitDirection?: FloSplitDirection
 }
 
 export interface FloWorkspaceProfiles {
@@ -124,7 +131,7 @@ export interface OpenTarget {
   checkout: FloCheckout
   workspaceTitle: string
   workspaceMetadata: FloWorkspaceMetadata
-  claudePaneDirection: FloSplitDirection
+  workspaceLayout: FloWorkspaceLayoutConfig
   editorSessionName: string
   claudeSessionName: string
   editorBootstrapCommand: string
@@ -308,13 +315,12 @@ export interface FloWorkspacePlan {
 }
 
 export interface FloWorkspaceInitPlan {
-  splitDirection: FloSplitDirection
-  focus: `editor`
+  layout: FloWorkspaceLayoutConfig
   editor: {
     sessionName: string
     command: string
   }
-  claude: {
+  claude?: {
     sessionName: string
     command: string
   }

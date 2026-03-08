@@ -182,6 +182,10 @@ const buildOpenTarget = async (args: {
   const profile = {
     ...args.runtime.profiles[kind],
     ...args.project.workspaceProfiles[kind],
+    layout: {
+      ...(args.runtime.profiles[kind].layout ?? {}),
+      ...(args.project.workspaceProfiles[kind]?.layout ?? {}),
+    },
   }
   const stem = sessionStem({
     prefix: args.runtime.workspacePrefix,
@@ -199,7 +203,11 @@ const buildOpenTarget = async (args: {
       project: args.project.name,
       kind,
     },
-    claudePaneDirection: profile.splitDirection ?? `right`,
+    workspaceLayout: {
+      splitDirection: profile.layout.splitDirection ?? `right`,
+      secondaryPane: profile.layout.secondaryPane ?? `claude`,
+      focus: profile.layout.focus ?? `editor`,
+    },
     editorSessionName: `${stem}-editor`,
     claudeSessionName: `${stem}-claude`,
     editorBootstrapCommand: buildEditorBootstrapCommand({
@@ -386,16 +394,19 @@ const stampWorkspaceMetadata = async (args: {
 }
 
 const buildWorkspaceInitPlan = (target: OpenTarget): FloWorkspaceInitPlan => ({
-  splitDirection: target.claudePaneDirection,
-  focus: `editor`,
+  layout: target.workspaceLayout,
   editor: {
     sessionName: target.editorSessionName,
     command: target.editorBootstrapCommand,
   },
-  claude: {
-    sessionName: target.claudeSessionName,
-    command: target.claudeBootstrapCommand,
-  },
+  ...(target.workspaceLayout.secondaryPane === `claude`
+    ? {
+        claude: {
+          sessionName: target.claudeSessionName,
+          command: target.claudeBootstrapCommand,
+        },
+      }
+    : {}),
 })
 
 function buildWorkspacePlan(args: {
@@ -517,20 +528,28 @@ const initializeWorkspace = async (args: {
     workspaceId: args.workspaceId,
     text: args.target.editorBootstrapCommand,
   })
-  await newCmuxPane({
-    runner: args.runner,
-    cmuxBin: args.cmuxBin,
-    workspaceId: args.workspaceId,
-    direction:
-      args.target.claudePaneDirection === `bottom` ? `down` : args.target.claudePaneDirection,
-  })
-  await sendToCmuxWorkspace({
-    runner: args.runner,
-    cmuxBin: args.cmuxBin,
-    workspaceId: args.workspaceId,
-    text: args.target.claudeBootstrapCommand,
-  })
-  await selectLastCmuxPane(args.runner, args.cmuxBin, args.workspaceId)
+
+  if (args.target.workspaceLayout.secondaryPane === `claude`) {
+    await newCmuxPane({
+      runner: args.runner,
+      cmuxBin: args.cmuxBin,
+      workspaceId: args.workspaceId,
+      direction:
+        args.target.workspaceLayout.splitDirection === `bottom`
+          ? `down`
+          : args.target.workspaceLayout.splitDirection,
+    })
+    await sendToCmuxWorkspace({
+      runner: args.runner,
+      cmuxBin: args.cmuxBin,
+      workspaceId: args.workspaceId,
+      text: args.target.claudeBootstrapCommand,
+    })
+
+    if (args.target.workspaceLayout.focus === `editor`) {
+      await selectLastCmuxPane(args.runner, args.cmuxBin, args.workspaceId)
+    }
+  }
 }
 
 const ensureWorkspace = async (args: {

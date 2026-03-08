@@ -54,7 +54,9 @@ describe(`config`, () => {
           editorCommand: `hx`,
           profiles: {
             feature: {
-              splitDirection: `bottom`,
+              layout: {
+                splitDirection: `bottom`,
+              },
               claudeCommand: `claude --dangerously-skip-permissions`,
             },
           },
@@ -82,7 +84,7 @@ describe(`config`, () => {
     expect(result.exists).toBe(true)
     expect(result.discoveryRoots).toEqual([join(homedir(), `projects`)])
     expect(result.runtime.editorCommand).toBe(`hx`)
-    expect(result.runtime.profiles.feature.splitDirection).toBe(`bottom`)
+    expect(result.runtime.profiles.feature.layout?.splitDirection).toBe(`bottom`)
     expect(result.runtime.profiles.feature.claudeCommand).toBe(
       `claude --dangerously-skip-permissions`,
     )

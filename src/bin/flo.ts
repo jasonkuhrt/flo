@@ -289,13 +289,17 @@ const printExplain = async (
     process.stdout.write(
       `workspace  ${result.workspace.title}  ${result.workspace.identity}  ${result.workspace.action}\n`,
     )
-    process.stdout.write(`init  split=${result.init.splitDirection} focus=${result.init.focus}\n`)
+    process.stdout.write(
+      `init  split=${result.init.layout.splitDirection} focus=${result.init.layout.focus} secondary=${result.init.layout.secondaryPane ?? `none`}\n`,
+    )
     process.stdout.write(
       `editor  ${result.init.editor.sessionName}  ${result.init.editor.command}\n`,
     )
-    process.stdout.write(
-      `claude  ${result.init.claude.sessionName}  ${result.init.claude.command}\n`,
-    )
+    if (result.init.claude !== undefined) {
+      process.stdout.write(
+        `claude  ${result.init.claude.sessionName}  ${result.init.claude.command}\n`,
+      )
+    }
     return
   }
 
@@ -329,13 +333,17 @@ const printExplain = async (
     process.stdout.write(
       `workspace  ${result.workspace.title}  ${result.workspace.identity}  ${result.workspace.action}\n`,
     )
-    process.stdout.write(`init  split=${result.init.splitDirection} focus=${result.init.focus}\n`)
+    process.stdout.write(
+      `init  split=${result.init.layout.splitDirection} focus=${result.init.layout.focus} secondary=${result.init.layout.secondaryPane ?? `none`}\n`,
+    )
     process.stdout.write(
       `editor  ${result.init.editor.sessionName}  ${result.init.editor.command}\n`,
     )
-    process.stdout.write(
-      `claude  ${result.init.claude.sessionName}  ${result.init.claude.command}\n`,
-    )
+    if (result.init.claude !== undefined) {
+      process.stdout.write(
+        `claude  ${result.init.claude.sessionName}  ${result.init.claude.command}\n`,
+      )
+    }
     if (result.issue !== undefined) {
       process.stdout.write(`issue  #${result.issue.number}  ${result.issue.title}\n`)
     }
@@ -423,13 +431,17 @@ const printInitPreview = async (
       `workspace  ${result.workspace.title}  ${result.workspace.identity}  ${result.workspace.action}\n`,
     )
     process.stdout.write(`applies-now  ${result.appliesNow ? `yes` : `no`}\n`)
-    process.stdout.write(`init  split=${result.init.splitDirection} focus=${result.init.focus}\n`)
+    process.stdout.write(
+      `init  split=${result.init.layout.splitDirection} focus=${result.init.layout.focus} secondary=${result.init.layout.secondaryPane ?? `none`}\n`,
+    )
     process.stdout.write(
       `editor  ${result.init.editor.sessionName}  ${result.init.editor.command}\n`,
     )
-    process.stdout.write(
-      `claude  ${result.init.claude.sessionName}  ${result.init.claude.command}\n`,
-    )
+    if (result.init.claude !== undefined) {
+      process.stdout.write(
+        `claude  ${result.init.claude.sessionName}  ${result.init.claude.command}\n`,
+      )
+    }
     return
   }
 
@@ -462,13 +474,17 @@ const printInitPreview = async (
       `workspace  ${result.workspace.title}  ${result.workspace.identity}  ${result.workspace.action}\n`,
     )
     process.stdout.write(`applies-now  ${result.appliesNow ? `yes` : `no`}\n`)
-    process.stdout.write(`init  split=${result.init.splitDirection} focus=${result.init.focus}\n`)
+    process.stdout.write(
+      `init  split=${result.init.layout.splitDirection} focus=${result.init.layout.focus} secondary=${result.init.layout.secondaryPane ?? `none`}\n`,
+    )
     process.stdout.write(
       `editor  ${result.init.editor.sessionName}  ${result.init.editor.command}\n`,
     )
-    process.stdout.write(
-      `claude  ${result.init.claude.sessionName}  ${result.init.claude.command}\n`,
-    )
+    if (result.init.claude !== undefined) {
+      process.stdout.write(
+        `claude  ${result.init.claude.sessionName}  ${result.init.claude.command}\n`,
+      )
+    }
     if (result.issue !== undefined) {
       process.stdout.write(`issue  #${result.issue.number}  ${result.issue.title}\n`)
     }

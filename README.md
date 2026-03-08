@@ -118,6 +118,9 @@ flo
 # Open the main workspace for a project
 flo open dotfiles
 
+# Explicitly jump to the project home workspace
+flo home dotfiles
+
 # Reopen the most recent actionable workspace
 flo open --last
 
@@ -512,6 +515,8 @@ The initial public command model is:
   Open the interactive launcher.
 - `flo start <selector> [--project <project>]`
   Resolve work, create or reuse a checkout, prepare context, and open it. `--project` is the global-launcher path.
+- `flo home [project]`
+  Open the canonical main workspace for the current or selected project.
 - `flo open [selector]`
   Open or focus a project's main checkout workspace, or an existing checkout when a more specific selector is given. `flo open --last` reopens the most recent actionable workspace directly.
 - `flo explain open|start|end`

@@ -16,6 +16,7 @@ import {
   launchInteractive,
   listFloState,
   listRecentWork,
+  openHomeWorkspace,
   openLastWorkspace,
   openWorkspace,
   previewInitOpen,
@@ -30,6 +31,7 @@ const usage = `flo
 
 Usage:
   flo
+  flo home [project] [--dry-run] [--json]
   flo open [selector] [--last] [--dry-run] [--json]
   flo start <selector> [--project <project>] [--dry-run] [--json]
   flo explain open [selector] [--last] [--json]
@@ -54,6 +56,7 @@ Usage:
 
 Examples:
   flo
+  flo home dotfiles
   flo open dotfiles
   flo open --last
   flo open heartbeat@feat-auth
@@ -617,6 +620,22 @@ const main = async (): Promise<void> => {
             ...(selector === undefined ? {} : { selector }),
             dryRun,
           })
+
+      if (json || dryRun) {
+        printResult(result)
+        return
+      }
+
+      process.stdout.write(`${result.workspaceTitle}\n`)
+      return
+    }
+    case `home`: {
+      const [selector] = rest
+      const result = await openHomeWorkspace({
+        context,
+        ...(selector === undefined ? {} : { selector }),
+        dryRun,
+      })
 
       if (json || dryRun) {
         printResult(result)

@@ -47,3 +47,7 @@ test(`re-exports explainOpen`, () => {
 test(`re-exports previewInitOpen`, () => {
   expect(typeof Lib.previewInitOpen).toBe(`function`)
 })
+
+test(`re-exports openHomeWorkspace`, () => {
+  expect(typeof Lib.openHomeWorkspace).toBe(`function`)
+})

@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os'
 import { afterEach, describe, expect, it } from 'bun:test'
 
 import { installClaudeHooks } from '#lib/claude'
+import { FloError } from '#lib/errors'
 import {
   doctorFlo,
   endWork,
@@ -17,6 +18,7 @@ import {
   listFloState,
   listRecentWork,
   openLastWorkspace,
+  openHomeWorkspace,
   openWorkspace,
   previewInitOpen,
   previewInitStart,
@@ -207,6 +209,74 @@ describe(`flo runtime`, () => {
     expect(record?.workspaceTitle).toBe(`flo:flo`)
     expect(record?.checkoutPath).toBe(fixture.repoRoot)
     expect(record?.lastAction).toBe(`open`)
+  })
+
+  it(`opens the canonical main workspace through flo home`, async () => {
+    const fixture = await makeRepoFixture()
+    const calls: string[] = []
+    const runner: CommandRunner = async (command, args = []) => {
+      const key = [command, ...args].join(` `)
+      calls.push(key)
+
+      if (key === `git -C ${fixture.repoRoot} rev-parse --show-toplevel`) {
+        return ok(`${fixture.repoRoot}\n`)
+      }
+
+      if (key === `git -C ${fixture.repoRoot} remote get-url origin`) {
+        return ok(`git@github.com:jasonkuhrt/flo.git\n`)
+      }
+
+      if (key === `git -C ${fixture.repoRoot} worktree list --porcelain`) {
+        return ok(mainWorktreeList(fixture.repoRoot))
+      }
+
+      if (key === `cmux ping`) return ok()
+      if (key === `cmux --json list-workspaces`) return ok(JSON.stringify({ workspaces: [] }))
+      if (key === `cmux new-workspace`) return ok()
+      if (key === `cmux --json current-workspace`) {
+        return ok(JSON.stringify({ id: `workspace:9`, title: `untitled` }))
+      }
+
+      if (key === `cmux rename-workspace --workspace workspace:9 flo:flo`) return ok()
+      if (key.startsWith(`cmux set-status flo.`)) return ok()
+      if (key.startsWith(`cmux send --workspace workspace:9 exec 'zmx' attach `)) return ok()
+      if (key === `cmux new-pane --workspace workspace:9 --direction right`) return ok()
+      if (key === `cmux last-pane --workspace workspace:9`) return ok()
+
+      return fail()
+    }
+
+    const result = await openHomeWorkspace({
+      context: {
+        cwd: fixture.repoRoot,
+        env: fixture.env,
+      },
+      dependencies: { runner },
+    })
+
+    expect(result.checkout.isMain).toBe(true)
+    expect(result.workspaceTitle).toBe(`flo:flo`)
+    expect(result.createdWorkspace).toBe(true)
+    expect(calls).toContain(`cmux rename-workspace --workspace workspace:9 flo:flo`)
+  })
+
+  it(`rejects checkout selectors for flo home`, async () => {
+    const fixture = await makeRepoFixture()
+    let thrown: unknown = null
+
+    try {
+      await openHomeWorkspace({
+        context: {
+          cwd: fixture.repoRoot,
+          env: fixture.env,
+        },
+        selector: `flo@feat/auth`,
+      })
+    } catch (error) {
+      thrown = error
+    }
+
+    expect(thrown).toBeInstanceOf(FloError)
   })
 
   it(`starts GitHub issue work by planning a feature checkout`, async () => {

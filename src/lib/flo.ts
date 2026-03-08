@@ -797,6 +797,22 @@ export const normalizeSelector = (selector: string): { raw: string; value: strin
   value: selector.trim(),
 })
 
+const normalizeHomeSelector = (selector: string | undefined): string | undefined => {
+  if (selector === undefined) {
+    return undefined
+  }
+
+  const parsed = parseOpenSelector(selector)
+  if (parsed.checkoutSelector !== undefined) {
+    throw new FloError(
+      `HOME_SELECTOR_INVALID`,
+      `flo home only accepts a project selector, not a checkout selector.`,
+    )
+  }
+
+  return parsed.projectSelector
+}
+
 export const resolveOpenTarget = async (args: {
   context: FloCommandContext
   selector?: string
@@ -1077,6 +1093,22 @@ export const openWorkspace = async (args: {
     createdWorkspace: workspace.created,
     workspaceId: workspace.workspaceId,
   }
+}
+
+export const openHomeWorkspace = async (args: {
+  context: FloCommandContext
+  selector?: string
+  dryRun?: boolean
+  dependencies?: FloRuntimeDependencies
+}): Promise<OpenTarget & { createdWorkspace?: boolean; workspaceId?: string }> => {
+  const selector = normalizeHomeSelector(args.selector)
+
+  return openWorkspace({
+    context: args.context,
+    ...(selector === undefined ? {} : { selector }),
+    ...(args.dryRun === undefined ? {} : { dryRun: args.dryRun }),
+    ...(args.dependencies === undefined ? {} : { dependencies: args.dependencies }),
+  })
 }
 
 export const openLastWorkspace = async (args: {

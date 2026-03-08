@@ -46,6 +46,9 @@ import type {
   FloConfigInitResult,
   FloContextResult,
   FloDoctorCommand,
+  FloExplainEndResult,
+  FloExplainOpenResult,
+  FloExplainStartResult,
   FloDoctorResult,
   FloEndResult,
   FloEndedTarget,
@@ -57,8 +60,10 @@ import type {
   FloPruneWorkspaceResult,
   FloRecentItem,
   FloRecentResult,
+  FloWorkspacePlan,
   FloStatusResult,
   FloWorkspaceKind,
+  FloWorkspaceInitPlan,
   OpenTarget,
   StartSelector,
   StartTarget,
@@ -379,6 +384,51 @@ const stampWorkspaceMetadata = async (args: {
   })
 }
 
+const buildWorkspaceInitPlan = (target: OpenTarget): FloWorkspaceInitPlan => ({
+  splitDirection: target.claudePaneDirection,
+  focus: `editor`,
+  editor: {
+    sessionName: target.editorSessionName,
+    command: target.editorBootstrapCommand,
+  },
+  claude: {
+    sessionName: target.claudeSessionName,
+    command: target.claudeBootstrapCommand,
+  },
+})
+
+function buildWorkspacePlan(args: {
+  target:
+    | Pick<OpenTarget, `workspaceTitle` | `workspaceMetadata`>
+    | Pick<FloEndedTarget, `workspaceTitle` | `workspaceMetadata`>
+  cmuxAvailable: boolean
+  existingWorkspace: { id: string; title: string } | null
+  whenOpen: `open` | `end`
+}): FloWorkspacePlan {
+  return {
+    title: args.target.workspaceTitle,
+    identity: args.target.workspaceMetadata.identity,
+    kind: args.target.workspaceMetadata.kind,
+    action: !args.cmuxAvailable
+      ? `cmux-unavailable`
+      : args.existingWorkspace === null
+        ? args.whenOpen === `open`
+          ? `create-and-init`
+          : `no-open-workspace`
+        : args.whenOpen === `open`
+          ? `focus-existing`
+          : `close-existing`,
+    ...(args.existingWorkspace === null
+      ? {}
+      : {
+          existingWorkspace: {
+            id: args.existingWorkspace.id,
+            title: args.existingWorkspace.title,
+          },
+        }),
+  }
+}
+
 const findWorkspaceForTarget = async (args: {
   runner: CommandRunner
   cmuxBin: string
@@ -415,6 +465,35 @@ const findWorkspaceForTarget = async (args: {
   return {
     id: checkoutMatch.workspaceId,
     title: checkoutMatch.workspaceTitle,
+  }
+}
+
+const inspectTargetWorkspacePlan = async (args: {
+  runner: CommandRunner
+  cmuxBin: string
+  target: Pick<OpenTarget, `workspaceTitle` | `workspaceMetadata` | `checkout`>
+  whenOpen: `open` | `end`
+}): Promise<{
+  cmuxAvailable: boolean
+  workspace: FloWorkspacePlan
+}> => {
+  const cmuxAvailable = await probeCmux(args.runner, args.cmuxBin)
+  const existingWorkspace = !cmuxAvailable
+    ? null
+    : await findWorkspaceForTarget({
+        runner: args.runner,
+        cmuxBin: args.cmuxBin,
+        target: args.target,
+      })
+
+  return {
+    cmuxAvailable,
+    workspace: buildWorkspacePlan({
+      target: args.target,
+      cmuxAvailable,
+      existingWorkspace,
+      whenOpen: args.whenOpen,
+    }),
   }
 }
 
@@ -751,6 +830,150 @@ export const resolveStartTarget = async (args: {
     ...target,
     createdCheckout: plan.existingCheckout === null,
     ...(plan.issue === undefined ? {} : { issue: plan.issue }),
+  }
+}
+
+export const explainOpen = async (args: {
+  context: FloCommandContext
+  selector?: string
+  last?: boolean
+  dependencies?: FloRuntimeDependencies
+}): Promise<FloExplainOpenResult> => {
+  const dependencies = { ...defaultDependencies, ...args.dependencies }
+  const config = await loadConfig(args.context.env)
+  const target = args.last
+    ? await openLastWorkspace({
+        context: args.context,
+        dryRun: true,
+        dependencies,
+      })
+    : await resolveOpenTarget({
+        context: args.context,
+        ...(args.selector === undefined ? {} : { selector: args.selector }),
+        dependencies,
+      })
+  const plan = await inspectTargetWorkspacePlan({
+    runner: dependencies.runner,
+    cmuxBin: config.runtime.cmuxBin,
+    target,
+    whenOpen: `open`,
+  })
+
+  return {
+    command: `open`,
+    ...(args.selector === undefined ? {} : { selector: args.selector }),
+    cmuxAvailable: plan.cmuxAvailable,
+    project: {
+      name: target.project.name,
+      path: target.project.path,
+    },
+    checkout: {
+      path: target.checkout.path,
+      branch: target.checkout.branch,
+      isMain: target.checkout.isMain,
+    },
+    workspace: plan.workspace,
+    init: buildWorkspaceInitPlan(target),
+  }
+}
+
+export const explainStart = async (args: {
+  context: FloCommandContext
+  selector: string
+  projectSelector?: string
+  dependencies?: FloRuntimeDependencies
+}): Promise<FloExplainStartResult> => {
+  const dependencies = { ...defaultDependencies, ...args.dependencies }
+  const config = await loadConfig(args.context.env)
+  const target = await resolveStartTarget({
+    context: args.context,
+    selector: args.selector,
+    ...(args.projectSelector === undefined ? {} : { projectSelector: args.projectSelector }),
+    dependencies,
+  })
+  const plan = await inspectTargetWorkspacePlan({
+    runner: dependencies.runner,
+    cmuxBin: config.runtime.cmuxBin,
+    target,
+    whenOpen: `open`,
+  })
+
+  return {
+    command: `start`,
+    selector: args.selector,
+    ...(args.projectSelector === undefined ? {} : { projectSelector: args.projectSelector }),
+    cmuxAvailable: plan.cmuxAvailable,
+    project: {
+      name: target.project.name,
+      path: target.project.path,
+    },
+    checkout: {
+      path: target.checkout.path,
+      branch: target.checkout.branch,
+      isMain: target.checkout.isMain,
+    },
+    workspace: plan.workspace,
+    init: buildWorkspaceInitPlan(target),
+    createdCheckout: target.createdCheckout,
+    ...(target.issue === undefined ? {} : { issue: target.issue }),
+  }
+}
+
+export const explainEnd = async (args: {
+  context: FloCommandContext
+  selector?: string
+  force?: boolean
+  openMain?: boolean
+  dependencies?: FloRuntimeDependencies
+}): Promise<FloExplainEndResult> => {
+  const dependencies = { ...defaultDependencies, ...args.dependencies }
+  const config = await loadConfig(args.context.env)
+  const target = await resolveEndTarget({
+    context: args.context,
+    ...(args.selector === undefined ? {} : { selector: args.selector }),
+    runner: dependencies.runner,
+  })
+  const plan = await inspectTargetWorkspacePlan({
+    runner: dependencies.runner,
+    cmuxBin: config.runtime.cmuxBin,
+    target,
+    whenOpen: `end`,
+  })
+  const reopenMainWorkspace =
+    args.openMain === true
+      ? await explainOpen({
+          context: {
+            cwd: target.project.path,
+            env: args.context.env,
+          },
+          selector: target.project.name,
+          dependencies,
+        }).then((result) => result.workspace)
+      : undefined
+
+  return {
+    command: `end`,
+    ...(args.selector === undefined ? {} : { selector: args.selector }),
+    cmuxAvailable: plan.cmuxAvailable,
+    force: args.force === true,
+    openMain: args.openMain === true,
+    project: {
+      name: target.project.name,
+      path: target.project.path,
+    },
+    checkout: {
+      path: target.checkout.path,
+      branch: target.checkout.branch,
+      isMain: target.checkout.isMain,
+    },
+    workspace: plan.workspace,
+    sessions: {
+      editor: target.editorSessionName,
+      claude: target.claudeSessionName,
+    },
+    removesCheckout: true,
+    dirtyCheckoutAllowed: args.force === true,
+    ...(reopenMainWorkspace === undefined ? {} : { reopensMainWorkspace: reopenMainWorkspace }),
   }
 }
 

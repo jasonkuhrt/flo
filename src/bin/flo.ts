@@ -6,6 +6,9 @@ import { installClaudeHooks } from '#lib/claude'
 import { FloError } from '#lib/errors'
 import {
   doctorFlo,
+  explainEnd,
+  explainOpen,
+  explainStart,
   formatFloContextEnv,
   endWork,
   getFloContext,
@@ -27,6 +30,9 @@ Usage:
   flo
   flo open [selector] [--last] [--dry-run] [--json]
   flo start <selector> [--project <project>] [--dry-run] [--json]
+  flo explain open [selector] [--last] [--json]
+  flo explain start <selector> [--project <project>] [--json]
+  flo explain end [selector] [--force] [--open-main] [--json]
   flo context [--json|--env]
   flo status [--json]
   flo list [--project <project>] [--open] [--json]
@@ -51,6 +57,9 @@ Examples:
   flo start 123 --project dotfiles
   flo start gh:123
   flo start feat/cmux-launcher
+  flo explain open dotfiles
+  flo explain start 123 --project dotfiles
+  flo explain end 123 --open-main
   flo context --json
   flo context --env
   flo status
@@ -232,6 +241,140 @@ const printDoctor = async (
   }
 }
 
+const printExplain = async (
+  context: { cwd: string; env: NodeJS.ProcessEnv },
+  json: boolean,
+  parsed: ParsedArgs,
+  rest: string[],
+): Promise<void> => {
+  const [subject, ...subjectArgs] = rest
+
+  if (subject === undefined) {
+    throw new FloError(`CLI_USAGE`, `flo explain requires a subject.\n\n${usage}`)
+  }
+
+  if (subject === `open`) {
+    const [selector] = subjectArgs
+    if (selector !== undefined && parsed.booleans.has(`last`)) {
+      throw new FloError(
+        `CLI_USAGE`,
+        `flo explain open accepts either a selector or --last, not both.`,
+      )
+    }
+
+    const result = await explainOpen({
+      context,
+      ...(selector === undefined ? {} : { selector }),
+      ...(parsed.booleans.has(`last`) ? { last: true } : {}),
+    })
+
+    if (json) {
+      printResult(result)
+      return
+    }
+
+    process.stdout.write(`command  open\n`)
+    process.stdout.write(`project  ${result.project.name}  ${result.project.path}\n`)
+    process.stdout.write(
+      `checkout  ${
+        result.checkout.isMain ? `main` : (result.checkout.branch ?? basename(result.checkout.path))
+      }  ${result.checkout.path}\n`,
+    )
+    process.stdout.write(
+      `workspace  ${result.workspace.title}  ${result.workspace.identity}  ${result.workspace.action}\n`,
+    )
+    process.stdout.write(`init  split=${result.init.splitDirection} focus=${result.init.focus}\n`)
+    process.stdout.write(
+      `editor  ${result.init.editor.sessionName}  ${result.init.editor.command}\n`,
+    )
+    process.stdout.write(
+      `claude  ${result.init.claude.sessionName}  ${result.init.claude.command}\n`,
+    )
+    return
+  }
+
+  if (subject === `start`) {
+    const [selector] = subjectArgs
+    if (selector === undefined) {
+      throw new FloError(`CLI_USAGE`, `flo explain start requires a selector.\n\n${usage}`)
+    }
+    const explainProjectSelector = parsed.named.get(`project`)
+
+    const result = await explainStart({
+      context,
+      selector,
+      ...(explainProjectSelector === undefined ? {} : { projectSelector: explainProjectSelector }),
+    })
+
+    if (json) {
+      printResult(result)
+      return
+    }
+
+    process.stdout.write(`command  start\n`)
+    process.stdout.write(`selector  ${result.selector}\n`)
+    process.stdout.write(`project  ${result.project.name}  ${result.project.path}\n`)
+    process.stdout.write(
+      `checkout  ${
+        result.checkout.isMain ? `main` : (result.checkout.branch ?? basename(result.checkout.path))
+      }  ${result.checkout.path}\n`,
+    )
+    process.stdout.write(`checkout-action  ${result.createdCheckout ? `create` : `reuse`}\n`)
+    process.stdout.write(
+      `workspace  ${result.workspace.title}  ${result.workspace.identity}  ${result.workspace.action}\n`,
+    )
+    process.stdout.write(`init  split=${result.init.splitDirection} focus=${result.init.focus}\n`)
+    process.stdout.write(
+      `editor  ${result.init.editor.sessionName}  ${result.init.editor.command}\n`,
+    )
+    process.stdout.write(
+      `claude  ${result.init.claude.sessionName}  ${result.init.claude.command}\n`,
+    )
+    if (result.issue !== undefined) {
+      process.stdout.write(`issue  #${result.issue.number}  ${result.issue.title}\n`)
+    }
+    return
+  }
+
+  if (subject === `end`) {
+    const [selector] = subjectArgs
+    const result = await explainEnd({
+      context,
+      ...(selector === undefined ? {} : { selector }),
+      ...(parsed.booleans.has(`force`) ? { force: true } : {}),
+      ...(parsed.booleans.has(`open-main`) ? { openMain: true } : {}),
+    })
+
+    if (json) {
+      printResult(result)
+      return
+    }
+
+    process.stdout.write(`command  end\n`)
+    process.stdout.write(`project  ${result.project.name}  ${result.project.path}\n`)
+    process.stdout.write(
+      `checkout  ${
+        result.checkout.isMain ? `main` : (result.checkout.branch ?? basename(result.checkout.path))
+      }  ${result.checkout.path}\n`,
+    )
+    process.stdout.write(
+      `workspace  ${result.workspace.title}  ${result.workspace.identity}  ${result.workspace.action}\n`,
+    )
+    process.stdout.write(`editor-session  ${result.sessions.editor}\n`)
+    process.stdout.write(`claude-session  ${result.sessions.claude}\n`)
+    process.stdout.write(`remove-checkout  yes\n`)
+    process.stdout.write(`dirty-checkout  ${result.dirtyCheckoutAllowed ? `allow` : `block`}\n`)
+    if (result.reopensMainWorkspace !== undefined) {
+      process.stdout.write(
+        `reopen-main  ${result.reopensMainWorkspace.title}  ${result.reopensMainWorkspace.action}\n`,
+      )
+    }
+    return
+  }
+
+  throw new FloError(`CLI_USAGE`, `Unknown flo explain subject.\n\n${usage}`)
+}
+
 const printStatus = async (
   context: { cwd: string; env: NodeJS.ProcessEnv },
   json: boolean,
@@ -385,6 +528,9 @@ const main = async (): Promise<void> => {
       process.stdout.write(`${result.workspaceTitle}\n`)
       return
     }
+    case `explain`:
+      await printExplain(context, json, parsed, rest)
+      return
     case `list`:
       await printList(context, json, projectSelector, parsed.booleans.has(`open`))
       return

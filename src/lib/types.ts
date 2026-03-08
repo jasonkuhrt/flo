@@ -1,6 +1,12 @@
 export type FloSourceKind = `github` | `linear` | `bead`
 export type FloWorkspaceKind = `main` | `feature`
 export type FloSplitDirection = `right` | `bottom`
+export type FloWorkspacePlanAction =
+  | `create-and-init`
+  | `focus-existing`
+  | `close-existing`
+  | `no-open-workspace`
+  | `cmux-unavailable`
 
 export interface FloWorkspaceProfileConfig {
   editorCommand?: string
@@ -289,6 +295,94 @@ export interface FloEndedTarget {
   claudeSessionName: string
   workspaceId?: string
 }
+
+export interface FloWorkspacePlan {
+  title: string
+  identity: string
+  kind: FloWorkspaceKind
+  action: FloWorkspacePlanAction
+  existingWorkspace?: {
+    id: string
+    title: string
+  }
+}
+
+export interface FloWorkspaceInitPlan {
+  splitDirection: FloSplitDirection
+  focus: `editor`
+  editor: {
+    sessionName: string
+    command: string
+  }
+  claude: {
+    sessionName: string
+    command: string
+  }
+}
+
+export interface FloExplainOpenResult {
+  command: `open`
+  selector?: string
+  cmuxAvailable: boolean
+  project: {
+    name: string
+    path: string
+  }
+  checkout: {
+    path: string
+    branch: string | null
+    isMain: boolean
+  }
+  workspace: FloWorkspacePlan
+  init: FloWorkspaceInitPlan
+}
+
+export interface FloExplainStartResult {
+  command: `start`
+  selector: string
+  projectSelector?: string
+  cmuxAvailable: boolean
+  project: {
+    name: string
+    path: string
+  }
+  checkout: {
+    path: string
+    branch: string | null
+    isMain: boolean
+  }
+  workspace: FloWorkspacePlan
+  init: FloWorkspaceInitPlan
+  createdCheckout: boolean
+  issue?: GitHubIssue
+}
+
+export interface FloExplainEndResult {
+  command: `end`
+  selector?: string
+  cmuxAvailable: boolean
+  force: boolean
+  openMain: boolean
+  project: {
+    name: string
+    path: string
+  }
+  checkout: {
+    path: string
+    branch: string | null
+    isMain: boolean
+  }
+  workspace: FloWorkspacePlan
+  sessions: {
+    editor: string
+    claude: string
+  }
+  removesCheckout: true
+  dirtyCheckoutAllowed: boolean
+  reopensMainWorkspace?: FloWorkspacePlan
+}
+
+export type FloExplainResult = FloExplainOpenResult | FloExplainStartResult | FloExplainEndResult
 
 export interface FloEndResult extends FloEndedTarget {
   closedWorkspace: boolean

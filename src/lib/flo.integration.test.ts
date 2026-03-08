@@ -8,6 +8,9 @@ import { installClaudeHooks } from '#lib/claude'
 import {
   doctorFlo,
   endWork,
+  explainEnd,
+  explainOpen,
+  explainStart,
   getFloContext,
   initConfig,
   launchInteractive,
@@ -115,6 +118,9 @@ describe(`flo runtime`, () => {
     const fixture = await makeRepoFixture()
     const runner = mockRunner({
       [`git -C ${fixture.repoRoot} rev-parse --show-toplevel`]: { stdout: `${fixture.repoRoot}\n` },
+      [`git -C ${fixture.featureWorktreePath} rev-parse --show-toplevel`]: {
+        stdout: `${fixture.repoRoot}\n`,
+      },
       [`git -C ${fixture.repoRoot} remote get-url origin`]: {
         stdout: `git@github.com:jasonkuhrt/flo.git\n`,
       },
@@ -205,6 +211,9 @@ describe(`flo runtime`, () => {
     const fixture = await makeRepoFixture()
     const runner = mockRunner({
       [`git -C ${fixture.repoRoot} rev-parse --show-toplevel`]: { stdout: `${fixture.repoRoot}\n` },
+      [`git -C ${fixture.featureWorktreePath} rev-parse --show-toplevel`]: {
+        stdout: `${fixture.repoRoot}\n`,
+      },
       [`git -C ${fixture.repoRoot} remote get-url origin`]: {
         stdout: `git@github.com:jasonkuhrt/flo.git\n`,
       },
@@ -239,6 +248,131 @@ describe(`flo runtime`, () => {
         number: 42,
       },
     })
+  })
+
+  it(`explains open by distinguishing init from focus`, async () => {
+    const fixture = await makeRepoFixture()
+    const runner = mockRunner({
+      [`git -C ${fixture.repoRoot} rev-parse --show-toplevel`]: { stdout: `${fixture.repoRoot}\n` },
+      [`git -C ${fixture.repoRoot} remote get-url origin`]: {
+        stdout: `git@github.com:jasonkuhrt/flo.git\n`,
+      },
+      [`git -C ${fixture.repoRoot} worktree list --porcelain`]: {
+        stdout: mainWorktreeList(fixture.repoRoot),
+      },
+      [`cmux ping`]: ok(),
+      [`cmux --json list-workspaces`]: ok(
+        JSON.stringify({ workspaces: [{ id: `workspace:3`, title: `renamed-main` }] }),
+      ),
+      [`cmux --json sidebar-state --workspace workspace:3`]: ok(
+        JSON.stringify({
+          cwd: fixture.repoRoot,
+          statuses: [{ key: `flo.identity`, value: `ce8d4f6cf89f` }],
+        }),
+      ),
+    })
+
+    const result = await explainOpen({
+      context: {
+        cwd: fixture.repoRoot,
+        env: fixture.env,
+      },
+      dependencies: { runner },
+    })
+
+    expect(result.workspace.action).toBe(`focus-existing`)
+    expect(result.workspace.existingWorkspace).toEqual({
+      id: `workspace:3`,
+      title: `renamed-main`,
+    })
+    expect(result.init.focus).toBe(`editor`)
+  })
+
+  it(`explains start with checkout creation and init steps`, async () => {
+    const fixture = await makeRepoFixture()
+    const runner = mockRunner({
+      [`git -C ${fixture.repoRoot} rev-parse --show-toplevel`]: { stdout: `${fixture.repoRoot}\n` },
+      [`git -C ${fixture.repoRoot} remote get-url origin`]: {
+        stdout: `git@github.com:jasonkuhrt/flo.git\n`,
+      },
+      [`git -C ${fixture.repoRoot} worktree list --porcelain`]: {
+        stdout: mainWorktreeList(fixture.repoRoot),
+      },
+      [`gh issue view 42 --repo jasonkuhrt/flo --json number,title,url,state`]: {
+        stdout: JSON.stringify({
+          number: 42,
+          title: `Add launcher`,
+          url: `https://github.com/jasonkuhrt/flo/issues/42`,
+          state: `OPEN`,
+        }),
+      },
+      [`cmux ping`]: ok(),
+      [`cmux --json list-workspaces`]: ok(JSON.stringify({ workspaces: [] })),
+    })
+
+    const result = await explainStart({
+      context: {
+        cwd: fixture.repoRoot,
+        env: fixture.env,
+      },
+      selector: `42`,
+      dependencies: { runner },
+    })
+
+    expect(result.createdCheckout).toBe(true)
+    expect(result.workspace.action).toBe(`create-and-init`)
+    expect(result.init.claude.sessionName).toContain(`claude`)
+    expect(result.issue?.number).toBe(42)
+  })
+
+  it(`explains end and optional reopen-main behavior`, async () => {
+    const fixture = await makeRepoFixture()
+    const runner = mockRunner({
+      [`git -C ${fixture.repoRoot} rev-parse --show-toplevel`]: { stdout: `${fixture.repoRoot}\n` },
+      [`git -C ${fixture.featureWorktreePath} rev-parse --show-toplevel`]: {
+        stdout: `${fixture.repoRoot}\n`,
+      },
+      [`git -C ${fixture.repoRoot} remote get-url origin`]: {
+        stdout: `git@github.com:jasonkuhrt/flo.git\n`,
+      },
+      [`git -C ${fixture.repoRoot} worktree list --porcelain`]: {
+        stdout: featureWorktreeList(fixture.repoRoot, fixture.featureWorktreePath),
+      },
+      [`cmux ping`]: ok(),
+      [`cmux --json list-workspaces`]: ok(
+        JSON.stringify({
+          workspaces: [
+            { id: `workspace:4`, title: `flo:flo@feat/auth` },
+            { id: `workspace:5`, title: `flo:flo` },
+          ],
+        }),
+      ),
+      [`cmux --json sidebar-state --workspace workspace:4`]: ok(
+        JSON.stringify({
+          cwd: fixture.featureWorktreePath,
+          statuses: [{ key: `flo.identity`, value: `feature123456` }],
+        }),
+      ),
+      [`cmux --json sidebar-state --workspace workspace:5`]: ok(
+        JSON.stringify({
+          cwd: fixture.repoRoot,
+          statuses: [{ key: `flo.identity`, value: `main123456789` }],
+        }),
+      ),
+    })
+
+    const result = await explainEnd({
+      context: {
+        cwd: fixture.featureWorktreePath,
+        env: fixture.env,
+      },
+      openMain: true,
+      dependencies: { runner },
+    })
+
+    expect(result.workspace.action).toBe(`close-existing`)
+    expect(result.reopensMainWorkspace?.action).toBe(`focus-existing`)
+    expect(result.sessions.editor).toContain(`editor`)
   })
 
   it(`starts work from outside the repo when an explicit project selector is provided`, async () => {

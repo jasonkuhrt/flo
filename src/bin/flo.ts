@@ -18,6 +18,8 @@ import {
   listRecentWork,
   openLastWorkspace,
   openWorkspace,
+  previewInitOpen,
+  previewInitStart,
   pruneFloState,
   statusFlo,
   startWork,
@@ -33,6 +35,8 @@ Usage:
   flo explain open [selector] [--last] [--json]
   flo explain start <selector> [--project <project>] [--json]
   flo explain end [selector] [--force] [--open-main] [--json]
+  flo init preview open [selector] [--last] [--json]
+  flo init preview start <selector> [--project <project>] [--json]
   flo context [--json|--env]
   flo status [--json]
   flo list [--project <project>] [--open] [--json]
@@ -60,6 +64,8 @@ Examples:
   flo explain open dotfiles
   flo explain start 123 --project dotfiles
   flo explain end 123 --open-main
+  flo init preview open dotfiles
+  flo init preview start 123 --project dotfiles
   flo context --json
   flo context --env
   flo status
@@ -375,6 +381,103 @@ const printExplain = async (
   throw new FloError(`CLI_USAGE`, `Unknown flo explain subject.\n\n${usage}`)
 }
 
+const printInitPreview = async (
+  context: { cwd: string; env: NodeJS.ProcessEnv },
+  json: boolean,
+  parsed: ParsedArgs,
+  rest: string[],
+): Promise<void> => {
+  const [subcommand, subject, ...subjectArgs] = rest
+  if (subcommand !== `preview` || subject === undefined) {
+    throw new FloError(`CLI_USAGE`, `flo init requires the preview subcommand.\n\n${usage}`)
+  }
+
+  if (subject === `open`) {
+    const [selector] = subjectArgs
+    if (selector !== undefined && parsed.booleans.has(`last`)) {
+      throw new FloError(
+        `CLI_USAGE`,
+        `flo init preview open accepts either a selector or --last, not both.`,
+      )
+    }
+
+    const result = await previewInitOpen({
+      context,
+      ...(selector === undefined ? {} : { selector }),
+      ...(parsed.booleans.has(`last`) ? { last: true } : {}),
+    })
+
+    if (json) {
+      printResult(result)
+      return
+    }
+
+    process.stdout.write(`command  init-preview open\n`)
+    process.stdout.write(`project  ${result.project.name}  ${result.project.path}\n`)
+    process.stdout.write(
+      `checkout  ${
+        result.checkout.isMain ? `main` : (result.checkout.branch ?? basename(result.checkout.path))
+      }  ${result.checkout.path}\n`,
+    )
+    process.stdout.write(
+      `workspace  ${result.workspace.title}  ${result.workspace.identity}  ${result.workspace.action}\n`,
+    )
+    process.stdout.write(`applies-now  ${result.appliesNow ? `yes` : `no`}\n`)
+    process.stdout.write(`init  split=${result.init.splitDirection} focus=${result.init.focus}\n`)
+    process.stdout.write(
+      `editor  ${result.init.editor.sessionName}  ${result.init.editor.command}\n`,
+    )
+    process.stdout.write(
+      `claude  ${result.init.claude.sessionName}  ${result.init.claude.command}\n`,
+    )
+    return
+  }
+
+  if (subject === `start`) {
+    const [selector] = subjectArgs
+    if (selector === undefined) {
+      throw new FloError(`CLI_USAGE`, `flo init preview start requires a selector.\n\n${usage}`)
+    }
+    const initProjectSelector = parsed.named.get(`project`)
+    const result = await previewInitStart({
+      context,
+      selector,
+      ...(initProjectSelector === undefined ? {} : { projectSelector: initProjectSelector }),
+    })
+
+    if (json) {
+      printResult(result)
+      return
+    }
+
+    process.stdout.write(`command  init-preview start\n`)
+    process.stdout.write(`selector  ${result.selector}\n`)
+    process.stdout.write(`project  ${result.project.name}  ${result.project.path}\n`)
+    process.stdout.write(
+      `checkout  ${
+        result.checkout.isMain ? `main` : (result.checkout.branch ?? basename(result.checkout.path))
+      }  ${result.checkout.path}\n`,
+    )
+    process.stdout.write(
+      `workspace  ${result.workspace.title}  ${result.workspace.identity}  ${result.workspace.action}\n`,
+    )
+    process.stdout.write(`applies-now  ${result.appliesNow ? `yes` : `no`}\n`)
+    process.stdout.write(`init  split=${result.init.splitDirection} focus=${result.init.focus}\n`)
+    process.stdout.write(
+      `editor  ${result.init.editor.sessionName}  ${result.init.editor.command}\n`,
+    )
+    process.stdout.write(
+      `claude  ${result.init.claude.sessionName}  ${result.init.claude.command}\n`,
+    )
+    if (result.issue !== undefined) {
+      process.stdout.write(`issue  #${result.issue.number}  ${result.issue.title}\n`)
+    }
+    return
+  }
+
+  throw new FloError(`CLI_USAGE`, `Unknown flo init preview subject.\n\n${usage}`)
+}
+
 const printStatus = async (
   context: { cwd: string; env: NodeJS.ProcessEnv },
   json: boolean,
@@ -530,6 +633,9 @@ const main = async (): Promise<void> => {
     }
     case `explain`:
       await printExplain(context, json, parsed, rest)
+      return
+    case `init`:
+      await printInitPreview(context, json, parsed, rest)
       return
     case `list`:
       await printList(context, json, projectSelector, parsed.booleans.has(`open`))

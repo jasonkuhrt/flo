@@ -18,6 +18,8 @@ import {
   listRecentWork,
   openLastWorkspace,
   openWorkspace,
+  previewInitOpen,
+  previewInitStart,
   pruneFloState,
   resolveOpenTarget,
   resolveStartTarget,
@@ -323,6 +325,69 @@ describe(`flo runtime`, () => {
     expect(result.workspace.action).toBe(`create-and-init`)
     expect(result.init.claude.sessionName).toContain(`claude`)
     expect(result.issue?.number).toBe(42)
+  })
+
+  it(`previews open init without mutating workspace state`, async () => {
+    const fixture = await makeRepoFixture()
+    const runner = mockRunner({
+      [`git -C ${fixture.repoRoot} rev-parse --show-toplevel`]: { stdout: `${fixture.repoRoot}\n` },
+      [`git -C ${fixture.repoRoot} remote get-url origin`]: {
+        stdout: `git@github.com:jasonkuhrt/flo.git\n`,
+      },
+      [`git -C ${fixture.repoRoot} worktree list --porcelain`]: {
+        stdout: mainWorktreeList(fixture.repoRoot),
+      },
+      [`cmux ping`]: ok(),
+      [`cmux --json list-workspaces`]: ok(JSON.stringify({ workspaces: [] })),
+    })
+
+    const result = await previewInitOpen({
+      context: {
+        cwd: fixture.repoRoot,
+        env: fixture.env,
+      },
+      dependencies: { runner },
+    })
+
+    expect(result.command).toBe(`open`)
+    expect(result.appliesNow).toBe(true)
+    expect(result.workspace.action).toBe(`create-and-init`)
+  })
+
+  it(`previews start init even when the workspace already exists`, async () => {
+    const fixture = await makeRepoFixture()
+    const runner = mockRunner({
+      [`git -C ${fixture.repoRoot} rev-parse --show-toplevel`]: { stdout: `${fixture.repoRoot}\n` },
+      [`git -C ${fixture.repoRoot} remote get-url origin`]: {
+        stdout: `git@github.com:jasonkuhrt/flo.git\n`,
+      },
+      [`git -C ${fixture.repoRoot} worktree list --porcelain`]: {
+        stdout: featureWorktreeList(fixture.repoRoot, fixture.featureWorktreePath),
+      },
+      [`cmux ping`]: ok(),
+      [`cmux --json list-workspaces`]: ok(
+        JSON.stringify({ workspaces: [{ id: `workspace:4`, title: `flo:flo@feat/auth` }] }),
+      ),
+      [`cmux --json sidebar-state --workspace workspace:4`]: ok(
+        JSON.stringify({
+          cwd: fixture.featureWorktreePath,
+          statuses: [],
+        }),
+      ),
+    })
+
+    const result = await previewInitStart({
+      context: {
+        cwd: fixture.repoRoot,
+        env: fixture.env,
+      },
+      selector: `feat/auth`,
+      dependencies: { runner },
+    })
+
+    expect(result.command).toBe(`start`)
+    expect(result.appliesNow).toBe(false)
+    expect(result.workspace.action).toBe(`focus-existing`)
   })
 
   it(`explains end and optional reopen-main behavior`, async () => {

@@ -126,6 +126,10 @@ flo explain open dotfiles
 flo explain start 123 --project dotfiles
 flo explain end 123 --open-main
 
+# Preview only the first-open init behavior
+flo init preview open dotfiles
+flo init preview start 123 --project dotfiles
+
 # Start work from the current project's default source
 flo start 123
 
@@ -512,6 +516,8 @@ The initial public command model is:
   Open or focus a project's main checkout workspace, or an existing checkout when a more specific selector is given. `flo open --last` reopens the most recent actionable workspace directly.
 - `flo explain open|start|end`
   Show Flo's resolved project, checkout, workspace action, and first-open init plan without mutating anything.
+- `flo init preview open|start`
+  Show only the first-open workspace init contract and whether it would apply right now.
 - `flo context`
   Print the current project and checkout context, primarily for Claude and other automation. `flo context --env` emits a shell-safe export block.
 - `flo status`

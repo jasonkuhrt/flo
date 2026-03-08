@@ -43,3 +43,7 @@ test(`re-exports formatFloContextEnv`, () => {
 test(`re-exports explainOpen`, () => {
   expect(typeof Lib.explainOpen).toBe(`function`)
 })
+
+test(`re-exports previewInitOpen`, () => {
+  expect(typeof Lib.previewInitOpen).toBe(`function`)
+})

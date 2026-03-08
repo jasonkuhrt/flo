@@ -320,6 +320,26 @@ export interface FloWorkspaceInitPlan {
   }
 }
 
+export interface FloInitPreviewResult {
+  command: `open` | `start`
+  selector?: string
+  projectSelector?: string
+  project: {
+    name: string
+    path: string
+  }
+  checkout: {
+    path: string
+    branch: string | null
+    isMain: boolean
+  }
+  workspace: FloWorkspacePlan
+  init: FloWorkspaceInitPlan
+  appliesNow: boolean
+  appliesWhen: `create-and-init`
+  issue?: GitHubIssue
+}
+
 export interface FloExplainOpenResult {
   command: `open`
   selector?: string

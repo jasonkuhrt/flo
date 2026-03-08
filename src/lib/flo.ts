@@ -49,6 +49,7 @@ import type {
   FloExplainEndResult,
   FloExplainOpenResult,
   FloExplainStartResult,
+  FloInitPreviewResult,
   FloDoctorResult,
   FloEndResult,
   FloEndedTarget,
@@ -877,6 +878,26 @@ export const explainOpen = async (args: {
   }
 }
 
+export const previewInitOpen = async (args: {
+  context: FloCommandContext
+  selector?: string
+  last?: boolean
+  dependencies?: FloRuntimeDependencies
+}): Promise<FloInitPreviewResult> => {
+  const explained = await explainOpen(args)
+
+  return {
+    command: `open`,
+    ...(explained.selector === undefined ? {} : { selector: explained.selector }),
+    project: explained.project,
+    checkout: explained.checkout,
+    workspace: explained.workspace,
+    init: explained.init,
+    appliesNow: explained.workspace.action === `create-and-init`,
+    appliesWhen: `create-and-init`,
+  }
+}
+
 export const explainStart = async (args: {
   context: FloCommandContext
   selector: string
@@ -916,6 +937,30 @@ export const explainStart = async (args: {
     init: buildWorkspaceInitPlan(target),
     createdCheckout: target.createdCheckout,
     ...(target.issue === undefined ? {} : { issue: target.issue }),
+  }
+}
+
+export const previewInitStart = async (args: {
+  context: FloCommandContext
+  selector: string
+  projectSelector?: string
+  dependencies?: FloRuntimeDependencies
+}): Promise<FloInitPreviewResult> => {
+  const explained = await explainStart(args)
+
+  return {
+    command: `start`,
+    selector: explained.selector,
+    ...(explained.projectSelector === undefined
+      ? {}
+      : { projectSelector: explained.projectSelector }),
+    project: explained.project,
+    checkout: explained.checkout,
+    workspace: explained.workspace,
+    init: explained.init,
+    appliesNow: explained.workspace.action === `create-and-init`,
+    appliesWhen: `create-and-init`,
+    ...(explained.issue === undefined ? {} : { issue: explained.issue }),
   }
 }
 

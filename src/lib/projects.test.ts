@@ -1,4 +1,4 @@
-import { mkdtemp, mkdir, realpath } from 'node:fs/promises'
+import { mkdtemp, mkdir, realpath, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import { tmpdir } from 'node:os'
 
@@ -198,6 +198,7 @@ describe(`discoverProjects`, () => {
     const result = await discoverProjects({
       config,
       cwd: repoRoot,
+      env: process.env,
       runner,
     })
 
@@ -210,6 +211,142 @@ describe(`discoverProjects`, () => {
         githubRepo: `jasonkuhrt/flo`,
         worktreeRoot: join(dirname(repoRoot), `.flo-checkouts`, `flo`),
         workspaceProfiles: {},
+      },
+    ])
+  })
+
+  it(`applies project-local config overrides from the repository`, async () => {
+    const root = await mkdtemp(join(tmpdir(), `flo-projects-local-`))
+    tempPaths.push(root)
+    const repoRootPath = join(root, `flo`)
+    await mkdir(join(repoRootPath, `.flo`), { recursive: true })
+    const repoRoot = await realpath(repoRootPath)
+    await writeFile(
+      join(repoRootPath, `.flo`, `config.json`),
+      JSON.stringify({
+        name: `flo-local`,
+        aliases: [`local-flo`],
+        defaultSource: `github`,
+        github: {
+          repo: `jasonkuhrt/flo-local`,
+        },
+        worktreeRoot: `~/worktrees/flo-local`,
+        workspaceProfiles: {
+          main: {
+            editorCommand: `nvim +LocalMainInit`,
+          },
+          feature: {
+            layout: {
+              splitDirection: `bottom`,
+            },
+            editorCommand: `nvim +LocalFeatureInit`,
+          },
+        },
+      }),
+    )
+
+    const config: ResolvedFloConfig = {
+      configPath: join(root, `config.json`),
+      exists: true,
+      discoveryRoots: [root],
+      runtime: {
+        editorCommand: `nvim`,
+        claudeCommand: `claude`,
+        shellCommand: `/bin/zsh`,
+        cmuxBin: `cmux`,
+        zmxBin: `zmx`,
+        fzfBin: `fzf`,
+        workspacePrefix: `flo`,
+        profiles: {
+          main: {
+            layout: {
+              splitDirection: `right`,
+              secondaryPane: `claude`,
+              focus: `editor`,
+            },
+          },
+          feature: {
+            layout: {
+              splitDirection: `right`,
+              secondaryPane: `claude`,
+              focus: `editor`,
+            },
+          },
+        },
+      },
+      projects: [
+        {
+          name: `flo`,
+          path: repoRoot,
+          aliases: [`global-flo`],
+          github: {
+            repo: `jasonkuhrt/flo-global`,
+          },
+          workspaceProfiles: {
+            main: {
+              claudeCommand: `claude --resume`,
+            },
+            feature: {
+              editorCommand: `nvim +GlobalFeatureInit`,
+            },
+          },
+        },
+      ],
+    }
+
+    const runner: CommandRunner = async (_command, args = []) => {
+      const key = args.join(` `)
+
+      if (key === `-C ${root} rev-parse --show-toplevel`) {
+        return { stdout: ``, stderr: `no git`, exitCode: 1 }
+      }
+
+      if (key === `-C ${repoRoot} rev-parse --show-toplevel`) {
+        return { stdout: `${repoRoot}\n`, stderr: ``, exitCode: 0 }
+      }
+
+      if (key === `-C ${repoRootPath} rev-parse --show-toplevel`) {
+        return { stdout: `${repoRoot}\n`, stderr: ``, exitCode: 0 }
+      }
+
+      if (key === `-C ${repoRoot} remote get-url origin`) {
+        return {
+          stdout: `git@github.com:jasonkuhrt/flo.git\n`,
+          stderr: ``,
+          exitCode: 0,
+        }
+      }
+
+      throw new Error(`Unhandled command: ${key}`)
+    }
+
+    const result = await discoverProjects({
+      config,
+      cwd: repoRoot,
+      env: process.env,
+      runner,
+    })
+
+    expect(result).toEqual([
+      {
+        name: `flo-local`,
+        path: repoRoot,
+        aliases: [`local-flo`],
+        defaultSource: `github`,
+        githubRepo: `jasonkuhrt/flo-local`,
+        worktreeRoot: `/Users/jasonkuhrt/worktrees/flo-local`,
+        workspaceProfiles: {
+          main: {
+            editorCommand: `nvim +LocalMainInit`,
+            claudeCommand: `claude --resume`,
+          },
+          feature: {
+            layout: {
+              splitDirection: `bottom`,
+            },
+            editorCommand: `nvim +LocalFeatureInit`,
+          },
+        },
       },
     ])
   })

@@ -6,6 +6,7 @@ import { expandHome } from '#lib/strings'
 import type {
   FloConfig,
   FloProjectConfig,
+  FloProjectLocalConfig,
   FloWorkspaceLayoutConfig,
   FloRuntimeConfig,
   FloWorkspaceProfileConfig,
@@ -51,6 +52,17 @@ const resolveProjectConfig = (project: FloProjectConfig, homeDirectory: string):
     : {
         ...project,
         path: resolve(expandHome(project.path, homeDirectory)),
+        worktreeRoot: resolve(expandHome(project.worktreeRoot, homeDirectory)),
+      }
+
+const resolveProjectLocalConfig = (
+  project: FloProjectLocalConfig,
+  homeDirectory: string,
+): FloProjectLocalConfig =>
+  project.worktreeRoot === undefined
+    ? project
+    : {
+        ...project,
         worktreeRoot: resolve(expandHome(project.worktreeRoot, homeDirectory)),
       }
 
@@ -228,6 +240,86 @@ const parseProjectConfig = (value: unknown, path: string): FloProjectConfig => {
   return {
     name: ensureString(value[`name`], `${path}.name`),
     path: ensureString(value[`path`], `${path}.path`),
+    ...(aliases === undefined ? {} : { aliases }),
+    ...(defaultSource === undefined ? {} : { defaultSource }),
+    ...(github === undefined ? {} : { github }),
+    ...(worktreeRoot === undefined ? {} : { worktreeRoot }),
+    ...(workspaceProfiles === undefined ? {} : { workspaceProfiles }),
+  }
+}
+
+const parseProjectLocalConfig = (value: unknown, path: string): FloProjectLocalConfig => {
+  if (!isRecord(value)) {
+    throw new FloError(`CONFIG_INVALID`, `Flo config field ${path} must be an object.`)
+  }
+
+  const aliases =
+    value[`aliases`] === undefined
+      ? undefined
+      : ensureStringArray(value[`aliases`], `${path}.aliases`)
+  const worktreeRoot = ensureOptionalString(value[`worktreeRoot`], `${path}.worktreeRoot`)
+
+  const github =
+    value[`github`] === undefined
+      ? undefined
+      : (() => {
+          if (!isRecord(value[`github`])) {
+            throw new FloError(
+              `CONFIG_INVALID`,
+              `Flo config field ${path}.github must be an object.`,
+            )
+          }
+
+          return {
+            repo: ensureString(value[`github`][`repo`], `${path}.github.repo`),
+          }
+        })()
+
+  const defaultSource = value[`defaultSource`]
+  if (
+    defaultSource !== undefined &&
+    defaultSource !== `github` &&
+    defaultSource !== `linear` &&
+    defaultSource !== `bead`
+  ) {
+    throw new FloError(
+      `CONFIG_INVALID`,
+      `Flo config field ${path}.defaultSource must be github, linear, or bead.`,
+    )
+  }
+  const workspaceProfiles =
+    value[`workspaceProfiles`] === undefined
+      ? undefined
+      : (() => {
+          if (!isRecord(value[`workspaceProfiles`])) {
+            throw new FloError(
+              `CONFIG_INVALID`,
+              `Flo config field ${path}.workspaceProfiles must be an object.`,
+            )
+          }
+
+          return {
+            ...(value[`workspaceProfiles`][`main`] === undefined
+              ? {}
+              : {
+                  main: parseWorkspaceProfile(
+                    value[`workspaceProfiles`][`main`],
+                    `${path}.workspaceProfiles.main`,
+                  ),
+                }),
+            ...(value[`workspaceProfiles`][`feature`] === undefined
+              ? {}
+              : {
+                  feature: parseWorkspaceProfile(
+                    value[`workspaceProfiles`][`feature`],
+                    `${path}.workspaceProfiles.feature`,
+                  ),
+                }),
+          }
+        })()
+
+  return {
+    ...(value[`name`] === undefined ? {} : { name: ensureString(value[`name`], `${path}.name`) }),
     ...(aliases === undefined ? {} : { aliases }),
     ...(defaultSource === undefined ? {} : { defaultSource }),
     ...(github === undefined ? {} : { github }),
@@ -431,4 +523,29 @@ export const loadConfig = async (env: NodeJS.ProcessEnv): Promise<ResolvedFloCon
     runtime,
     projects,
   }
+}
+
+export const loadProjectLocalConfig = async (args: {
+  projectPath: string
+  env: NodeJS.ProcessEnv
+}): Promise<FloProjectLocalConfig | null> => {
+  const configPath = resolve(args.projectPath, `.flo`, `config.json`)
+  if (!(await pathExists(configPath))) {
+    return null
+  }
+
+  let parsed: unknown
+
+  try {
+    parsed = JSON.parse(await readFileString(configPath)) as unknown
+  } catch (error) {
+    throw new FloError(
+      `CONFIG_INVALID`,
+      `Failed to read project-local Flo config at ${configPath}: ${String(error)}`,
+    )
+  }
+
+  const projectConfig = parseProjectLocalConfig(parsed, `project`)
+  const homeDirectory = args.env[`HOME`] ?? process.env[`HOME`] ?? `~`
+  return resolveProjectLocalConfig(projectConfig, homeDirectory)
 }

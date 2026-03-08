@@ -624,16 +624,14 @@ The cleanup policy is source-aware, but Flo should remain explicit and safe.
 Flo has two configuration scopes:
 
 - global configuration
-  Defines project roots, default runtime behavior, and source credentials or endpoints.
-- project configuration
-  Defines project-level defaults such as source routing, bootstrap commands, editor/runtime behavior, and context imports.
+  Defines discovery roots, machine-wide runtime defaults, and explicit project registrations. The default path is `~/.config/flo/config.json`.
+- project-local configuration
+  Lives in `.flo/config.json` at the repository root and defines repo-owned defaults such as source routing, aliases, worktree roots, and workspace profiles.
 
 The config format is JSON and validated at load time.
 The model will continue to grow, but malformed fields should fail fast with precise config-path errors instead of surfacing later during runtime.
 Runtime config can define global `main` and `feature` workspace profiles.
 These profiles override bootstrap commands and the typed workspace layout for the corresponding workspace kind.
-
-The current config file is JSON at `~/.config/flo/config.json`.
 
 Minimal example:
 
@@ -667,6 +665,23 @@ Minimal example:
       }
     }
   ]
+}
+```
+
+Project-local example:
+
+```json
+{
+  "aliases": ["ff"],
+  "defaultSource": "github",
+  "workspaceProfiles": {
+    "feature": {
+      "layout": {
+        "splitDirection": "bottom"
+      },
+      "editorCommand": "nvim +FloFeatureInit"
+    }
+  }
 }
 ```
 

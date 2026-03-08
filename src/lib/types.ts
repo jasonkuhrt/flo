@@ -49,6 +49,17 @@ export interface FloProjectConfig {
   workspaceProfiles?: Partial<FloWorkspaceProfiles>
 }
 
+export interface FloProjectLocalConfig {
+  name?: string
+  aliases?: string[]
+  defaultSource?: FloSourceKind
+  github?: {
+    repo: string
+  }
+  worktreeRoot?: string
+  workspaceProfiles?: Partial<FloWorkspaceProfiles>
+}
+
 export interface FloConfig {
   discovery?: {
     roots?: string[]

@@ -1,5 +1,6 @@
 import { basename, join, resolve } from 'pathe'
 
+import { loadProjectLocalConfig } from '#lib/config'
 import { FloError } from '#lib/errors'
 import { readDirectoryEntries, realPath } from '#lib/filesystem'
 import {
@@ -15,6 +16,7 @@ import type {
   FloCheckout,
   FloProject,
   FloProjectConfig,
+  FloProjectLocalConfig,
   FloProjectState,
   ResolvedFloConfig,
 } from '#lib/types'
@@ -33,6 +35,75 @@ const mergeProjectConfig = (
   configuredProjects: FloProjectConfig[],
 ): FloProjectConfig | undefined =>
   configuredProjects.find((project) => resolve(project.path) === repositoryPath)
+
+const mergeProjectOverrides = (args: {
+  repositoryPath: string
+  configuredProject: FloProjectConfig | undefined
+  localConfig: FloProjectLocalConfig | null
+}): FloProjectConfig | undefined => {
+  if (args.configuredProject === undefined && args.localConfig === null) {
+    return undefined
+  }
+
+  const aliases = args.localConfig?.aliases ?? args.configuredProject?.aliases
+  const defaultSource = args.localConfig?.defaultSource ?? args.configuredProject?.defaultSource
+  const github = args.localConfig?.github ?? args.configuredProject?.github
+  const worktreeRoot = args.localConfig?.worktreeRoot ?? args.configuredProject?.worktreeRoot
+  const workspaceProfiles =
+    args.localConfig?.workspaceProfiles === undefined &&
+    args.configuredProject?.workspaceProfiles === undefined
+      ? undefined
+      : {
+          ...(args.configuredProject?.workspaceProfiles ?? {}),
+          ...(args.localConfig?.workspaceProfiles ?? {}),
+          ...(args.configuredProject?.workspaceProfiles?.main === undefined &&
+          args.localConfig?.workspaceProfiles?.main === undefined
+            ? {}
+            : {
+                main: {
+                  ...(args.configuredProject?.workspaceProfiles?.main ?? {}),
+                  ...(args.localConfig?.workspaceProfiles?.main ?? {}),
+                  ...(args.configuredProject?.workspaceProfiles?.main?.layout === undefined &&
+                  args.localConfig?.workspaceProfiles?.main?.layout === undefined
+                    ? {}
+                    : {
+                        layout: {
+                          ...(args.configuredProject?.workspaceProfiles?.main?.layout ?? {}),
+                          ...(args.localConfig?.workspaceProfiles?.main?.layout ?? {}),
+                        },
+                      }),
+                },
+              }),
+          ...(args.configuredProject?.workspaceProfiles?.feature === undefined &&
+          args.localConfig?.workspaceProfiles?.feature === undefined
+            ? {}
+            : {
+                feature: {
+                  ...(args.configuredProject?.workspaceProfiles?.feature ?? {}),
+                  ...(args.localConfig?.workspaceProfiles?.feature ?? {}),
+                  ...(args.configuredProject?.workspaceProfiles?.feature?.layout === undefined &&
+                  args.localConfig?.workspaceProfiles?.feature?.layout === undefined
+                    ? {}
+                    : {
+                        layout: {
+                          ...(args.configuredProject?.workspaceProfiles?.feature?.layout ?? {}),
+                          ...(args.localConfig?.workspaceProfiles?.feature?.layout ?? {}),
+                        },
+                      }),
+                },
+              }),
+        }
+
+  return {
+    name: args.localConfig?.name ?? args.configuredProject?.name ?? basename(args.repositoryPath),
+    path: args.repositoryPath,
+    ...(aliases === undefined ? {} : { aliases }),
+    ...(defaultSource === undefined ? {} : { defaultSource }),
+    ...(github === undefined ? {} : { github }),
+    ...(worktreeRoot === undefined ? {} : { worktreeRoot }),
+    ...(workspaceProfiles === undefined ? {} : { workspaceProfiles }),
+  }
+}
 
 const inferProject = async (
   runner: CommandRunner,
@@ -62,6 +133,7 @@ const inferProject = async (
 export const discoverProjects = async (args: {
   config: ResolvedFloConfig
   cwd: string
+  env: NodeJS.ProcessEnv
   runner: CommandRunner
 }): Promise<FloProject[]> => {
   const candidatePaths = new Set<string>()
@@ -109,9 +181,21 @@ export const discoverProjects = async (args: {
   }
 
   const projects = await Promise.all(
-    [...repositoryPaths.entries()].map(async ([repositoryPath, configuredProject]) =>
-      inferProject(args.runner, repositoryPath, configuredProject),
-    ),
+    [...repositoryPaths.entries()].map(async ([repositoryPath, configuredProject]) => {
+      const localConfig = await loadProjectLocalConfig({
+        projectPath: repositoryPath,
+        env: args.env,
+      })
+      return inferProject(
+        args.runner,
+        repositoryPath,
+        mergeProjectOverrides({
+          repositoryPath,
+          configuredProject,
+          localConfig,
+        }),
+      )
+    }),
   )
 
   return projects.sort((left, right) => left.name.localeCompare(right.name))

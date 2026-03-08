@@ -5,7 +5,7 @@ import { homedir, tmpdir } from 'node:os'
 import { afterEach, describe, expect, it } from 'bun:test'
 
 import { FloError } from '#lib/errors'
-import { getDefaultConfigPath, loadConfig } from '#lib/config'
+import { getDefaultConfigPath, loadConfig, loadProjectLocalConfig } from '#lib/config'
 
 const tempPaths: string[] = []
 
@@ -152,5 +152,98 @@ describe(`config`, () => {
 
     expect(thrown).toBeInstanceOf(FloError)
     expect(String(thrown)).toContain(`runtime.editorCommand`)
+  })
+
+  it(`reads project-local config from .flo/config.json`, async () => {
+    const path = await mkdtemp(join(tmpdir(), `flo-project-local-`))
+    tempPaths.push(path)
+    await mkdir(join(path, `.flo`), { recursive: true })
+    await writeFile(
+      join(path, `.flo`, `config.json`),
+      JSON.stringify({
+        aliases: [`ff`],
+        worktreeRoot: `~/checkouts/flo`,
+        workspaceProfiles: {
+          feature: {
+            layout: {
+              splitDirection: `bottom`,
+              secondaryPane: null,
+              focus: `editor`,
+            },
+            editorCommand: `nvim +LocalFeatureInit`,
+          },
+        },
+      }),
+    )
+
+    const result = await loadProjectLocalConfig({
+      projectPath: path,
+      env: {
+        HOME: `/home/tester`,
+      },
+    })
+
+    expect(result).toEqual({
+      aliases: [`ff`],
+      worktreeRoot: `/home/tester/checkouts/flo`,
+      workspaceProfiles: {
+        feature: {
+          layout: {
+            splitDirection: `bottom`,
+            secondaryPane: null,
+            focus: `editor`,
+          },
+          editorCommand: `nvim +LocalFeatureInit`,
+        },
+      },
+    })
+  })
+
+  it(`returns null when project-local config is missing`, async () => {
+    const path = await mkdtemp(join(tmpdir(), `flo-project-local-missing-`))
+    tempPaths.push(path)
+
+    const result = await loadProjectLocalConfig({
+      projectPath: path,
+      env: {
+        HOME: `/home/tester`,
+      },
+    })
+
+    expect(result).toBeNull()
+  })
+
+  it(`rejects invalid project-local layouts`, async () => {
+    const path = await mkdtemp(join(tmpdir(), `flo-project-local-invalid-`))
+    tempPaths.push(path)
+    await mkdir(join(path, `.flo`), { recursive: true })
+    await writeFile(
+      join(path, `.flo`, `config.json`),
+      JSON.stringify({
+        workspaceProfiles: {
+          feature: {
+            layout: {
+              secondaryPane: null,
+              focus: `claude`,
+            },
+          },
+        },
+      }),
+    )
+
+    let thrown: unknown = null
+
+    try {
+      await loadProjectLocalConfig({
+        projectPath: path,
+        env: {
+          HOME: `/home/tester`,
+        },
+      })
+    } catch (error) {
+      thrown = error
+    }
+
+    expect(thrown).toBeInstanceOf(FloError)
   })
 })

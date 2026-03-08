@@ -329,6 +329,7 @@ const loadFloContext = async (args: {
   const projects = await discoverProjects({
     config,
     cwd: args.context.cwd,
+    env: args.context.env,
     runner: args.runner,
   })
 

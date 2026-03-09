@@ -25,6 +25,7 @@ import {
   statusFlo,
   startWork,
 } from '#lib/flo'
+import { getRaycastStatus, installRaycastExtension, uninstallRaycastExtension } from '#lib/raycast'
 import { handleClaudeHook, logFloUi, notifyFloUi, syncFloUi } from '#lib/ui'
 
 const usage = `flo
@@ -46,6 +47,9 @@ Usage:
   flo doctor [--json]
   flo config init [--force] [--json]
   flo claude install-hooks [--json]
+  flo raycast status [--json]
+  flo raycast install [--json]
+  flo raycast uninstall [--json]
   flo end [selector] [--dry-run] [--force] [--open-main] [--json]
   flo prune [--dry-run] [--json]
   flo ui sync [--workspace <id>] [--phase <value|clear>] [--agents <n|clear>] [--claude <value|clear>] [--json]
@@ -76,6 +80,9 @@ Examples:
   flo doctor --json
   flo config init
   flo claude install-hooks
+  flo raycast status
+  flo raycast install
+  flo raycast uninstall
   flo end 123
   flo end 123 --open-main
   flo prune
@@ -540,6 +547,28 @@ const printStatus = async (
   }
 }
 
+const printRaycastStatus = async (
+  context: { cwd: string; env: NodeJS.ProcessEnv },
+  json: boolean,
+): Promise<void> => {
+  const result = await getRaycastStatus({ context })
+
+  if (json) {
+    printResult(result)
+    return
+  }
+
+  process.stdout.write(`app  ${result.appAvailable ? `available` : `unavailable`}\n`)
+  process.stdout.write(`bun  ${result.bunAvailable ? `available` : `unavailable`}\n`)
+  process.stdout.write(
+    `adapter  ${result.adapterExists ? `present` : `missing`}  ${result.adapterPath}\n`,
+  )
+  process.stdout.write(
+    `extension  ${result.installed ? `installed` : `missing`}  ${result.installPath}\n`,
+  )
+  process.stdout.write(`commands  ${result.commands.join(`, `)}\n`)
+}
+
 const parseAgentsOption = (value: string): number | null => {
   if (value === `clear`) return null
 
@@ -733,6 +762,28 @@ const main = async (): Promise<void> => {
       })
       printResult(result)
       return
+    }
+    case `raycast`: {
+      const [subcommand] = rest
+      switch (subcommand) {
+        case undefined:
+          throw new FloError(`CLI_USAGE`, `flo raycast requires a subcommand.\n\n${usage}`)
+        case `status`:
+          await printRaycastStatus(context, json)
+          return
+        case `install`: {
+          const result = await installRaycastExtension({ context })
+          printResult(result)
+          return
+        }
+        case `uninstall`: {
+          const result = await uninstallRaycastExtension({ context })
+          printResult(result)
+          return
+        }
+        default:
+          throw new FloError(`CLI_USAGE`, `Unknown flo raycast subcommand.\n\n${usage}`)
+      }
     }
     case `end`: {
       const [selector] = rest

@@ -299,6 +299,29 @@ export interface FloClaudeHookInstallResult {
   hookEvents: string[]
 }
 
+export interface FloRaycastStatusResult {
+  appAvailable: boolean
+  bunAvailable: boolean
+  adapterPath: string
+  adapterExists: boolean
+  extensionName: string
+  installPath: string
+  installed: boolean
+  commands: string[]
+}
+
+export interface FloRaycastInstallResult extends FloRaycastStatusResult {
+  changed: boolean
+  method: `develop`
+}
+
+export interface FloRaycastUninstallResult {
+  extensionName: string
+  installPath: string
+  installedBefore: boolean
+  removed: boolean
+}
+
 export interface FloCommandContext {
   cwd: string
   env: NodeJS.ProcessEnv

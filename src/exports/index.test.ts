@@ -51,3 +51,7 @@ test(`re-exports previewInitOpen`, () => {
 test(`re-exports openHomeWorkspace`, () => {
   expect(typeof Lib.openHomeWorkspace).toBe(`function`)
 })
+
+test(`re-exports installRaycastExtension`, () => {
+  expect(typeof Lib.installRaycastExtension).toBe(`function`)
+})

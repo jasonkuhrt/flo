@@ -434,13 +434,22 @@ The current adapter lives in `integrations/raycast` and delegates to the Flo CLI
 - `Recent Flo Work` consumes `flo recent --json` and reopens recent work directly
 - `End Flo Work` consumes `flo list --json` and can end feature work with or without reopening main
 
-Repeatable Raycast workflows are exposed through the root `justfile`:
+The Raycast lifecycle is owned by Flo itself:
 
-- `just raycast-dev`
-- `just raycast-fix`
-- `just raycast-check`
-- `just raycast-build`
-- `just raycast-lint`
+- `flo raycast status`
+- `flo raycast install`
+- `flo raycast uninstall`
+
+`flo raycast install` uses Raycast's development import flow once, then stops.
+The extension remains installed in Raycast after that one-shot bootstrap.
+
+Repeatable repo workflows are exposed as Bun scripts:
+
+- `bun run dev:raycast`
+- `bun run fix:raycast`
+- `bun run check:raycast`
+- `bun run build:raycast`
+- `bun run lint:raycast`
 
 ### Claude Skill
 

@@ -5,9 +5,9 @@
   "license": "MIT",
   "author": "thomas",
   "scripts": {
-    "dev": "npx ray develop",
-    "build": "npx ray build",
-    "lint": "npx ray lint"
+    "dev": "bunx ray develop",
+    "build": "bunx ray build",
+    "lint": "bunx ray lint"
   },
   "dependencies": {
     "@effect/platform": "^0.94.5",

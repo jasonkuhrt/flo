@@ -14,6 +14,14 @@ Raycast and the Claude skill are optional ways to invoke Flo.
 They are not separate workflow engines.
 This README describes the current Flo contract.
 
+If you use [`git-hooks`](https://github.com/jasonkuhrt/git-hooks), run this one-time local setup in the repo:
+
+```bash
+git-hooks install
+```
+
+This repo tracks its pre-commit behavior in `.git-hooks/pre-commit.d/`, so hook intent stays in the repo while installation stays local.
+
 ## Why Flo Exists
 
 Starting real work usually means doing the same setup every time:
@@ -450,6 +458,8 @@ Repeatable repo workflows are exposed as Bun scripts:
 - `bun run check:raycast`
 - `bun run build:raycast`
 - `bun run lint:raycast`
+
+Tracked pre-commit hooks run staged formatting and linting, staged coverage, staged type checks, and safety guards for local artifacts, conflict markers, staged shell scripts, workflow files, and hook script integrity once `git-hooks install` has been run.
 
 ### Claude Skill
 

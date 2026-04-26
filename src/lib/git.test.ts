@@ -57,6 +57,7 @@ describe(`issueBranchName`, () => {
   it(`builds a slugged issue branch`, () => {
     expect(
       issueBranchName({
+        source: `github`,
         number: 42,
         title: `Add cmux launcher support`,
         url: `https://github.com/jasonkuhrt/flo/issues/42`,

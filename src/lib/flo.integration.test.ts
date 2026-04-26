@@ -28,6 +28,7 @@ import {
   statusFlo,
   startWork,
 } from '#lib/flo'
+import type { LinearFetch } from '#lib/linear'
 import type { CommandRunner } from '#lib/process'
 import { getDefaultStatePath, loadState, saveState } from '#lib/state'
 
@@ -116,6 +117,14 @@ const fail = (stderr = `unhandled`) => ({
   stderr,
   exitCode: 1,
 })
+
+const mockLinearFetch =
+  (payload: unknown, status = 200): LinearFetch =>
+  async () => ({
+    ok: status >= 200 && status < 300,
+    status,
+    text: async () => JSON.stringify(payload),
+  })
 
 describe(`flo runtime`, () => {
   it(`resolves the main checkout for the current project`, async () => {
@@ -322,6 +331,226 @@ describe(`flo runtime`, () => {
     })
   })
 
+  it(`starts Linear issue work from an explicit selector`, async () => {
+    const fixture = await makeRepoFixture()
+    fixture.env[`LINEAR_API_TOKEN`] = `lin_api_test`
+    const runner = mockRunner({
+      [`git -C ${fixture.repoRoot} rev-parse --show-toplevel`]: { stdout: `${fixture.repoRoot}\n` },
+      [`git -C ${fixture.featureWorktreePath} rev-parse --show-toplevel`]: {
+        stdout: `${fixture.repoRoot}\n`,
+      },
+      [`git -C ${fixture.repoRoot} remote get-url origin`]: {
+        stdout: `git@github.com:jasonkuhrt/flo.git\n`,
+      },
+      [`git -C ${fixture.repoRoot} worktree list --porcelain`]: {
+        stdout: mainWorktreeList(fixture.repoRoot),
+      },
+    })
+
+    const result = await resolveStartTarget({
+      context: {
+        cwd: fixture.repoRoot,
+        env: fixture.env,
+      },
+      selector: `linear:HEA-4225`,
+      dependencies: {
+        runner,
+        linearFetch: mockLinearFetch({
+          data: {
+            searchIssues: {
+              nodes: [
+                {
+                  identifier: `HEA-4225`,
+                  title: `Redo aborted`,
+                  url: `https://linear.app/heartbeat-chat/issue/HEA-4225/redo-aborted`,
+                  state: { name: `Todo` },
+                  team: { key: `HEA` },
+                },
+              ],
+            },
+          },
+        }),
+      },
+    })
+
+    expect(result).toMatchObject({
+      createdCheckout: true,
+      checkout: {
+        branch: `issue/HEA-4225-redo-aborted`,
+      },
+      issue: {
+        source: `linear`,
+        key: `HEA-4225`,
+      },
+    })
+  })
+
+  it(`starts Linear issue work from an implicit selector`, async () => {
+    const fixture = await makeRepoFixture()
+    fixture.env[`LINEAR_API_TOKEN`] = `lin_api_test`
+    const runner = mockRunner({
+      [`git -C ${fixture.repoRoot} rev-parse --show-toplevel`]: { stdout: `${fixture.repoRoot}\n` },
+      [`git -C ${fixture.featureWorktreePath} rev-parse --show-toplevel`]: {
+        stdout: `${fixture.repoRoot}\n`,
+      },
+      [`git -C ${fixture.repoRoot} remote get-url origin`]: {
+        stdout: `git@github.com:jasonkuhrt/flo.git\n`,
+      },
+      [`git -C ${fixture.repoRoot} worktree list --porcelain`]: {
+        stdout: mainWorktreeList(fixture.repoRoot),
+      },
+    })
+
+    const result = await resolveStartTarget({
+      context: {
+        cwd: fixture.repoRoot,
+        env: fixture.env,
+      },
+      selector: `HEA-4225`,
+      dependencies: {
+        runner,
+        linearFetch: mockLinearFetch({
+          data: {
+            searchIssues: {
+              nodes: [
+                {
+                  identifier: `HEA-4225`,
+                  title: `Redo aborted`,
+                  url: `https://linear.app/heartbeat-chat/issue/HEA-4225/redo-aborted`,
+                  state: { name: `Todo` },
+                  team: { key: `HEA` },
+                },
+              ],
+            },
+          },
+        }),
+      },
+    })
+
+    expect(result.checkout.branch).toBe(`issue/HEA-4225-redo-aborted`)
+    expect(result.issue?.source).toBe(`linear`)
+  })
+
+  it(`maps numeric selectors to Linear issue keys when defaultSource is linear and team is configured`, async () => {
+    const fixture = await makeRepoFixture()
+    fixture.env[`LINEAR_API_TOKEN`] = `lin_api_test`
+    const configPath = fixture.env[`FLO_CONFIG_PATH`]
+    if (configPath === undefined) {
+      throw new Error(`expected FLO_CONFIG_PATH in fixture env`)
+    }
+    await writeFile(
+      configPath,
+      JSON.stringify({
+        projects: [
+          {
+            name: `flo`,
+            path: fixture.repoRoot,
+            defaultSource: `linear`,
+            linear: {
+              workspace: `heartbeat-chat`,
+              team: `HEA`,
+            },
+          },
+        ],
+      }),
+    )
+
+    const runner = mockRunner({
+      [`git -C ${fixture.repoRoot} rev-parse --show-toplevel`]: { stdout: `${fixture.repoRoot}\n` },
+      [`git -C ${fixture.featureWorktreePath} rev-parse --show-toplevel`]: {
+        stdout: `${fixture.repoRoot}\n`,
+      },
+      [`git -C ${fixture.repoRoot} remote get-url origin`]: {
+        stdout: `git@github.com:jasonkuhrt/flo.git\n`,
+      },
+      [`git -C ${fixture.repoRoot} worktree list --porcelain`]: {
+        stdout: mainWorktreeList(fixture.repoRoot),
+      },
+    })
+
+    const result = await resolveStartTarget({
+      context: {
+        cwd: fixture.repoRoot,
+        env: fixture.env,
+      },
+      selector: `4225`,
+      dependencies: {
+        runner,
+        linearFetch: mockLinearFetch({
+          data: {
+            searchIssues: {
+              nodes: [
+                {
+                  identifier: `HEA-4225`,
+                  title: `Redo aborted`,
+                  url: `https://linear.app/heartbeat-chat/issue/HEA-4225/redo-aborted`,
+                  state: { name: `Todo` },
+                  team: { key: `HEA` },
+                },
+              ],
+            },
+          },
+        }),
+      },
+    })
+
+    expect(result.checkout.branch).toBe(`issue/HEA-4225-redo-aborted`)
+    expect(result.issue).toMatchObject({
+      source: `linear`,
+      key: `HEA-4225`,
+    })
+  })
+
+  it(`rejects numeric Linear selectors when defaultSource is linear but team is not configured`, async () => {
+    const fixture = await makeRepoFixture()
+    const configPath = fixture.env[`FLO_CONFIG_PATH`]
+    if (configPath === undefined) {
+      throw new Error(`expected FLO_CONFIG_PATH in fixture env`)
+    }
+    await writeFile(
+      configPath,
+      JSON.stringify({
+        projects: [
+          {
+            name: `flo`,
+            path: fixture.repoRoot,
+            defaultSource: `linear`,
+            linear: {
+              workspace: `heartbeat-chat`,
+            },
+          },
+        ],
+      }),
+    )
+
+    const runner = mockRunner({
+      [`git -C ${fixture.repoRoot} rev-parse --show-toplevel`]: { stdout: `${fixture.repoRoot}\n` },
+      [`git -C ${fixture.featureWorktreePath} rev-parse --show-toplevel`]: {
+        stdout: `${fixture.repoRoot}\n`,
+      },
+      [`git -C ${fixture.repoRoot} remote get-url origin`]: {
+        stdout: `git@github.com:jasonkuhrt/flo.git\n`,
+      },
+      [`git -C ${fixture.repoRoot} worktree list --porcelain`]: {
+        stdout: mainWorktreeList(fixture.repoRoot),
+      },
+    })
+
+    try {
+      await resolveStartTarget({
+        context: {
+          cwd: fixture.repoRoot,
+          env: fixture.env,
+        },
+        selector: `4225`,
+        dependencies: { runner },
+      })
+      throw new Error(`expected resolveStartTarget to fail`)
+    } catch (error) {
+      expect(String(error)).toContain(`project.linear.team`)
+    }
+  })
+
   it(`explains open by distinguishing init from focus`, async () => {
     const fixture = await makeRepoFixture()
     const runner = mockRunner({
@@ -394,7 +623,102 @@ describe(`flo runtime`, () => {
     expect(result.createdCheckout).toBe(true)
     expect(result.workspace.action).toBe(`create-and-init`)
     expect(result.init.claude?.sessionName).toContain(`claude`)
-    expect(result.issue?.number).toBe(42)
+    expect(result.issue).toMatchObject({
+      source: `github`,
+      number: 42,
+    })
+  })
+
+  it(`explains and dry-runs start for Linear issue selectors`, async () => {
+    const fixture = await makeRepoFixture()
+    fixture.env[`LINEAR_API_TOKEN`] = `lin_api_test`
+    const configPath = fixture.env[`FLO_CONFIG_PATH`]
+    if (configPath === undefined) {
+      throw new Error(`expected FLO_CONFIG_PATH in fixture env`)
+    }
+    await writeFile(
+      configPath,
+      JSON.stringify({
+        projects: [
+          {
+            name: `heartbeat`,
+            path: fixture.repoRoot,
+            defaultSource: `linear`,
+            linear: {
+              workspace: `heartbeat-chat`,
+              team: `HEA`,
+            },
+          },
+        ],
+      }),
+    )
+
+    const linearPayload = {
+      data: {
+        searchIssues: {
+          nodes: [
+            {
+              identifier: `HEA-4225`,
+              title: `Redo aborted`,
+              url: `https://linear.app/heartbeat-chat/issue/HEA-4225/redo-aborted`,
+              state: { name: `Todo` },
+              team: { key: `HEA` },
+            },
+          ],
+        },
+      },
+    }
+
+    const runner = mockRunner({
+      [`git -C ${fixture.repoRoot} rev-parse --show-toplevel`]: { stdout: `${fixture.repoRoot}\n` },
+      [`git -C ${fixture.featureWorktreePath} rev-parse --show-toplevel`]: {
+        stdout: `${fixture.repoRoot}\n`,
+      },
+      [`git -C ${fixture.repoRoot} remote get-url origin`]: {
+        stdout: `git@github.com:jasonkuhrt/flo.git\n`,
+      },
+      [`git -C ${tmpdir()} rev-parse --show-toplevel`]: { exitCode: 1 },
+      [`git -C ${fixture.repoRoot} worktree list --porcelain`]: {
+        stdout: mainWorktreeList(fixture.repoRoot),
+      },
+      [`cmux ping`]: ok(),
+      [`cmux --json list-workspaces`]: ok(JSON.stringify({ workspaces: [] })),
+    })
+
+    const explained = await explainStart({
+      context: {
+        cwd: tmpdir(),
+        env: fixture.env,
+      },
+      selector: `HEA-4225`,
+      projectSelector: `heartbeat`,
+      dependencies: {
+        runner,
+        linearFetch: mockLinearFetch(linearPayload),
+      },
+    })
+    expect(explained.issue).toMatchObject({
+      source: `linear`,
+      key: `HEA-4225`,
+    })
+    expect(explained.checkout.branch).toBe(`issue/HEA-4225-redo-aborted`)
+
+    const started = await startWork({
+      context: {
+        cwd: tmpdir(),
+        env: fixture.env,
+      },
+      selector: `HEA-4225`,
+      projectSelector: `heartbeat`,
+      dryRun: true,
+      dependencies: {
+        runner,
+        linearFetch: mockLinearFetch(linearPayload),
+      },
+    })
+    expect(started.createdCheckout).toBe(true)
+    expect(started.checkout.branch).toBe(`issue/HEA-4225-redo-aborted`)
+    expect(started.issue?.source).toBe(`linear`)
   })
 
   it(`previews open init without mutating workspace state`, async () => {
@@ -1442,6 +1766,58 @@ describe(`flo runtime`, () => {
     expect(result.commands.some((command) => command.key === `gh` && command.available)).toBe(true)
   })
 
+  it(`reports Linear auth readiness for Linear-backed projects`, async () => {
+    const fixture = await makeRepoFixture()
+    const configPath = fixture.env[`FLO_CONFIG_PATH`]
+    if (configPath === undefined) {
+      throw new Error(`expected FLO_CONFIG_PATH in fixture env`)
+    }
+    await writeFile(
+      configPath,
+      JSON.stringify({
+        projects: [
+          {
+            name: `heartbeat`,
+            path: fixture.repoRoot,
+            defaultSource: `linear`,
+            linear: {
+              workspace: `heartbeat-chat`,
+              team: `HEA`,
+            },
+          },
+        ],
+      }),
+    )
+
+    const runner = mockRunner({
+      [`/bin/zsh -lc command -v -- 'git'`]: ok(`/usr/bin/git\n`),
+      [`/bin/zsh -lc command -v -- 'cmux'`]: ok(`/opt/homebrew/bin/cmux\n`),
+      [`/bin/zsh -lc command -v -- 'zmx'`]: ok(`/opt/homebrew/bin/zmx\n`),
+      [`/bin/zsh -lc command -v -- 'fzf'`]: ok(`/opt/homebrew/bin/fzf\n`),
+      [`/bin/zsh -lc command -v -- 'claude'`]: ok(`/opt/homebrew/bin/claude\n`),
+      [`/bin/zsh -lc command -v -- 'nvim'`]: ok(`/opt/homebrew/bin/nvim\n`),
+      [`git -C ${fixture.repoRoot} rev-parse --show-toplevel`]: ok(`${fixture.repoRoot}\n`),
+      [`git -C ${fixture.repoRoot} remote get-url origin`]: fail(`no origin`),
+      [`git -C ${fixture.repoRoot} worktree list --porcelain`]: ok(
+        mainWorktreeList(fixture.repoRoot),
+      ),
+      [`cmux ping`]: ok(),
+    })
+
+    const result = await doctorFlo({
+      context: {
+        cwd: fixture.repoRoot,
+        env: fixture.env,
+      },
+      dependencies: { runner },
+    })
+
+    expect(result.commands.some((command) => command.key === `linear-api-token`)).toBe(true)
+    expect(
+      result.commands.some((command) => command.key === `linear-api-token` && !command.available),
+    ).toBe(true)
+  })
+
   it(`reports status for the current checkout and matching workspace`, async () => {
     const fixture = await makeRepoFixture()
     const runner = mockRunner({
@@ -1703,6 +2079,66 @@ describe(`flo runtime`, () => {
       },
       issue: {
         number: 42,
+      },
+    })
+  })
+
+  it(`detects Linear issue context from the current branch`, async () => {
+    const fixture = await makeRepoFixture()
+    fixture.env[`LINEAR_API_TOKEN`] = `lin_api_test`
+    const runner = mockRunner({
+      [`git -C ${fixture.featureWorktreePath} rev-parse --show-toplevel`]: {
+        stdout: `${fixture.repoRoot}\n`,
+      },
+      [`git -C ${fixture.repoRoot} remote get-url origin`]: {
+        stdout: `git@github.com:jasonkuhrt/flo.git\n`,
+      },
+      [`git -C ${fixture.repoRoot} worktree list --porcelain`]: {
+        stdout: [
+          `worktree ${fixture.repoRoot}`,
+          `HEAD abc123`,
+          `branch refs/heads/main`,
+          ``,
+          `worktree ${fixture.featureWorktreePath}`,
+          `HEAD def456`,
+          `branch refs/heads/issue/HEA-4225-redo-aborted`,
+          ``,
+        ].join(`\n`),
+      },
+    })
+
+    const result = await getFloContext({
+      context: {
+        cwd: fixture.featureWorktreePath,
+        env: fixture.env,
+      },
+      dependencies: {
+        runner,
+        linearFetch: mockLinearFetch({
+          data: {
+            searchIssues: {
+              nodes: [
+                {
+                  identifier: `HEA-4225`,
+                  title: `Redo aborted`,
+                  url: `https://linear.app/heartbeat-chat/issue/HEA-4225/redo-aborted`,
+                  state: { name: `Todo` },
+                  team: { key: `HEA` },
+                },
+              ],
+            },
+          },
+        }),
+      },
+    })
+
+    expect(result).toMatchObject({
+      checkout: {
+        branch: `issue/HEA-4225-redo-aborted`,
+      },
+      issue: {
+        source: `linear`,
+        key: `HEA-4225`,
       },
     })
   })

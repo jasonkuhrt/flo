@@ -48,6 +48,7 @@ const mergeProjectOverrides = (args: {
   const aliases = args.localConfig?.aliases ?? args.configuredProject?.aliases
   const defaultSource = args.localConfig?.defaultSource ?? args.configuredProject?.defaultSource
   const github = args.localConfig?.github ?? args.configuredProject?.github
+  const linear = args.localConfig?.linear ?? args.configuredProject?.linear
   const worktreeRoot = args.localConfig?.worktreeRoot ?? args.configuredProject?.worktreeRoot
   const workspaceProfiles =
     args.localConfig?.workspaceProfiles === undefined &&
@@ -100,6 +101,7 @@ const mergeProjectOverrides = (args: {
     ...(aliases === undefined ? {} : { aliases }),
     ...(defaultSource === undefined ? {} : { defaultSource }),
     ...(github === undefined ? {} : { github }),
+    ...(linear === undefined ? {} : { linear }),
     ...(worktreeRoot === undefined ? {} : { worktreeRoot }),
     ...(workspaceProfiles === undefined ? {} : { workspaceProfiles }),
   }
@@ -125,6 +127,7 @@ const inferProject = async (
         : { defaultSource: `github` as const }
       : { defaultSource: config.defaultSource }),
     ...(githubRepo === undefined ? {} : { githubRepo }),
+    ...(config?.linear === undefined ? {} : { linear: config.linear }),
     worktreeRoot: config?.worktreeRoot ?? deriveDefaultWorktreeRoot(repositoryPath),
     workspaceProfiles: config?.workspaceProfiles ?? {},
   }

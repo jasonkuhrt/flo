@@ -24,11 +24,17 @@ import {
   createWorktree,
   fetchGitHubIssue,
   isCheckoutDirty,
-  issueBranchName,
+  issueBranchName as githubIssueBranchName,
   planWorktreePath,
   pruneWorktrees,
   removeWorktree,
 } from '#lib/git'
+import {
+  fetchLinearIssue,
+  issueBranchName as linearIssueBranchName,
+  linearIssueKeyPattern,
+} from '#lib/linear'
+import type { LinearFetch } from '#lib/linear'
 import { systemRunner, type CommandRunner } from '#lib/process'
 import {
   discoverProjects,
@@ -68,15 +74,18 @@ import type {
   OpenTarget,
   StartSelector,
   StartTarget,
+  FloWorkItem,
 } from '#lib/types'
 import { killZmxSession } from '#lib/zmx'
 
 export interface FloRuntimeDependencies {
   runner?: CommandRunner
+  linearFetch?: LinearFetch
 }
 
 const defaultDependencies: Required<FloRuntimeDependencies> = {
   runner: systemRunner,
+  linearFetch: fetch,
 }
 
 const workspaceTitle = (prefix: string, project: FloProject, checkout: FloCheckout): string =>
@@ -87,11 +96,28 @@ const workspaceTitle = (prefix: string, project: FloProject, checkout: FloChecko
 const workspaceKind = (checkout: FloCheckout): FloWorkspaceKind =>
   checkout.isMain ? `main` : `feature`
 
-const parseIssueNumberFromBranch = (branch: string | null): number | null => {
+const parseWorkItemReferenceFromBranch = (
+  branch: string | null,
+): { source: `github`; issueNumber: number } | { source: `linear`; key: string } | null => {
   if (branch === null) return null
 
-  const match = /^issue\/(\d+)-/u.exec(branch)
-  return match?.[1] === undefined ? null : Number.parseInt(match[1], 10)
+  const linearMatch = /^issue\/([A-Z][A-Z0-9]+-\d+)(?:-|$)/u.exec(branch)
+  if (linearMatch?.[1] !== undefined && linearIssueKeyPattern.test(linearMatch[1])) {
+    return {
+      source: `linear`,
+      key: linearMatch[1],
+    }
+  }
+
+  const githubMatch = /^issue\/(\d+)(?:-|$)/u.exec(branch)
+  if (githubMatch?.[1] === undefined) {
+    return null
+  }
+
+  return {
+    source: `github`,
+    issueNumber: Number.parseInt(githubMatch[1], 10),
+  }
 }
 
 const canonicalizeCheckoutPath = async (checkoutPath: string): Promise<string> => {
@@ -304,6 +330,17 @@ const probeConfiguredCommand = async (args: {
     configured: args.configured,
     executable,
     available: result.exitCode === 0,
+  }
+}
+
+const probeLinearAuth = (env: NodeJS.ProcessEnv): FloDoctorCommand => {
+  const token = env[`LINEAR_API_TOKEN`]
+  const configured = typeof token === `string` && token.trim().length > 0
+  return {
+    key: `linear-api-token`,
+    configured: `LINEAR_API_TOKEN`,
+    executable: configured ? `set` : `missing`,
+    available: configured,
   }
 }
 
@@ -611,15 +648,65 @@ const resolveCurrentCheckout = (checkouts: FloCheckout[], cwd: string): FloCheck
   return checkout
 }
 
+const resolveWorkItemForBranchReference = async (args: {
+  reference: ReturnType<typeof parseWorkItemReferenceFromBranch>
+  project: FloProject
+  runner: CommandRunner
+  env: NodeJS.ProcessEnv
+  linearFetch: LinearFetch
+}): Promise<FloWorkItem | undefined> => {
+  if (args.reference === null) {
+    return undefined
+  }
+
+  if (args.reference.source === `github`) {
+    if (args.project.githubRepo === undefined) {
+      return undefined
+    }
+
+    return fetchGitHubIssue(args.runner, args.project.githubRepo, args.reference.issueNumber)
+  }
+
+  return fetchLinearIssue({
+    key: args.reference.key,
+    env: args.env,
+    fetch: args.linearFetch,
+  })
+}
+
 const resolveBranchForSelector = async (args: {
   selector: StartSelector
   project: FloProject
   runner: CommandRunner
+  env: NodeJS.ProcessEnv
+  linearFetch: LinearFetch
 }): Promise<{ branch: string; issue?: StartTarget[`issue`] }> => {
   switch (args.selector.kind) {
     case `branch`:
       return { branch: args.selector.branch }
     case `github-issue`: {
+      if (!args.selector.explicit && args.project.defaultSource === `linear`) {
+        const teamKey = args.project.linear?.team
+
+        if (teamKey === undefined || teamKey.trim().length === 0) {
+          throw new FloError(
+            `LINEAR_TEAM_REQUIRED`,
+            `Numeric selectors with defaultSource=linear require project.linear.team (for example "HEA"). Configure it or use an explicit Linear key like HEA-${args.selector.issueNumber}.`,
+          )
+        }
+
+        const issue = await fetchLinearIssue({
+          key: `${teamKey.toUpperCase()}-${args.selector.issueNumber}`,
+          env: args.env,
+          fetch: args.linearFetch,
+        })
+
+        return {
+          branch: linearIssueBranchName(issue),
+          issue,
+        }
+      }
+
       if (args.project.defaultSource !== `github` && !args.selector.explicit) {
         throw new FloError(
           `SOURCE_UNSUPPORTED`,
@@ -640,12 +727,21 @@ const resolveBranchForSelector = async (args: {
         args.selector.issueNumber,
       )
       return {
-        branch: issueBranchName(issue),
+        branch: githubIssueBranchName(issue),
         issue,
       }
     }
-    case `linear-issue`:
-      throw new FloError(`SOURCE_UNSUPPORTED`, `Linear selectors are not implemented in v1 yet.`)
+    case `linear-issue`: {
+      const issue = await fetchLinearIssue({
+        key: args.selector.key,
+        env: args.env,
+        fetch: args.linearFetch,
+      })
+      return {
+        branch: linearIssueBranchName(issue),
+        issue,
+      }
+    }
     case `bead`:
       throw new FloError(`SOURCE_UNSUPPORTED`, `Bead selectors are not implemented in v1 yet.`)
   }
@@ -656,6 +752,7 @@ const resolveStartPlan = async (args: {
   selector: string
   projectSelector?: string
   runner: CommandRunner
+  linearFetch: LinearFetch
 }): Promise<{
   config: Awaited<ReturnType<typeof loadConfig>>
   project: FloProject
@@ -680,6 +777,8 @@ const resolveStartPlan = async (args: {
     selector: parsedSelector,
     project,
     runner: args.runner,
+    env: args.context.env,
+    linearFetch: args.linearFetch,
   })
   const state = await listProjectState(args.runner, project)
   const existingCheckout =
@@ -706,6 +805,7 @@ const resolveEndTarget = async (args: {
   context: FloCommandContext
   selector?: string
   runner: CommandRunner
+  linearFetch: LinearFetch
 }): Promise<FloEndedTarget> => {
   const { config, projects } = await loadFloContext({
     context: args.context,
@@ -749,6 +849,8 @@ const resolveEndTarget = async (args: {
       selector: parsedSelector,
       project,
       runner: args.runner,
+      env: args.context.env,
+      linearFetch: args.linearFetch,
     })
     checkout =
       state.checkouts.find((candidate) => candidate.branch === branchResolution.branch) ??
@@ -856,6 +958,7 @@ export const resolveStartTarget = async (args: {
     selector: args.selector,
     ...(args.projectSelector === undefined ? {} : { projectSelector: args.projectSelector }),
     runner: dependencies.runner,
+    linearFetch: dependencies.linearFetch,
   })
   const target = await buildOpenTarget({
     project: plan.project,
@@ -1013,6 +1116,7 @@ export const explainEnd = async (args: {
     context: args.context,
     ...(args.selector === undefined ? {} : { selector: args.selector }),
     runner: dependencies.runner,
+    linearFetch: dependencies.linearFetch,
   })
   const plan = await inspectTargetWorkspacePlan({
     runner: dependencies.runner,
@@ -1143,6 +1247,7 @@ export const startWork = async (args: {
     selector: args.selector,
     ...(args.projectSelector === undefined ? {} : { projectSelector: args.projectSelector }),
     runner: dependencies.runner,
+    linearFetch: dependencies.linearFetch,
   })
 
   const checkout =
@@ -1216,13 +1321,15 @@ export const getFloContext = async (args: {
     checkout,
     runtime: config.runtime,
   })
-  const issueNumber = parseIssueNumberFromBranch(checkout.branch)
+  const issue = await resolveWorkItemForBranchReference({
+    reference: parseWorkItemReferenceFromBranch(checkout.branch),
+    project,
+    runner: dependencies.runner,
+    env: args.context.env,
+    linearFetch: dependencies.linearFetch,
+  })
+  if (issue === undefined) return target
 
-  if (issueNumber === null || project.githubRepo === undefined) {
-    return target
-  }
-
-  const issue = await fetchGitHubIssue(dependencies.runner, project.githubRepo, issueNumber)
   return {
     ...target,
     issue,
@@ -1243,11 +1350,19 @@ export const formatFloContextEnv = (context: FloContextResult): string => {
     ...(context.issue === undefined
       ? []
       : [
-          [`FLO_ISSUE_NUMBER`, String(context.issue.number)] as const,
+          [`FLO_ISSUE_SOURCE`, context.issue.source] as const,
           [`FLO_ISSUE_TITLE`, context.issue.title] as const,
           [`FLO_ISSUE_URL`, context.issue.url] as const,
           [`FLO_ISSUE_STATE`, context.issue.state] as const,
-          [`FLO_ISSUE_REPO`, context.issue.repo] as const,
+          ...(context.issue.source === `github`
+            ? [
+                [`FLO_ISSUE_NUMBER`, String(context.issue.number)] as const,
+                [`FLO_ISSUE_REPO`, context.issue.repo] as const,
+              ]
+            : [
+                [`FLO_ISSUE_KEY`, context.issue.key] as const,
+                [`FLO_ISSUE_TEAM`, context.issue.teamKey] as const,
+              ]),
         ]),
   ]
 
@@ -1297,11 +1412,13 @@ export const statusFlo = async (args: {
         target,
       })
     : null
-  const issueNumber = parseIssueNumberFromBranch(currentCheckout.branch)
-  const issue =
-    issueNumber === null || currentProject.githubRepo === undefined
-      ? undefined
-      : await fetchGitHubIssue(dependencies.runner, currentProject.githubRepo, issueNumber)
+  const issue = await resolveWorkItemForBranchReference({
+    reference: parseWorkItemReferenceFromBranch(currentCheckout.branch),
+    project: currentProject,
+    runner: dependencies.runner,
+    env: args.context.env,
+    linearFetch: dependencies.linearFetch,
+  })
 
   return {
     currentDirectory: resolve(args.context.cwd),
@@ -1344,6 +1461,7 @@ export const endWork = async (args: {
     context: args.context,
     ...(args.selector === undefined ? {} : { selector: args.selector }),
     runner: dependencies.runner,
+    linearFetch: dependencies.linearFetch,
   })
 
   if (!args.force && (await isCheckoutDirty(dependencies.runner, target.checkout.path))) {
@@ -1659,6 +1777,9 @@ export const doctorFlo = async (args: {
   const shouldProbeGitHub = projects.some(
     (project) => project.defaultSource === `github` || project.githubRepo !== undefined,
   )
+  const shouldProbeLinear = projects.some(
+    (project) => project.defaultSource === `linear` || project.linear !== undefined,
+  )
   const commands = await Promise.all([
     probeConfiguredCommand({
       runner: dependencies.runner,
@@ -1706,6 +1827,7 @@ export const doctorFlo = async (args: {
           }),
         ]
       : []),
+    ...(shouldProbeLinear ? [Promise.resolve(probeLinearAuth(args.context.env))] : []),
   ])
 
   return {
@@ -1786,6 +1908,7 @@ export const initConfig = async (args: {
               ...(currentProject.githubRepo === undefined
                 ? {}
                 : { github: { repo: currentProject.githubRepo } }),
+              ...(currentProject.linear === undefined ? {} : { linear: currentProject.linear }),
             },
           ],
   }

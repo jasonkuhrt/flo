@@ -242,6 +242,7 @@ export const fetchGitHubIssue = async (
   }
 
   return {
+    source: `github`,
     number: record.number,
     title: record.title,
     url: record.url,

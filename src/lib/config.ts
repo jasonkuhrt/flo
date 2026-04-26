@@ -149,6 +149,20 @@ const parseWorkspaceProfile = (value: unknown, path: string): FloWorkspaceProfil
   }
 }
 
+const parseLinearConfig = (value: unknown, path: string): { workspace?: string; team?: string } => {
+  if (!isRecord(value)) {
+    throw new FloError(`CONFIG_INVALID`, `Flo config field ${path} must be an object.`)
+  }
+
+  const workspace = ensureOptionalString(value[`workspace`], `${path}.workspace`)
+  const team = ensureOptionalString(value[`team`], `${path}.team`)
+
+  return {
+    ...(workspace === undefined ? {} : { workspace }),
+    ...(team === undefined ? {} : { team }),
+  }
+}
+
 const resolveWorkspaceLayout = (
   base: FloWorkspaceLayoutConfig,
   override?: Partial<FloWorkspaceLayoutConfig>,
@@ -193,6 +207,8 @@ const parseProjectConfig = (value: unknown, path: string): FloProjectConfig => {
             repo: ensureString(value[`github`][`repo`], `${path}.github.repo`),
           }
         })()
+  const linear =
+    value[`linear`] === undefined ? undefined : parseLinearConfig(value[`linear`], `${path}.linear`)
 
   const defaultSource = value[`defaultSource`]
   if (
@@ -243,6 +259,7 @@ const parseProjectConfig = (value: unknown, path: string): FloProjectConfig => {
     ...(aliases === undefined ? {} : { aliases }),
     ...(defaultSource === undefined ? {} : { defaultSource }),
     ...(github === undefined ? {} : { github }),
+    ...(linear === undefined ? {} : { linear }),
     ...(worktreeRoot === undefined ? {} : { worktreeRoot }),
     ...(workspaceProfiles === undefined ? {} : { workspaceProfiles }),
   }
@@ -274,6 +291,8 @@ const parseProjectLocalConfig = (value: unknown, path: string): FloProjectLocalC
             repo: ensureString(value[`github`][`repo`], `${path}.github.repo`),
           }
         })()
+  const linear =
+    value[`linear`] === undefined ? undefined : parseLinearConfig(value[`linear`], `${path}.linear`)
 
   const defaultSource = value[`defaultSource`]
   if (
@@ -323,6 +342,7 @@ const parseProjectLocalConfig = (value: unknown, path: string): FloProjectLocalC
     ...(aliases === undefined ? {} : { aliases }),
     ...(defaultSource === undefined ? {} : { defaultSource }),
     ...(github === undefined ? {} : { github }),
+    ...(linear === undefined ? {} : { linear }),
     ...(worktreeRoot === undefined ? {} : { worktreeRoot }),
     ...(workspaceProfiles === undefined ? {} : { workspaceProfiles }),
   }

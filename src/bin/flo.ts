@@ -146,6 +146,14 @@ const parseArgs = (args: string[]): ParsedArgs => {
   }
 }
 
+const formatIssueSummary = (
+  issue: {
+    source: `github` | `linear`
+    title: string
+  } & ({ source: `github`; number: number } | { source: `linear`; key: string }),
+): string =>
+  issue.source === `github` ? `#${issue.number}  ${issue.title}` : `${issue.key}  ${issue.title}`
+
 const printResult = (value: unknown): void => {
   process.stdout.write(`${JSON.stringify(value, null, 2)}\n`)
 }
@@ -355,7 +363,7 @@ const printExplain = async (
       )
     }
     if (result.issue !== undefined) {
-      process.stdout.write(`issue  #${result.issue.number}  ${result.issue.title}\n`)
+      process.stdout.write(`issue  ${formatIssueSummary(result.issue)}\n`)
     }
     return
   }
@@ -496,7 +504,7 @@ const printInitPreview = async (
       )
     }
     if (result.issue !== undefined) {
-      process.stdout.write(`issue  #${result.issue.number}  ${result.issue.title}\n`)
+      process.stdout.write(`issue  ${formatIssueSummary(result.issue)}\n`)
     }
     return
   }
@@ -543,7 +551,7 @@ const printStatus = async (
   )
 
   if (result.issue !== undefined) {
-    process.stdout.write(`issue  #${result.issue.number}  ${result.issue.title}\n`)
+    process.stdout.write(`issue  ${formatIssueSummary(result.issue)}\n`)
   }
 }
 

@@ -230,6 +230,10 @@ describe(`discoverProjects`, () => {
         github: {
           repo: `jasonkuhrt/flo-local`,
         },
+        linear: {
+          workspace: `heartbeat-chat`,
+          team: `HEA`,
+        },
         worktreeRoot: `~/worktrees/flo-local`,
         workspaceProfiles: {
           main: {
@@ -281,6 +285,9 @@ describe(`discoverProjects`, () => {
           aliases: [`global-flo`],
           github: {
             repo: `jasonkuhrt/flo-global`,
+          },
+          linear: {
+            workspace: `heartbeat-chat`,
           },
           workspaceProfiles: {
             main: {
@@ -334,6 +341,10 @@ describe(`discoverProjects`, () => {
         aliases: [`local-flo`],
         defaultSource: `github`,
         githubRepo: `jasonkuhrt/flo-local`,
+        linear: {
+          workspace: `heartbeat-chat`,
+          team: `HEA`,
+        },
         worktreeRoot: `/Users/jasonkuhrt/worktrees/flo-local`,
         workspaceProfiles: {
           main: {

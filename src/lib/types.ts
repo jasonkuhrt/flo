@@ -45,6 +45,10 @@ export interface FloProjectConfig {
   github?: {
     repo: string
   }
+  linear?: {
+    workspace?: string
+    team?: string
+  }
   worktreeRoot?: string
   workspaceProfiles?: Partial<FloWorkspaceProfiles>
 }
@@ -55,6 +59,10 @@ export interface FloProjectLocalConfig {
   defaultSource?: FloSourceKind
   github?: {
     repo: string
+  }
+  linear?: {
+    workspace?: string
+    team?: string
   }
   worktreeRoot?: string
   workspaceProfiles?: Partial<FloWorkspaceProfiles>
@@ -84,6 +92,10 @@ export interface FloProject {
   aliases: string[]
   defaultSource?: FloSourceKind
   githubRepo?: string
+  linear?: {
+    workspace?: string
+    team?: string
+  }
   worktreeRoot: string
   workspaceProfiles: Partial<FloWorkspaceProfiles>
 }
@@ -107,12 +119,24 @@ export interface FloWorkspaceMetadata {
 }
 
 export interface GitHubIssue {
+  source: `github`
   number: number
   title: string
   url: string
   state: string
   repo: string
 }
+
+export interface LinearIssue {
+  source: `linear`
+  key: string
+  title: string
+  url: string
+  state: string
+  teamKey: string
+}
+
+export type FloWorkItem = GitHubIssue | LinearIssue
 
 export type StartSelector =
   | {
@@ -151,11 +175,11 @@ export interface OpenTarget {
 
 export interface StartTarget extends OpenTarget {
   createdCheckout: boolean
-  issue?: GitHubIssue
+  issue?: FloWorkItem
 }
 
 export interface FloContextResult extends OpenTarget {
-  issue?: GitHubIssue
+  issue?: FloWorkItem
 }
 
 export interface CmuxWorkspace {
@@ -244,7 +268,7 @@ export interface FloStatusResult {
     id: string
     title: string
   } | null
-  issue?: GitHubIssue
+  issue?: FloWorkItem
 }
 
 export interface FloWorkspaceStateRecord {
@@ -377,7 +401,7 @@ export interface FloInitPreviewResult {
   init: FloWorkspaceInitPlan
   appliesNow: boolean
   appliesWhen: `create-and-init`
-  issue?: GitHubIssue
+  issue?: FloWorkItem
 }
 
 export interface FloExplainOpenResult {
@@ -414,7 +438,7 @@ export interface FloExplainStartResult {
   workspace: FloWorkspacePlan
   init: FloWorkspaceInitPlan
   createdCheckout: boolean
-  issue?: GitHubIssue
+  issue?: FloWorkItem
 }
 
 export interface FloExplainEndResult {

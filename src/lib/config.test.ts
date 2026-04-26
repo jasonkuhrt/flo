@@ -65,6 +65,11 @@ describe(`config`, () => {
           {
             name: `dotfiles`,
             path: join(path, `projects`, `dotfiles`),
+            defaultSource: `linear`,
+            linear: {
+              workspace: `heartbeat-chat`,
+              team: `HEA`,
+            },
             worktreeRoot: join(path, `checkouts`, `dotfiles`),
             workspaceProfiles: {
               main: {
@@ -92,6 +97,11 @@ describe(`config`, () => {
       {
         name: `dotfiles`,
         path: join(path, `projects`, `dotfiles`),
+        defaultSource: `linear`,
+        linear: {
+          workspace: `heartbeat-chat`,
+          team: `HEA`,
+        },
         worktreeRoot: join(path, `checkouts`, `dotfiles`),
         workspaceProfiles: {
           main: {
@@ -162,6 +172,11 @@ describe(`config`, () => {
       join(path, `.flo`, `config.json`),
       JSON.stringify({
         aliases: [`ff`],
+        defaultSource: `linear`,
+        linear: {
+          workspace: `heartbeat-chat`,
+          team: `HEA`,
+        },
         worktreeRoot: `~/checkouts/flo`,
         workspaceProfiles: {
           feature: {
@@ -185,6 +200,11 @@ describe(`config`, () => {
 
     expect(result).toEqual({
       aliases: [`ff`],
+      defaultSource: `linear`,
+      linear: {
+        workspace: `heartbeat-chat`,
+        team: `HEA`,
+      },
       worktreeRoot: `/home/tester/checkouts/flo`,
       workspaceProfiles: {
         feature: {

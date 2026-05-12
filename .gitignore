@@ -14,6 +14,6 @@ build
 # Coverage
 src/coverage
 
-# Dolt database files (added by bd init)
+# Local Dolt database files
 .dolt/
 *.db

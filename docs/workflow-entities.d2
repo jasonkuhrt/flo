@@ -1,0 +1,74 @@
+direction: down
+
+entrypoints: "Entrypoints" {
+  cli: "flo CLI"
+  raycast: "Raycast adapter"
+  claude_hooks: "Claude hooks"
+}
+
+resolution: "Resolution" {
+  selector: "Selector"
+  project: "Project"
+  source_adapter: "Issue source adapter" {
+    github: "GitHub"
+    linear: "Linear"
+    bead: "Bead (future)"
+  }
+  work_item: "Work item"
+  branch: "Branch plan"
+}
+
+checkout: "Checkout" {
+  main: "Main checkout"
+  feature: "Feature worktree"
+}
+
+workspace: "Workspace runtime" {
+  identity: "Flo workspace identity"
+  cmux: "cmux workspace"
+  zmx_editor: "zmx editor session"
+  zmx_claude: "zmx Claude session"
+  editor: "Editor pane"
+  claude: "Claude pane"
+}
+
+automation: "Automation surfaces" {
+  context: "flo context"
+  ui: "flo ui"
+  recents: "Flo recency state"
+}
+
+entrypoints.cli -> resolution.selector: "passes open/start target"
+entrypoints.raycast -> entrypoints.cli: "shells out"
+entrypoints.claude_hooks -> automation.ui: "send hook events"
+
+resolution.selector -> resolution.project: "uses cwd, config, or --project"
+resolution.selector -> resolution.source_adapter.github: "gh:123 or GitHub default"
+resolution.selector -> resolution.source_adapter.linear: "HEA-4225, linear:HEA-4225, or Linear default"
+resolution.selector -> resolution.source_adapter.bead: "bead:<id>"
+resolution.selector -> resolution.branch: "raw branch selector"
+
+resolution.source_adapter.github -> resolution.work_item: "GitHubIssue"
+resolution.source_adapter.linear -> resolution.work_item: "LinearIssue"
+resolution.source_adapter.bead -> resolution.work_item: "not implemented"
+resolution.work_item -> resolution.branch: "source-owned branch name"
+
+resolution.project -> checkout.main: "home/open"
+resolution.project -> checkout.feature: "start/end"
+resolution.branch -> checkout.feature: "create or reuse"
+
+checkout.main -> workspace.identity: "realpath + sha256"
+checkout.feature -> workspace.identity: "realpath + sha256"
+workspace.identity -> workspace.cmux: "lookup by flo.identity or cwd"
+workspace.cmux -> workspace.zmx_editor: "first-open editor command"
+workspace.cmux -> workspace.zmx_claude: "optional second pane"
+workspace.zmx_editor -> workspace.editor: "attach"
+workspace.zmx_claude -> workspace.claude: "attach"
+
+workspace.cmux -> automation.recents: "touches last opened"
+automation.recents -> entrypoints.cli: "open --last, recent, list ordering"
+resolution.project -> automation.context: "project metadata"
+checkout.main -> automation.context: "checkout metadata"
+checkout.feature -> automation.context: "checkout metadata"
+resolution.work_item -> automation.context: "issue metadata"
+automation.ui -> workspace.cmux: "status, logs, notifications"
